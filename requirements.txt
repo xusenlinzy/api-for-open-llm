@@ -1,0 +1,10 @@
+openai
+langchain
+bitsandbytes
+fastapi
+tenacity
+sentencepiece
+loguru
+transformers
+peft
+sentence-transformers
