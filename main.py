@@ -446,7 +446,6 @@ if __name__ == "__main__":
         args.device,
         model_name=args.model_name,
         stream_interval=args.stream_interval,
-        task_prompt=args.task_prompt
     )
 
     embed_client = None

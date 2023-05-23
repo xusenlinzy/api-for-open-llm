@@ -50,23 +50,29 @@ docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=chatglm \
     python main.py \
     --port 80 \
     --allow-credentials \
-    --model_path checkpoints/chatglm-6b \
-    --embedding_name /workspace/checkpoints/text2vec-large-chinese
+    --model_path THUDM/chatglm-6b \
+    --embedding_name GanymedeNil/text2vec-large-chinese
 ```
+
+主要参数含义：
+
++ `model_path`: 开源大模型的文件路径
+
++ `embedding_name`: 嵌入模型的文件路径
 
 # 使用方式
 
-修改环境变量
+## 环境变量
 
 + `OPENAI_API_KEY`: 此处随意填一个字符串即可
 
 + `OPENAI_API_BASE`: 后端启动的接口地址，如：http://192.168.0.25:80/v1
 
-**几乎大部分的 `chatgpt` 应用和前后端项目都可以无缝衔接！**
 
-可接入的项目：
+## 可接入的项目：
+
+**几乎大部分的 `chatgpt` 应用和前后端项目都可以无缝衔接！**
 
 + [ChatGPT-Next-Web](https://github.com/Yidadaa/ChatGPT-Next-Web)
 
 + [dify](https://github.com/langgenius/dify)
-
