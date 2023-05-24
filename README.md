@@ -84,11 +84,11 @@ python main.py \
 
 ## 2. [openai-python](https://github.com/openai/openai-python)
 
+### Chat Completions
+
 ```python
 import openai
 
-# Point requests to Basaran by overwriting openai.api_base.
-# Or you can use the OPENAI_API_BASE environment variable instead.
 openai.api_base = "http://192.168.0.xx:80/v1"
 
 # Enter any non-empty API key to pass the client library's check.
@@ -104,10 +104,48 @@ completion = openai.ChatCompletion.create(
 )
 
 print(completion.choices[0].message.content)
-# 你好，有什么我可以帮助你的吗？
+# 你好👋！我是人工智能助手 ChatGLM-6B，很高兴见到你，欢迎问我任何问题。
+```
+
+### Completions
+
+```python
+import openai
+
+openai.api_base = "http://192.168.0.xx:80/v1"
+
+# Enter any non-empty API key to pass the client library's check.
+openai.api_key = "xxx"
+
+# Enter any non-empty model name to pass the client library's check.
+completion = openai.Completion.create(prompt="你好", model="chatglm-6b")
+
+print(completion.choices[0].text)
+# 你好👋！我是人工智能助手 ChatGLM-6B，很高兴见到你，欢迎问我任何问题。
+```
+
+### Embeddings
+
+```python
+import openai
+
+openai.api_base = "http://192.168.0.xx:80/v1"
+
+# Enter any non-empty API key to pass the client library's check.
+openai.api_key = "xxx"
+
+# compute the embedding of the text
+embedding = openai.Embedding.create(
+    input="什么是chatgpt？", 
+    model="text2vec-large-chinese"
+)
+
+print(embedding['data'][0]['embedding'])
 ```
 
 ## 3. [langchain](https://github.com/hwchase17/langchain)
+
+### Chat Completions
 
 ```python
 import os
@@ -116,13 +154,56 @@ os.environ["OPENAI_API_BASE"] = "http://192.168.0.xx:80/v1"
 os.environ["OPENAI_API_KEY"] = "xxx"
 
 from langchain.chat_models import ChatOpenAI
-from langchain.schema import (
-    HumanMessage
-)
+from langchain.schema import HumanMessage
 
 chat = ChatOpenAI()
 print(chat([HumanMessage(content="你好")]))
-# content='你好，有什么我可以帮助您的吗？' additional_kwargs={}
+# content='你好👋！我是人工智能助手 ChatGLM-6B，很高兴见到你，欢迎问我任何问题。' additional_kwargs={}
+```
+
+### Completions
+
+```python
+import os
+
+os.environ["OPENAI_API_BASE"] = "http://192.168.0.xx:80/v1"
+os.environ["OPENAI_API_KEY"] = "xxx"
+
+from langchain.llms import OpenAI
+
+llm = OpenAI()
+print(llm("你好"))
+# 你好👋！我是人工智能助手 ChatGLM-6B，很高兴见到你，欢迎问我任何问题。
+```
+
+### Completions
+
+```python
+import os
+
+os.environ["OPENAI_API_BASE"] = "http://192.168.0.xx:80/v1"
+os.environ["OPENAI_API_KEY"] = "xxx"
+
+from langchain.llms import OpenAI
+
+llm = OpenAI(model_name="chatglm-6b")
+print(llm("你好"))
+# 你好👋！我是人工智能助手 ChatGLM-6B，很高兴见到你，欢迎问我任何问题。
+```
+
+### Embeddings
+
+```python
+import os
+
+os.environ["OPENAI_API_BASE"] = "http://192.168.0.59:80/v1"
+os.environ["OPENAI_API_KEY"] = "xxx"
+
+from langchain.embeddings import OpenAIEmbeddings
+
+embeddings = OpenAIEmbeddings()
+query_result = embeddings.embed_query("什么是chatgpt？")
+print(query_result)
 ```
 
 ## 4. 可接入的项目
