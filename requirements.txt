@@ -2,6 +2,7 @@ openai
 langchain
 bitsandbytes
 fastapi
+uvicorn
 tenacity
 sentencepiece
 loguru
