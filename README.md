@@ -16,7 +16,7 @@
 
 # 🐳 环境配置
 
-## 1. docker启动（**推荐**）
+## docker启动（**推荐**）
 
 构建镜像
 
@@ -47,7 +47,7 @@ docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=chatglm \
 
 + `embedding_name`: 嵌入模型的文件所在路径
 
-## 2. 本地启动
+## 本地启动
 
 安装 `pytorch` 环境
 
@@ -75,14 +75,14 @@ python main.py \
 
 # 🤖 使用方式
 
-## 1. 环境变量
+## 环境变量
 
 + `OPENAI_API_KEY`: 此处随意填一个字符串即可
 
 + `OPENAI_API_BASE`: 后端启动的接口地址，如：http://192.168.0.xx:80/v1
 
 
-## 2. [openai-python](https://github.com/openai/openai-python)
+## [openai-python](https://github.com/openai/openai-python)
 
 ### Chat Completions
 
@@ -143,7 +143,7 @@ embedding = openai.Embedding.create(
 print(embedding['data'][0]['embedding'])
 ```
 
-## 3. [langchain](https://github.com/hwchase17/langchain)
+## [langchain](https://github.com/hwchase17/langchain)
 
 ### Chat Completions
 
@@ -176,27 +176,12 @@ print(llm("你好"))
 # 你好👋！我是人工智能助手 ChatGLM-6B，很高兴见到你，欢迎问我任何问题。
 ```
 
-### Completions
-
-```python
-import os
-
-os.environ["OPENAI_API_BASE"] = "http://192.168.0.xx:80/v1"
-os.environ["OPENAI_API_KEY"] = "xxx"
-
-from langchain.llms import OpenAI
-
-llm = OpenAI(model_name="chatglm-6b")
-print(llm("你好"))
-# 你好👋！我是人工智能助手 ChatGLM-6B，很高兴见到你，欢迎问我任何问题。
-```
-
 ### Embeddings
 
 ```python
 import os
 
-os.environ["OPENAI_API_BASE"] = "http://192.168.0.59:80/v1"
+os.environ["OPENAI_API_BASE"] = "http://192.168.0.xx:80/v1"
 os.environ["OPENAI_API_KEY"] = "xxx"
 
 from langchain.embeddings import OpenAIEmbeddings
@@ -206,7 +191,7 @@ query_result = embeddings.embed_query("什么是chatgpt？")
 print(query_result)
 ```
 
-## 4. 可接入的项目
+## 可接入的项目
 
 **通过修改上面的 `OPENAI_API_BASE` 环境变量，大部分的 `chatgpt` 应用和前后端项目都可以无缝衔接！**
 
