@@ -34,11 +34,14 @@ docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=chatglm \
     python main.py \
     --port 80 \
     --allow-credentials \
+    --model_name chatglm \
     --model_path THUDM/chatglm-6b \
     --embedding_name GanymedeNil/text2vec-large-chinese
 ```
 
 主要参数含义：
+
++ `model_name`: 模型名称，如`chatglm`、`phoenix`、`moss`等
 
 + `model_path`: 开源大模型的文件所在路径
 
@@ -46,7 +49,7 @@ docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=chatglm \
 
 ## 2. 本地启动
 
-搭建好 `pytorch` 深度学习环境
+安装 `pytorch` 环境
 
 ```shell
 conda create -n pytorch python=3.8
@@ -76,7 +79,7 @@ python main.py \
 
 + `OPENAI_API_KEY`: 此处随意填一个字符串即可
 
-+ `OPENAI_API_BASE`: 后端启动的接口地址，如：http://192.168.0.25:80/v1
++ `OPENAI_API_BASE`: 后端启动的接口地址，如：http://192.168.0.xx:80/v1
 
 
 ## 2. [openai-python](https://github.com/openai/openai-python)
@@ -122,16 +125,16 @@ print(chat([HumanMessage(content="你好")]))
 # content='你好，有什么我可以帮助您的吗？' additional_kwargs={}
 ```
 
-## 4. 可接入的项目：
+## 4. 可接入的项目
 
 **通过修改上面的 `OPENAI_API_BASE` 环境变量，大部分的 `chatgpt` 应用和前后端项目都可以无缝衔接！**
 
 + [ChatGPT-Next-Web](https://github.com/Yidadaa/ChatGPT-Next-Web)
 
-```docker
+```shell
 docker run -d -p 3000:3000 \
    -e OPENAI_API_KEY="sk-xxxx" \
-   -e BASE_URL="http://192.168.0.59:80" \
+   -e BASE_URL="http://192.168.0.xx:80" \
    yidadaa/chatgpt-next-web
 ```
 
