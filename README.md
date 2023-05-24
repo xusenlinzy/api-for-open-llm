@@ -128,4 +128,17 @@ print(chat([HumanMessage(content="你好")]))
 
 + [ChatGPT-Next-Web](https://github.com/Yidadaa/ChatGPT-Next-Web)
 
+```docker
+docker run -d -p 3000:3000 \
+   -e OPENAI_API_KEY="sk-xxxx" \
+   -e BASE_URL="http://192.168.0.59:80" \
+   yidadaa/chatgpt-next-web
+```
+
+![web](images/web.png)
+
 + [dify](https://github.com/langgenius/dify)
+
+![dify](images/dify.png)
+
+
