@@ -6,13 +6,13 @@
 
 支持多种开源大模型
 
-+ [ChatGLM](https://github.com/THUDM/ChatGLM-6B)
++ ✅ [ChatGLM](https://github.com/THUDM/ChatGLM-6B)
 
-+ [Chinese-LLaMA-Alpaca](https://github.com/ymcui/Chinese-LLaMA-Alpaca)
++ ✅ [Chinese-LLaMA-Alpaca](https://github.com/ymcui/Chinese-LLaMA-Alpaca)
 
-+ [Phoenix](https://github.com/FreedomIntelligence/LLMZoo)
++ ✅ [Phoenix](https://github.com/FreedomIntelligence/LLMZoo)
 
-+ [MOSS](https://github.com/OpenLMLab/MOSS)
++ ✅ [MOSS](https://github.com/OpenLMLab/MOSS)
 
 # 🐳 环境配置
 
@@ -31,7 +31,7 @@ docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=chatglm \
     --ulimit memlock=-1 --ulimit stack=67108864 \
     -v `pwd`:/workspace \
     llm-api:pytorch \
-    python main.py \
+    python api/app.py \
     --port 80 \
     --allow-credentials \
     --model_name chatglm \
@@ -45,7 +45,7 @@ docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=chatglm \
 
 + `model_path`: 开源大模型的文件所在路径
 
-+ `embedding_name`: 嵌入模型的文件所在路径
++ `embedding_name`（可选项）: 嵌入模型的文件所在路径
 
 ## 本地启动
 
@@ -66,7 +66,7 @@ pip install -r requirements.txt
 启动后端
 
 ```shell
-python main.py \
+python api/app.py \
     --port 80 \
     --allow-credentials \
     --model_path THUDM/chatglm-6b \
@@ -81,6 +81,13 @@ python main.py \
 
 + `OPENAI_API_BASE`: 后端启动的接口地址，如：http://192.168.0.xx:80/v1
 
+## [命令端启动多轮对话](applications/chat/client.py)
+
+```shell
+cd applications/chat
+
+python client.py --model_name chatglm
+```
 
 ## [openai-python](https://github.com/openai/openai-python)
 

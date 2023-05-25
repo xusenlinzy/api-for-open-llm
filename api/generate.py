@@ -10,7 +10,7 @@ from transformers.generation.logits_process import (
     TopPLogitsWarper,
 )
 
-from constants import ErrorCode
+from api.constants import ErrorCode
 
 server_error_msg = (
     "**NETWORK ERROR DUE TO HIGH TRAFFIC. PLEASE REGENERATE OR REFRESH THIS PAGE.**"

@@ -12,10 +12,10 @@ from fastapi.responses import StreamingResponse, JSONResponse
 from loguru import logger
 from sentence_transformers import SentenceTransformer
 
-from constants import ErrorCode
-from generate import ModelServer
-from load import load_auto_tokenizer_and_model
-from protocol import (
+from api.constants import ErrorCode
+from api.generate import ModelServer
+from api.load import load_auto_tokenizer_and_model
+from api.protocol import (
     ChatCompletionRequest,
     ChatCompletionResponse,
     ChatCompletionResponseStreamChoice,
