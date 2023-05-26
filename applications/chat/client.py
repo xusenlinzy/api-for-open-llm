@@ -1,6 +1,6 @@
 import os
 
-os.environ["OPENAI_API_BASE"] = "http://192.168.0.59:80/v1"
+os.environ["OPENAI_API_BASE"] = "http://192.168.0.xx:80/v1"
 os.environ["OPENAI_API_KEY"] = "xxx"
 
 import argparse

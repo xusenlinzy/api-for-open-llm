@@ -1,4 +1,12 @@
-# API for Open LLMs
+# <center> API for Open LLMs </center>
+
+<p align="center">
+    <a href=""><img src="https://img.shields.io/badge/python-3.8+-aff.svg"></a>
+    <a href=""><img src="https://img.shields.io/badge/pytorch-%3E=1.14-red?logo=pytorch"></a>
+    <a href="https://github.com/xusenlinzy/api-for-open-llm/issues"><img src="https://img.shields.io/github/issues/xusenlinzy/api-for-open-llm?color=9cc"></a>
+    <a href="https://github.com/xusenlinzy/api-for-open-llm"><img src="https://img.shields.io/github/stars/xusenlinzy/api-for-open-llm?color=ccf"></a>
+</p>
+
 
 开源大模型的统一后端接口，与 `OpenAI` 的响应保持一致
 
@@ -218,3 +226,6 @@ docker run -d -p 3000:3000 \
 ![dify](images/dify.png)
 
 
+# License
+
+This project is licensed under the  Apache License - see the [LICENSE](LICENSE) for details.
