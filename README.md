@@ -1,14 +1,27 @@
 # <center> API for Open LLMs </center>
 
 <p align="center">
+    <a href="https://github.com/xusenlinzy/api-for-open-llm"><img src="https://img.shields.io/github/license/xusenlinzy/api-for-open-llm"></a>
     <a href=""><img src="https://img.shields.io/badge/python-3.8+-aff.svg"></a>
     <a href=""><img src="https://img.shields.io/badge/pytorch-%3E=1.14-red?logo=pytorch"></a>
-    <a href="https://github.com/xusenlinzy/api-for-open-llm/issues"><img src="https://img.shields.io/github/issues/xusenlinzy/api-for-open-llm?color=9cc"></a>
+    <a href="https://github.com/xusenlinzy/api-for-open-llm"><img src="https://img.shields.io/github/last-commit/xusenlinzy/api-for-open-llm"></a>
+    <a href="https://github.com/xusenlinzy/api-for-open-llm"><img src="https://img.shields.io/github/issues/xusenlinzy/api-for-open-llm?color=9cc"></a>
     <a href="https://github.com/xusenlinzy/api-for-open-llm"><img src="https://img.shields.io/github/stars/xusenlinzy/api-for-open-llm?color=ccf"></a>
+    <a href="https://github.com/xusenlinzy/api-for-open-llm"><img src="https://img.shields.io/badge/langurage-py-brightgreen?style=flat&color=blue"></a>
 </p>
 
+此项目为开源大模型的推理实现统一的后端接口，与 `OpenAI` 的响应保持一致
 
-开源大模型的统一后端接口，与 `OpenAI` 的响应保持一致
+✨ 以 `OpenAI ChatGPT API` 的方式调用各类开源大模型
+
+🖨️ 支持流式响应，实现打印机效果
+
+📖 实现文本嵌入模型，为文档知识问答提供支持
+
+🦜️ 支持大规模语言模型开发工具 [`langchain` ](https://github.com/hwchase17/langchain) 的各类功能
+ 
+🙌 只需要简单的修改环境变量即可将开源模型作为 `chatgpt` 的替代模型，为各类应用提供后端支持
+
 
 # 🐼 模型
 
@@ -21,6 +34,7 @@
 + ✅ [Phoenix](https://github.com/FreedomIntelligence/LLMZoo)
 
 + ✅ [MOSS](https://github.com/OpenLMLab/MOSS)
+
 
 # 🐳 环境配置
 
@@ -80,6 +94,7 @@ python api/app.py \
     --model_path THUDM/chatglm-6b \
     --embedding_name GanymedeNil/text2vec-large-chinese
 ```
+
 
 # 🤖 使用方式
 
@@ -226,11 +241,12 @@ docker run -d -p 3000:3000 \
 ![dify](images/dify.png)
 
 
-# License
+# 📜 License
 
-This project is licensed under the  Apache License - see the [LICENSE](LICENSE) for details.
+此项目为 `Apache 2.0` 许可证授权，有关详细信息，请参阅 [LICENSE](LICENSE) 文件。
 
-# References
+
+# 🚧 References
 
 [1]: [ChatGLM: An Open Bilingual Dialogue Language Model](https://github.com/THUDM/ChatGLM-6B)
 
