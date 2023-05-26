@@ -229,3 +229,19 @@ docker run -d -p 3000:3000 \
 # License
 
 This project is licensed under the  Apache License - see the [LICENSE](LICENSE) for details.
+
+# References
+
+[1]: [ChatGLM: An Open Bilingual Dialogue Language Model](https://github.com/THUDM/ChatGLM-6B)
+
+[2]: [BLOOM: A 176B-Parameter Open-Access Multilingual Language Model](https://arxiv.org/abs/2211.05100)
+
+[3]: [LLaMA: Open and Efficient Foundation Language Models](https://arxiv.org/abs/2302.13971v1)
+
+[4]: [Efficient and Effective Text Encoding for Chinese LLaMA and Alpaca](https://github.com/ymcui/Chinese-LLaMA-Alpaca)
+
+[5]: [Phoenix: Democratizing ChatGPT across Languages](https://github.com/FreedomIntelligence/LLMZoo)
+
+[6]: [MOSS: An open-sourced plugin-augmented conversational language model](https://github.com/OpenLMLab/MOSS)
+
+[7]: [FastChat: An open platform for training, serving, and evaluating large language model based chatbots](https://github.com/lm-sys/FastChat)
