@@ -1,4 +1,4 @@
-# <center> API for Open LLMs </center>
+# API for Open LLMs
 
 <p align="center">
     <a href="https://github.com/xusenlinzy/api-for-open-llm"><img src="https://img.shields.io/github/license/xusenlinzy/api-for-open-llm"></a>
@@ -225,7 +225,7 @@ print(query_result)
 
 **通过修改上面的 `OPENAI_API_BASE` 环境变量，大部分的 `chatgpt` 应用和前后端项目都可以无缝衔接！**
 
-+ [ChatGPT-Next-Web](https://github.com/Yidadaa/ChatGPT-Next-Web)
++ [ChatGPT-Next-Web: One-Click to deploy well-designed ChatGPT web UI on Vercel](https://github.com/Yidadaa/ChatGPT-Next-Web)
 
 ```shell
 docker run -d -p 3000:3000 \
@@ -236,7 +236,7 @@ docker run -d -p 3000:3000 \
 
 ![web](images/web.png)
 
-+ [dify](https://github.com/langgenius/dify)
++ [dify: An easy-to-use LLMOps platform designed to empower more people to create sustainable, AI-native applications](https://github.com/langgenius/dify)
 
 ![dify](images/dify.png)
 
@@ -261,3 +261,5 @@ docker run -d -p 3000:3000 \
 [6]: [MOSS: An open-sourced plugin-augmented conversational language model](https://github.com/OpenLMLab/MOSS)
 
 [7]: [FastChat: An open platform for training, serving, and evaluating large language model based chatbots](https://github.com/lm-sys/FastChat)
+
+[8]: [LangChain: Building applications with LLMs through composability](https://github.com/hwchase17/langchain)
