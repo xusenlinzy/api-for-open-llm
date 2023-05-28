@@ -25,7 +25,7 @@
 🚀 支持加载经过自行训练过的 `lora` 模型
 
 
-# 🐼 模型
+## 🐼 模型
 
 支持多种开源大模型
 
@@ -39,9 +39,9 @@
 | [MOSS](https://github.com/OpenLMLab/MOSS)                               | CodeGen  |      16B |                 ✅ |                ✅ |           en, zh |                             |                              |     04/21/23 |
 
 
-# 🐳 环境配置
+## 🐳 环境配置
 
-## docker启动（**推荐**）
+### docker启动（**推荐**）
 
 构建镜像
 
@@ -72,7 +72,7 @@ docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=chatglm \
 
 + `embedding_name`（可选项）: 嵌入模型的文件所在路径
 
-## 本地启动
+### 本地启动
 
 安装 `pytorch` 环境
 
@@ -99,15 +99,15 @@ python api/app.py \
 ```
 
 
-# 🤖 使用方式
+## 🤖 使用方式
 
-## 环境变量
+### 环境变量
 
 + `OPENAI_API_KEY`: 此处随意填一个字符串即可
 
 + `OPENAI_API_BASE`: 后端启动的接口地址，如：http://192.168.0.xx:80/v1
 
-## [命令端启动多轮对话](applications/chat/client.py)
+### [命令端启动多轮对话](applications/chat/client.py)
 
 ```shell
 cd applications/chat
@@ -115,9 +115,9 @@ cd applications/chat
 python client.py --model_name chatglm
 ```
 
-## [openai-python](https://github.com/openai/openai-python)
+### [openai-python](https://github.com/openai/openai-python)
 
-### Chat Completions
+#### Chat Completions
 
 ```python
 import openai
@@ -140,7 +140,7 @@ print(completion.choices[0].message.content)
 # 你好👋！我是人工智能助手 ChatGLM-6B，很高兴见到你，欢迎问我任何问题。
 ```
 
-### Completions
+#### Completions
 
 ```python
 import openai
@@ -157,7 +157,7 @@ print(completion.choices[0].text)
 # 你好👋！我是人工智能助手 ChatGLM-6B，很高兴见到你，欢迎问我任何问题。
 ```
 
-### Embeddings
+#### Embeddings
 
 ```python
 import openai
@@ -176,9 +176,9 @@ embedding = openai.Embedding.create(
 print(embedding['data'][0]['embedding'])
 ```
 
-## [langchain](https://github.com/hwchase17/langchain)
+### [langchain](https://github.com/hwchase17/langchain)
 
-### Chat Completions
+#### Chat Completions
 
 ```python
 import os
@@ -194,7 +194,7 @@ print(chat([HumanMessage(content="你好")]))
 # content='你好👋！我是人工智能助手 ChatGLM-6B，很高兴见到你，欢迎问我任何问题。' additional_kwargs={}
 ```
 
-### Completions
+#### Completions
 
 ```python
 import os
@@ -209,7 +209,7 @@ print(llm("你好"))
 # 你好👋！我是人工智能助手 ChatGLM-6B，很高兴见到你，欢迎问我任何问题。
 ```
 
-### Embeddings
+#### Embeddings
 
 ```python
 import os
@@ -224,7 +224,7 @@ query_result = embeddings.embed_query("什么是chatgpt？")
 print(query_result)
 ```
 
-## 可接入的项目
+### 可接入的项目
 
 **通过修改上面的 `OPENAI_API_BASE` 环境变量，大部分的 `chatgpt` 应用和前后端项目都可以无缝衔接！**
 
@@ -244,12 +244,12 @@ docker run -d -p 3000:3000 \
 ![dify](images/dify.png)
 
 
-# 📜 License
+## 📜 License
 
 此项目为 `Apache 2.0` 许可证授权，有关详细信息，请参阅 [LICENSE](LICENSE) 文件。
 
 
-# 🚧 References
+## 🚧 References
 
 [1]: [ChatGLM: An Open Bilingual Dialogue Language Model](https://github.com/THUDM/ChatGLM-6B)
 
