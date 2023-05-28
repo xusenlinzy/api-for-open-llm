@@ -54,15 +54,16 @@ class BaseModelAdapter:
         is_chatglm = "chatglm" in str(type(model))
 
         if adapter_model is not None:
-            model_vocab_size = model.get_input_embeddings().weight.size(0)
-            tokenzier_vocab_size = len(tokenizer)
-            print(f"Vocab of the base model: {model_vocab_size}")
-            print(f"Vocab of the tokenizer: {tokenzier_vocab_size}")
+            if not is_chatglm:
+                model_vocab_size = model.get_input_embeddings().weight.size(0)
+                tokenzier_vocab_size = len(tokenizer)
+                print(f"Vocab of the base model: {model_vocab_size}")
+                print(f"Vocab of the tokenizer: {tokenzier_vocab_size}")
 
-            if model_vocab_size != tokenzier_vocab_size:
-                assert tokenzier_vocab_size > model_vocab_size
-                print("Resize model embeddings to fit tokenizer")
-                model.resize_token_embeddings(tokenzier_vocab_size)
+                if model_vocab_size != tokenzier_vocab_size:
+                    assert tokenzier_vocab_size > model_vocab_size
+                    print("Resize model embeddings to fit tokenizer")
+                    model.resize_token_embeddings(tokenzier_vocab_size)
 
             model = self.load_adapter_model(model, adapter_model, model_kwargs)
 

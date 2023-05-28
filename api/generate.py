@@ -305,7 +305,8 @@ class ModelServer:
             self.context_len = 2048
 
         # generate_stream
-        if "chatglm" in str(type(self.model)):
+        self.is_chatglm = "chatglm" in self.model_name
+        if self.is_chatglm:
             self.generate_stream_func = chatglm_generate_stream
             self.prompt_adapter = None
         else:
@@ -324,7 +325,7 @@ class ModelServer:
         return ret
 
     def generate_prompt(self, messages):
-        return messages if "chatglm" in str(type(self.model)) else self.prompt_adapter.generate_prompt(messages)
+        return messages if self.is_chatglm else self.prompt_adapter.generate_prompt(messages)
 
     def generate_stream_gate(self, params):
         if isinstance(params["prompt"], list):
@@ -406,7 +407,7 @@ class ModelServer:
         try:
             tokenizer = self.tokenizer
             is_llama = "llama" in str(type(self.model))  # vicuna support batch inference
-            is_chatglm = "chatglm" in str(type(self.model))
+            is_chatglm = self.is_chatglm
             is_t5 = "t5" in str(type(self.model))
             if is_llama:
                 encoding = tokenizer.batch_encode_plus(
