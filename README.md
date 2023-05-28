@@ -27,13 +27,14 @@
 
 支持多种开源大模型
 
-+ ✅ [ChatGLM](https://github.com/THUDM/ChatGLM-6B)
-
-+ ✅ [Chinese-LLaMA-Alpaca](https://github.com/ymcui/Chinese-LLaMA-Alpaca)
-
-+ ✅ [Phoenix](https://github.com/FreedomIntelligence/LLMZoo)
-
-+ ✅ [MOSS](https://github.com/OpenLMLab/MOSS)
+| Model                                                                   | Backbone |  #Params | Open-source model | Open-source data | Claimed language | Post-training (instruction) | Post-training (conversation) | Release date |
+|-------------------------------------------------------------------------|----------|---------:|------------------:|-----------------:|-----------------:|----------------------------:|-----------------------------:|-------------:|
+| [ChatGLM](https://github.com/THUDM/ChatGLM-6B)                          | GLM      |       6B |                 ✅ |                ❌ |           en, zh |                             |                              |     03/16/23 |
+| [BELLE](https://github.com/LianjiaTech/BELLE)                           | BLOOMZ   |       7B |                 ✅ |                ✅ |               zh |                    1.5M, zh |                            ❌ |     03/26/23 |
+| [Chinese-LLaMA-Alpaca](https://github.com/ymcui/Chinese-LLaMA-Alpaca)   | LLaMA    |    7/13B |                 ✅ |                ✅ |           en, zh |                2M/3M, en/zh |                            ❌ |     03/28/23 |
+| [BAIZE](https://github.com/project-baize/baize-chatbot)                 | LLaMA    | 7/13/30B |                 ✅ |                ✅ |               en |                           ❌ |                   111.5K, en |     04/04/23 |
+| [Phoenix](https://github.com/FreedomIntelligence/LLMZoo)                | BLOOMZ   |       7B |                 ✅ |                ✅ |            multi |                         40+ |                          40+ |     04/08/23 |
+| [MOSS](https://github.com/OpenLMLab/MOSS)                               | CodeGen  |      16B |                 ✅ |                ✅ |           en, zh |                             |                              |     04/21/23 |
 
 
 # 🐳 环境配置

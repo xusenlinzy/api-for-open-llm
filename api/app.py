@@ -14,7 +14,7 @@ from sentence_transformers import SentenceTransformer
 
 from api.constants import ErrorCode
 from api.generate import ModelServer
-from api.load import load_auto_tokenizer_and_model
+from api.models import load_model
 from api.protocol import (
     ChatCompletionRequest,
     ChatCompletionResponse,
@@ -454,13 +454,13 @@ if __name__ == "__main__":
     logger.info(f"args: {args}")
 
     last_gc = 0
-    tokenizer, model = load_auto_tokenizer_and_model(
-        model_name=args.model_name,
-        base_model=args.model_path,
+    model, tokenizer = load_model(
+        args.model_name,
+        args.model_path,
         adapter_model=args.lora_model_path,
         quantize=int(args.quantize),
         device=args.device,
-        load_8bit=args.load_8bit
+        load_in_8bit=args.load_8bit
     )
     model_server = ModelServer(
         model,

@@ -8,4 +8,5 @@ sentencepiece
 loguru
 transformers
 peft
+triton
 sentence-transformers
