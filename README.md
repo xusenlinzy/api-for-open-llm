@@ -12,17 +12,22 @@
 
 此项目为开源大模型的推理实现统一的后端接口，与 `OpenAI` 的响应保持一致，具有以下特性：
 
-✨ 以 `OpenAI ChatGPT API` 的方式调用各类开源大模型
++ ✨ 以 `OpenAI ChatGPT API` 的方式调用各类开源大模型
 
-🖨️ 支持流式响应，实现打印机效果
 
-📖 实现文本嵌入模型，为文档知识问答提供支持
++ 🖨️ 支持流式响应，实现打印机效果
 
-🦜️ 支持大规模语言模型开发工具 [`langchain` ](https://github.com/hwchase17/langchain) 的各类功能
+
++ 📖 实现文本嵌入模型，为文档知识问答提供支持
+
+
++ 🦜️ 支持大规模语言模型开发工具 [`langchain` ](https://github.com/hwchase17/langchain) 的各类功能
  
-🙌 只需要简单的修改环境变量即可将开源模型作为 `chatgpt` 的替代模型，为各类应用提供后端支持
 
-🚀 支持加载经过自行训练过的 `lora` 模型
++ 🙌 只需要简单的修改环境变量即可将开源模型作为 `chatgpt` 的替代模型，为各类应用提供后端支持
+
+
++ 🚀 支持加载经过自行训练过的 `lora` 模型
 
 ---
 
@@ -108,7 +113,7 @@ python api/app.py \
 
 + `OPENAI_API_BASE`: 后端启动的接口地址，如：http://192.168.0.xx:80/v1
 
-### [命令端启动多轮对话](applications/chat/client.py)
+### [命令端启动多轮对话](applications/general_chat/client.py)
 
 ```shell
 cd applications/chat
