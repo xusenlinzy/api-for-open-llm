@@ -44,6 +44,9 @@ class BaseModelAdapter:
             tokenizer = self.tokenizer_class.from_pretrained(model_name_or_path, **tokenizer_kwargs)
 
         device = kwargs.get("device", "cuda:0")
+        load_in_8bit = kwargs.get("load_in_8bit", False)
+        load_in_4bit = kwargs.get("load_in_4bit", False)
+
         model_kwargs = self.model_kwargs
         if device == "cpu":
             model_kwargs["torch_dtype"] = torch.float32
@@ -51,7 +54,18 @@ class BaseModelAdapter:
             if "torch_dtype" not in model_kwargs:
                 model_kwargs["torch_dtype"] = torch.float16
 
-        model = self.model_class.from_pretrained(model_name_or_path, load_in_8bit=kwargs.get("load_in_8bit", False), **model_kwargs)
+            if load_in_8bit or load_in_4bit:
+                model_kwargs["torch_dtype"] = None
+                model_kwargs["load_in_8bit"] = load_in_8bit
+                model_kwargs["load_in_4bit"] = load_in_4bit
+                model_kwargs["device_map"] = "auto"
+
+        model = self.model_class.from_pretrained(
+            model_name_or_path,
+            **model_kwargs
+        )
+        # post process for special tokens
+        tokenizer = self.post_tokenizer(tokenizer)
         is_chatglm = "chatglm" in str(type(model))
 
         if adapter_model is not None:
@@ -73,7 +87,7 @@ class BaseModelAdapter:
             if quantize and quantize != 16:
                 model = model.quantize(quantize)
 
-        if device != "cpu":
+        if device != "cpu" and not load_in_4bit and not load_in_8bit:
             model.to(device)
 
         model.eval()
@@ -86,6 +100,9 @@ class BaseModelAdapter:
             adapter_model,
             torch_dtype=model_kwargs.get("torch_dtype", torch.float16),
         )
+
+    def post_tokenizer(self, tokenizer):
+        return tokenizer
 
     @property
     def model_class(self):
@@ -115,6 +132,7 @@ def load_model(
     quantize: Optional[int] = 16,
     device: Optional[str] = "cuda:0",
     load_in_8bit: Optional[bool] = False,
+    **kwargs
 ):
     model_name = model_name.lower()
     adapter = get_model_adapter(model_name)
@@ -124,6 +142,7 @@ def load_model(
         device=device,
         quantize=quantize,
         load_in_8bit=load_in_8bit,
+        **kwargs
     )
     return model, tokenizer
 
@@ -153,7 +172,13 @@ class ChatglmModelAdapter(BaseModelAdapter):
 class LlamaModelAdapter(BaseModelAdapter):
 
     def match(self, model_name):
-        return "alpaca" in model_name or "baize" in model_name
+        return "alpaca" in model_name or "baize" in model_name or "guanaco" in model_name
+
+    def post_tokenizer(self, tokenizer):
+        tokenizer.bos_token = "<s>"
+        tokenizer.eos_token = "</s>"
+        tokenizer.unk_token = "<unk>"
+        return tokenizer
 
     @property
     def model_kwargs(self):

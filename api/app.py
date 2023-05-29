@@ -439,7 +439,8 @@ if __name__ == "__main__":
     parser.add_argument(
         '--embedding_name', help='embedding model name or path', type=str, default=None
     )
-    parser.add_argument('--load_8bit', action='store_true')
+    parser.add_argument('--load_in_8bit', action='store_true')
+    parser.add_argument('--load_in_4bit', action='store_true')
     parser.add_argument("--stream_interval", type=int, default=2)
     args = parser.parse_args()
 
@@ -460,7 +461,8 @@ if __name__ == "__main__":
         adapter_model=args.lora_model_path,
         quantize=int(args.quantize),
         device=args.device,
-        load_in_8bit=args.load_8bit
+        load_in_8bit=args.load_in_8bit,
+        load_in_4bit=args.load_in_4bit,
     )
     model_server = ModelServer(
         model,

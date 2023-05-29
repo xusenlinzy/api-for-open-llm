@@ -23,7 +23,7 @@ class BasePromptAdapter:
     system_prompt: str = "You are a helpful assistant!\n"
     user_prompt: str = "Human: {}\nAssistant: "
     assistant_prompt: str = "{}\n"
-    stop: Optional[List] = None
+    stop = None
 
     def match(self, model_name):
         return True
@@ -114,11 +114,23 @@ class BellePromptAdapter(BasePromptAdapter):
         return "belle" in model_name
 
 
+class GuanacoPromptAdapter(BasePromptAdapter):
+
+    system_prompt = "A chat between a curious human and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions."
+    user_prompt = "### Human: {}\n### Assistant: "
+    assistant_prompt = "{}\n"
+    stop = ["### Human", "### Assistant"]
+
+    def match(self, model_name):
+        return "guanaco" in model_name
+
+
 register_prompt_adapter(MossPromptAdapter)
 register_prompt_adapter(PhoenixPromptAdapter)
 register_prompt_adapter(AlpacaPromptAdapter)
 register_prompt_adapter(FireflyPromptAdapter)
 register_prompt_adapter(BaizePromptAdapter)
 register_prompt_adapter(BellePromptAdapter)
+register_prompt_adapter(GuanacoPromptAdapter)
 
 register_prompt_adapter(BasePromptAdapter)
