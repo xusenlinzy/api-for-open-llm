@@ -29,14 +29,14 @@
 
 支持多种开源大模型
 
-| Model                                                                   | Backbone |  #Params | Open-source model | Open-source data | Claimed language | Post-training (instruction) | Post-training (conversation) | Release date |
-|-------------------------------------------------------------------------|----------|---------:|------------------:|-----------------:|-----------------:|----------------------------:|-----------------------------:|-------------:|
-| [ChatGLM](https://github.com/THUDM/ChatGLM-6B)                          | GLM      |       6B |                 ✅ |                ❌ |           en, zh |                             |                              |     03/16/23 |
-| [BELLE](https://github.com/LianjiaTech/BELLE)                           | BLOOMZ   |       7B |                 ✅ |                ✅ |               zh |                    1.5M, zh |                            ❌ |     03/26/23 |
-| [Chinese-LLaMA-Alpaca](https://github.com/ymcui/Chinese-LLaMA-Alpaca)   | LLaMA    |    7/13B |                 ✅ |                ✅ |           en, zh |                2M/3M, en/zh |                            ❌ |     03/28/23 |
-| [BAIZE](https://github.com/project-baize/baize-chatbot)                 | LLaMA    | 7/13/30B |                 ✅ |                ✅ |               en |                           ❌ |                   111.5K, en |     04/04/23 |
-| [Phoenix](https://github.com/FreedomIntelligence/LLMZoo)                | BLOOMZ   |       7B |                 ✅ |                ✅ |            multi |                         40+ |                          40+ |     04/08/23 |
-| [MOSS](https://github.com/OpenLMLab/MOSS)                               | CodeGen  |      16B |                 ✅ |                ✅ |           en, zh |                             |                              |     04/21/23 |
+| Model                                                                  |  Backbone  |  #Params  | Claimed language  | Instruction-training  | Conversation-training  |                                               checkpoint link                                                |
+|:-----------------------------------------------------------------------|:----------:|:---------:|:-----------------:|:---------------------:|:----------------------:|:------------------------------------------------------------------------------------------------------------:|
+| [ChatGLM](https://github.com/THUDM/ChatGLM-6B)                         |    GLM     |    6B     |      en, zh       |                       |                        |                         [THUDM/chatglm-6b](https://huggingface.co/THUDM/chatglm-6b)                          |
+| [BELLE](https://github.com/LianjiaTech/BELLE)                          |   BLOOMZ   |    7B     |        zh         |       1.5M, zh        |           ❌            |                   [BelleGroup/BELLE-7B-2M](https://huggingface.co/BelleGroup/BELLE-7B-2M)                    |
+| [Chinese-LLaMA-Alpaca](https://github.com/ymcui/Chinese-LLaMA-Alpaca)  |   LLaMA    |   7/13B   |      en, zh       |     2M/3M, en/zh      |           ❌            |   [ziqingyang/chinese-alpaca-plus-lora-7b](https://huggingface.co/ziqingyang/chinese-alpaca-plus-lora-7b)    |
+| [BAIZE](https://github.com/project-baize/baize-chatbot)                |   LLaMA    | 7/13/30B  |        en         |           ❌           |       111.5K, en       |              [project-baize/baize-lora-7B](https://huggingface.co/project-baize/baize-lora-7B)               |
+| [Phoenix](https://github.com/FreedomIntelligence/LLMZoo)               |   BLOOMZ   |    7B     |       multi       |          40+          |          40+           | [FreedomIntelligence/phoenix-inst-chat-7b](https://huggingface.co/FreedomIntelligence/phoenix-inst-chat-7b)  |
+| [MOSS](https://github.com/OpenLMLab/MOSS)                              |  CodeGen   |    16B    |      en, zh       |                       |                        |              [fnlp/moss-moon-003-sft-int4](https://huggingface.co/fnlp/moss-moon-003-sft-int4)               |
 
 
 ## 🐳 环境配置
@@ -112,12 +112,14 @@ python api/app.py \
 ```shell
 cd applications/chat
 
-python client.py --model_name chatglm
+python client.py --api_base http://192.168.0.xx:80/v1 --model_name chatglm
 ```
+
+![chat](images/chat.png)
 
 ### [openai-python](https://github.com/openai/openai-python)
 
-#### Chat Completions
+#### 1. Chat Completions
 
 ```python
 import openai
@@ -140,7 +142,7 @@ print(completion.choices[0].message.content)
 # 你好👋！我是人工智能助手 ChatGLM-6B，很高兴见到你，欢迎问我任何问题。
 ```
 
-#### Completions
+#### 2. Completions
 
 ```python
 import openai
@@ -157,7 +159,7 @@ print(completion.choices[0].text)
 # 你好👋！我是人工智能助手 ChatGLM-6B，很高兴见到你，欢迎问我任何问题。
 ```
 
-#### Embeddings
+#### 3. Embeddings
 
 ```python
 import openai
@@ -178,7 +180,7 @@ print(embedding['data'][0]['embedding'])
 
 ### [langchain](https://github.com/hwchase17/langchain)
 
-#### Chat Completions
+#### 1. Chat Completions
 
 ```python
 import os
@@ -194,7 +196,7 @@ print(chat([HumanMessage(content="你好")]))
 # content='你好👋！我是人工智能助手 ChatGLM-6B，很高兴见到你，欢迎问我任何问题。' additional_kwargs={}
 ```
 
-#### Completions
+#### 2. Completions
 
 ```python
 import os
@@ -209,7 +211,7 @@ print(llm("你好"))
 # 你好👋！我是人工智能助手 ChatGLM-6B，很高兴见到你，欢迎问我任何问题。
 ```
 
-#### Embeddings
+#### 3. Embeddings
 
 ```python
 import os

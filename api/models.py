@@ -74,7 +74,8 @@ class BaseModelAdapter:
 
         if device != "cpu":
             model.to(device)
-            model.eval()
+
+        model.eval()
 
         return model, tokenizer
 

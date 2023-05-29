@@ -1,16 +1,13 @@
-import os
-
-os.environ["OPENAI_API_BASE"] = "http://192.168.0.xx:80/v1"
-os.environ["OPENAI_API_KEY"] = "xxx"
-
 import argparse
-from langchain.llms import OpenAI
+
 from langchain.callbacks.base import CallbackManager
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 from langchain.chains import ConversationChain
+from langchain.llms import OpenAI
 from langchain.prompts import PromptTemplate
-from prompt import ChatPromptTEMPLATE
+
 from memory import CustomConversationBufferWindowMemory
+from prompt import ChatPromptTEMPLATE
 
 
 def main():
@@ -37,11 +34,19 @@ def main():
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Chat server.")
     parser.add_argument(
+        '--api_base', type=str, help='model api base', required=True,
+    )
+    parser.add_argument(
         '--model_name', type=str, help='chatglm, moss, phoenix, chinese-llama-alpaca', default='chatglm'
     )
     parser.add_argument(
         '--k', type=int, help='max memory length', default=5
     )
     args = parser.parse_args()
+
+    import os
+
+    os.environ["OPENAI_API_BASE"] = args.api_base
+    os.environ["OPENAI_API_KEY"] = "xxx"
 
     main()
