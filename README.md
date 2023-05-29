@@ -10,7 +10,7 @@
     <a href="https://github.com/xusenlinzy/api-for-open-llm"><img src="https://img.shields.io/badge/langurage-py-brightgreen?style=flat&color=blue"></a>
 </p>
 
-此项目为开源大模型的推理实现统一的后端接口，与 `OpenAI` 的响应保持一致
+此项目为开源大模型的推理实现统一的后端接口，与 `OpenAI` 的响应保持一致，具有以下特性：
 
 ✨ 以 `OpenAI ChatGPT API` 的方式调用各类开源大模型
 
@@ -24,6 +24,7 @@
 
 🚀 支持加载经过自行训练过的 `lora` 模型
 
+---
 
 ## 🐼 模型
 

@@ -31,8 +31,9 @@ class BaseModelAdapter:
     def match(self, model_name):
         return True
 
-    def load_model(self, model_name_or_path: str, adapter_model: Optional[str] = None, **kwargs):
+    def load_model(self, model_name_or_path: Optional[str] = None, adapter_model: Optional[str] = None, **kwargs):
         """ Load model through transformers. """
+        model_name_or_path = self.default_model_name_or_path if model_name_or_path is None else model_name_or_path
         tokenizer_kwargs = self.tokenizer_kwargs
         if adapter_model is not None:
             try:
@@ -102,14 +103,18 @@ class BaseModelAdapter:
     def tokenizer_kwargs(self):
         return {"use_fast": False}
 
+    @property
+    def default_model_name_or_path(self):
+        return "zpn/llama-7b"
+
 
 def load_model(
     model_name: str,
-    model_name_or_path: str,
+    model_name_or_path: Optional[str] = None,
     adapter_model: Optional[str] = None,
     quantize: Optional[int] = 16,
     device: Optional[str] = "cuda:0",
-    load_in_8bit: bool = False,
+    load_in_8bit: Optional[bool] = False,
 ):
     model_name = model_name.lower()
     adapter = get_model_adapter(model_name)
@@ -140,6 +145,10 @@ class ChatglmModelAdapter(BaseModelAdapter):
     def tokenizer_kwargs(self):
         return {"use_fast": False, "trust_remote_code": True}
 
+    @property
+    def default_model_name_or_path(self):
+        return "THUDM/chatglm-6b"
+
 
 class LlamaModelAdapter(BaseModelAdapter):
 
@@ -164,6 +173,10 @@ class MossModelAdapter(BaseModelAdapter):
     def tokenizer_kwargs(self):
         return {"use_fast": False, "trust_remote_code": True}
 
+    @property
+    def default_model_name_or_path(self):
+        return "fnlp/moss-moon-003-sft-int4"
+
 
 class PhoenixModelAdapter(BaseModelAdapter):
 
@@ -178,6 +191,10 @@ class PhoenixModelAdapter(BaseModelAdapter):
     def tokenizer_kwargs(self):
         return {"use_fast": True}
 
+    @property
+    def default_model_name_or_path(self):
+        return "FreedomIntelligence/phoenix-inst-chat-7b"
+
 
 class FireflyModelAdapter(BaseModelAdapter):
 
@@ -191,6 +208,10 @@ class FireflyModelAdapter(BaseModelAdapter):
     @property
     def tokenizer_kwargs(self):
         return {"use_fast": True}
+
+    @property
+    def default_model_name_or_path(self):
+        return "YeungNLP/firefly-2b6"
 
 
 register_model_adapter(ChatglmModelAdapter)

@@ -425,7 +425,7 @@ if __name__ == "__main__":
         '--model_name', type=str, help='chatglm, moss, phoenix', default='chatglm'
     )
     parser.add_argument(
-        '--model_path', '-m', type=str, help='model_name_or_path', default='checkpoints/chatglm-6b'
+        '--model_path', '-m', type=str, help='model_name_or_path', default=None
     )
     parser.add_argument(
         '--lora_model_path', '-lora', type=str, help='lora model_name_or_path', default=None
@@ -456,7 +456,7 @@ if __name__ == "__main__":
     last_gc = 0
     model, tokenizer = load_model(
         args.model_name,
-        args.model_path,
+        model_name_or_path=args.model_path,
         adapter_model=args.lora_model_path,
         quantize=int(args.quantize),
         device=args.device,
