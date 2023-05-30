@@ -250,6 +250,12 @@ docker run -d -p 3000:3000 \
 
 + [dify: An easy-to-use LLMOps platform designed to empower more people to create sustainable, AI-native applications](https://github.com/langgenius/dify)
 
+```shell
+# 在docker-compose.yml中的api和worker服务中添加以下环境变量
+OPENAI_API_BASE: http://192.168.0.xx:80/v1
+DISABLE_PROVIDER_CONFIG_VALIDATION: 'true'
+```
+
 ![dify](images/dify.png)
 
 
