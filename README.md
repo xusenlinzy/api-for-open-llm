@@ -117,9 +117,9 @@ python api/app.py \
 ### [命令端启动多轮对话](applications/chat/client.py)
 
 ```shell
-cd applications/chat
+cd applications
 
-python client.py --api_base http://192.168.0.xx:80/v1 --model_name chatglm
+python chat.py --api_base http://192.168.0.xx:80/v1 --model_name chatglm
 ```
 
 ![chat](images/chat.png)
