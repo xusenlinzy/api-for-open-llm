@@ -1,4 +1,5 @@
 import argparse
+import os
 
 from langchain.callbacks.manager import CallbackManager
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
@@ -43,8 +44,6 @@ if __name__ == "__main__":
         '--k', type=int, help='max memory length', default=5
     )
     args = parser.parse_args()
-
-    import os
 
     os.environ["OPENAI_API_BASE"] = args.api_base
     os.environ["OPENAI_API_KEY"] = "xxx"

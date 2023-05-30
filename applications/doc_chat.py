@@ -1,4 +1,5 @@
 import argparse
+import os
 
 from langchain.callbacks.manager import CallbackManager
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
@@ -79,8 +80,6 @@ if __name__ == "__main__":
         '--topk', type=int, help='topk related docs', default=3
     )
     args = parser.parse_args()
-
-    import os
 
     os.environ["OPENAI_API_BASE"] = args.api_base
     os.environ["OPENAI_API_KEY"] = "xxx"
