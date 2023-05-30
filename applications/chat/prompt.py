@@ -53,8 +53,14 @@ MOSS_PROMPT_TEMPLATE = """You are an AI assistant whose name is MOSS.
 Capabilities and tools that MOSS can possess.
 
 {history}
-<|Human|>: {}<eoh>
+<|Human|>: {input}<eoh>
 <|MOSS|>: """
+
+GUANACO_PROMPT_TEMPLATE = """A chat between a curious human and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions.
+
+{history}
+### Human: {input}
+### Assistant: """
 
 
 ChatPromptTEMPLATE.add_to_registry("chatglm", CHATGLM_PROMPT_TEMPLATE)
@@ -62,3 +68,4 @@ ChatPromptTEMPLATE.add_to_registry("chinese-llama-alpaca", CHINESE_ALPACA_PROMPT
 ChatPromptTEMPLATE.add_to_registry("firefly", FIREFLY_PROMPT_TEMPLATE)
 ChatPromptTEMPLATE.add_to_registry("phoenix", PHOENIX_PROMPT_TEMPLATE)
 ChatPromptTEMPLATE.add_to_registry("moss", MOSS_PROMPT_TEMPLATE)
+ChatPromptTEMPLATE.add_to_registry("guanaco", GUANACO_PROMPT_TEMPLATE)

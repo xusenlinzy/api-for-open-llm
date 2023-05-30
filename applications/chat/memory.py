@@ -137,6 +137,27 @@ class MossConversationBufferWindowMemory(ChatGLMConversationBufferWindowMemory):
         return "\n".join(string_messages)
 
 
+class GuanacoConversationBufferWindowMemory(ChatGLMConversationBufferWindowMemory):
+
+    human_prefix: str = "### Human"
+    ai_prefix: str = "### Assistant"
+
+    @staticmethod
+    def get_buffer_string(
+        messages: List[BaseMessage], human_prefix: str = "### Human", ai_prefix: str = "### Assistant"
+    ) -> str:
+        """Get buffer string of messages."""
+        string_messages = []
+        for m in messages:
+            if isinstance(m, HumanMessage):
+                string_messages.append(f"{human_prefix}: {m.content}")
+            elif isinstance(m, AIMessage):
+                string_messages.append(f"{ai_prefix}: {m.content}")
+            else:
+                raise ValueError(f"Got unsupported message type: {m}")
+        return "\n".join(string_messages)
+
+
 class CustomConversationBufferWindowMemory(BaseParent):
 
     registry = {}
@@ -148,3 +169,4 @@ CustomConversationBufferWindowMemory.add_to_registry("chinese-llama-alpaca", Chi
 CustomConversationBufferWindowMemory.add_to_registry("firefly", FireFlyConversationBufferWindowMemory)
 CustomConversationBufferWindowMemory.add_to_registry("phoenix", PhoenixConversationBufferWindowMemory)
 CustomConversationBufferWindowMemory.add_to_registry("moss", MossConversationBufferWindowMemory)
+CustomConversationBufferWindowMemory.add_to_registry("guanaco", GuanacoConversationBufferWindowMemory)
