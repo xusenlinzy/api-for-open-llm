@@ -1,4 +1,4 @@
-from registry import BaseParent
+from .registry import BaseParent
 
 
 class ChatPromptTEMPLATE(BaseParent):

@@ -7,7 +7,7 @@ from langchain.schema import (
     AIMessage,
 )
 
-from registry import BaseParent
+from .registry import BaseParent
 
 
 class ChatGLMConversationBufferWindowMemory(ConversationBufferWindowMemory):
