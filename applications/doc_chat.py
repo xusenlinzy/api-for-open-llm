@@ -1,15 +1,28 @@
 import argparse
 
-from langchain.callbacks.base import CallbackManager
+from langchain.callbacks.manager import CallbackManager
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 from langchain.chains import ConversationChain
 from langchain.embeddings import OpenAIEmbeddings
+from langchain.embeddings.openai import embed_with_retry
 from langchain.llms import OpenAI
 from langchain.prompts import PromptTemplate
 
 from tools.doc_qa import get_related_docs, generate_prompt, init_knowledge_vector_store
 from tools.memory import CustomConversationBufferWindowMemory
 from tools.prompt import ChatPromptTEMPLATE
+
+
+class CustomEmbeddings(OpenAIEmbeddings):
+    def embed_documents(self, texts, chunk_size=0):
+        response = embed_with_retry(
+            self,
+            input=texts,
+            engine=self.deployment,
+            request_timeout=self.request_timeout,
+            headers=self.headers,
+        )
+        return [r["embedding"] for r in response["data"]]
 
 
 def main():
@@ -26,11 +39,12 @@ def main():
         input_variables=["history", "input"], template=ChatPromptTEMPLATE.create(args.model_name)
     )
 
-    embeddings = OpenAIEmbeddings(model="text2vec-large-chinese")
+    embeddings = CustomEmbeddings()
     doc_path = input("Input your document path here: ")
     vs_path = init_knowledge_vector_store(
         embeddings,
         doc_path,
+        vs_path="vector_store/test",
         chunk_size=args.chunk_size,
         chunk_overlap=args.chunk_overlap,
     )
