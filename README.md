@@ -35,15 +35,15 @@
 
 支持多种开源大模型
 
-| Model                                                                 | Backbone | #Params  | Claimed language | Instruction-training | Conversation-training |                                               checkpoint link                                               |
-|:----------------------------------------------------------------------|:--------:|:--------:|:----------------:|:--------------------:|:---------------------:|:-----------------------------------------------------------------------------------------------------------:|
-| [ChatGLM](https://github.com/THUDM/ChatGLM-6B)                        |   GLM    |    6B    |      en, zh      |                      |                       |                         [THUDM/chatglm-6b](https://huggingface.co/THUDM/chatglm-6b)                         |
-| [BELLE](https://github.com/LianjiaTech/BELLE)                         |  BLOOMZ  |    7B    |        zh        |       1.5M, zh       |           ❌           |                   [BelleGroup/BELLE-7B-2M](https://huggingface.co/BelleGroup/BELLE-7B-2M)                   |
-| [Chinese-LLaMA-Alpaca](https://github.com/ymcui/Chinese-LLaMA-Alpaca) |  LLaMA   |  7/13B   |      en, zh      |     2M/3M, en/zh     |           ❌           |   [ziqingyang/chinese-alpaca-plus-lora-7b](https://huggingface.co/ziqingyang/chinese-alpaca-plus-lora-7b)   |
-| [BAIZE](https://github.com/project-baize/baize-chatbot)               |  LLaMA   | 7/13/30B |        en        |          ❌           |      111.5K, en       |              [project-baize/baize-lora-7B](https://huggingface.co/project-baize/baize-lora-7B)              |
-| [Phoenix](https://github.com/FreedomIntelligence/LLMZoo)              |  BLOOMZ  |    7B    |      multi       |         40+          |          40+          | [FreedomIntelligence/phoenix-inst-chat-7b](https://huggingface.co/FreedomIntelligence/phoenix-inst-chat-7b) |
-| [MOSS](https://github.com/OpenLMLab/MOSS)                             | CodeGen  |   16B    |      en, zh      |                      |                       |              [fnlp/moss-moon-003-sft-int4](https://huggingface.co/fnlp/moss-moon-003-sft-int4)              |
-| [Guanaco](https://github.com/artidoro/qlora/tree/main)                |  LLaMA   | 7/33/65B |        en        |                      |                       |           [timdettmers/guanaco-33b-merged](https://huggingface.co/timdettmers/guanaco-33b-merged)           |
+| Model                                                                 | Backbone | #Params  | Claimed language |                                               checkpoint link                                               |
+|:----------------------------------------------------------------------|:--------:|:--------:|:----------------:|:-----------------------------------------------------------------------------------------------------------:|
+| [ChatGLM](https://github.com/THUDM/ChatGLM-6B)                        |   GLM    |    6B    |      en, zh      |                         [THUDM/chatglm-6b](https://huggingface.co/THUDM/chatglm-6b)                         |
+| [BELLE](https://github.com/LianjiaTech/BELLE)                         |  BLOOMZ  |    7B    |        zh        |                   [BelleGroup/BELLE-7B-2M](https://huggingface.co/BelleGroup/BELLE-7B-2M)                   |
+| [Chinese-LLaMA-Alpaca](https://github.com/ymcui/Chinese-LLaMA-Alpaca) |  LLaMA   |  7/13B   |      en, zh      |   [ziqingyang/chinese-alpaca-plus-lora-7b](https://huggingface.co/ziqingyang/chinese-alpaca-plus-lora-7b)   |
+| [BAIZE](https://github.com/project-baize/baize-chatbot)               |  LLaMA   | 7/13/30B |        en        |              [project-baize/baize-lora-7B](https://huggingface.co/project-baize/baize-lora-7B)              |
+| [Phoenix](https://github.com/FreedomIntelligence/LLMZoo)              |  BLOOMZ  |    7B    |      multi       | [FreedomIntelligence/phoenix-inst-chat-7b](https://huggingface.co/FreedomIntelligence/phoenix-inst-chat-7b) |
+| [MOSS](https://github.com/OpenLMLab/MOSS)                             | CodeGen  |   16B    |      en, zh      |              [fnlp/moss-moon-003-sft-int4](https://huggingface.co/fnlp/moss-moon-003-sft-int4)              |
+| [Guanaco](https://github.com/artidoro/qlora/tree/main)                |  LLaMA   | 7/33/65B |        en        |           [timdettmers/guanaco-33b-merged](https://huggingface.co/timdettmers/guanaco-33b-merged)           |
 
 
 ## 🐳 环境配置
@@ -114,7 +114,7 @@ python api/app.py \
 
 + `OPENAI_API_BASE`: 后端启动的接口地址，如：http://192.168.0.xx:80/v1
 
-### [命令端启动多轮对话](applications/general_chat/client.py)
+### [命令端启动多轮对话](applications/chat/client.py)
 
 ```shell
 cd applications/chat
