@@ -1,6 +1,6 @@
 openai
 langchain
-bitsandbytes
+bitsandbytes>=0.39.0
 fastapi
 uvicorn
 tenacity

@@ -1,3 +1,4 @@
+import gc
 from typing import Iterable, List, Tuple, Optional
 
 import torch
@@ -116,6 +117,9 @@ def chatglm_generate_stream(model, tokenizer, params, device, context_len=2048, 
         "finish_reason": "stop",
     }
     yield ret
+
+    gc.collect()
+    torch.cuda.empty_cache()
 
 
 @torch.inference_mode()
@@ -280,6 +284,8 @@ def generate_stream(
 
     # clean
     del past_key_values, out
+    gc.collect()
+    torch.cuda.empty_cache()
 
 
 class ModelServer:

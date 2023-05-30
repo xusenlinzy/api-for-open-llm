@@ -6,6 +6,7 @@ from transformers import (
     AutoModel,
     AutoTokenizer,
     AutoModelForCausalLM,
+    BitsAndBytesConfig,
 )
 
 # A global registry for all model adapters
@@ -60,10 +61,23 @@ class BaseModelAdapter:
                 model_kwargs["load_in_4bit"] = load_in_4bit
                 model_kwargs["device_map"] = "auto"
 
-        model = self.model_class.from_pretrained(
-            model_name_or_path,
-            **model_kwargs
-        )
+        if load_in_4bit:
+            model = self.model_class.from_pretrained(
+                model_name_or_path,
+                torch_dtype=torch.bfloat16,
+                quantization_config=BitsAndBytesConfig(
+                    load_in_4bit=True,
+                    bnb_4bit_compute_dtype=torch.bfloat16,
+                    bnb_4bit_use_double_quant=True,
+                    bnb_4bit_quant_type='nf4'
+                ),
+            )
+        else:
+            model = self.model_class.from_pretrained(
+                model_name_or_path,
+                **model_kwargs
+            )
+
         # post process for special tokens
         tokenizer = self.post_tokenizer(tokenizer)
         is_chatglm = "chatglm" in str(type(model))

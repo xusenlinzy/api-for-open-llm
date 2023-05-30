@@ -1,12 +1,10 @@
 import argparse
 import json
 import secrets
-import time
 from typing import Generator, Optional, Union, Dict, List, Any
 
-import torch
 import uvicorn
-from fastapi import FastAPI, BackgroundTasks
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse
 from loguru import logger
@@ -39,16 +37,6 @@ from api.protocol import (
 
 app = FastAPI()
 headers = {"User-Agent": "Chat API Server"}
-
-
-def torch_gc():
-    global last_gc
-    now = time.time()
-    if now - last_gc > 60:
-        last_gc = now
-        with torch.cuda.device(args.device):
-            torch.cuda.empty_cache()
-            torch.cuda.ipc_collect()
 
 
 def create_error_response(code: int, message: str) -> JSONResponse:
@@ -254,9 +242,8 @@ async def show_available_models():
 
 
 @app.post("/v1/chat/completions")
-async def create_chat_completion(request: ChatCompletionRequest, background_tasks: BackgroundTasks):
+async def create_chat_completion(request: ChatCompletionRequest):
     """Creates a completion for the chat message"""
-    background_tasks.add_task(torch_gc)
     error_check_ret = check_requests(request)
     if error_check_ret is not None:
         return error_check_ret
@@ -301,8 +288,7 @@ async def create_chat_completion(request: ChatCompletionRequest, background_task
 
 
 @app.post("/v1/completions")
-async def create_completion(request: CompletionRequest, background_tasks: BackgroundTasks):
-    background_tasks.add_task(torch_gc)
+async def create_completion(request: CompletionRequest):
     error_check_ret = check_requests(request)
     if error_check_ret is not None:
         return error_check_ret
@@ -356,9 +342,8 @@ async def create_completion(request: CompletionRequest, background_tasks: Backgr
 
 @app.post("/v1/embeddings")
 @app.post("/v1/engines/{model_name}/embeddings")
-async def create_embeddings(request: EmbeddingsRequest, background_tasks: BackgroundTasks, model_name: str = None):
+async def create_embeddings(request: EmbeddingsRequest, model_name: str = None):
     """Creates embeddings for the text"""
-    background_tasks.add_task(torch_gc)
     if request.model is None:
         request.model = model_name
 
@@ -454,7 +439,6 @@ if __name__ == "__main__":
 
     logger.info(f"args: {args}")
 
-    last_gc = 0
     model, tokenizer = load_model(
         args.model_name,
         model_name_or_path=args.model_path,
