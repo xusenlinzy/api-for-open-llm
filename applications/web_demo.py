@@ -88,7 +88,6 @@ def predict(
     text,
     chatbot,
     history,
-    stream,
     top_p,
     temperature,
     max_tokens,
@@ -127,7 +126,7 @@ def predict(
     )
 
     params = dict(
-        stream=stream,
+        stream=True,
         messages=messages,
         model=model_name,
         top_p=top_p,
@@ -169,7 +168,6 @@ def retry(
     text,
     chatbot,
     history,
-    stream,
     top_p,
     temperature,
     max_tokens,
@@ -189,7 +187,6 @@ def retry(
         inputs,
         chatbot,
         history,
-        stream,
         top_p,
         temperature,
         max_tokens,
@@ -247,10 +244,6 @@ with gr.Blocks(css=customCSS, theme=small_and_beautiful_theme) as demo:
                         choices=["chatglm", "moss", "phoenix", "gpt-3.5-turbo"],
                         value="chatglm",
                         label="Model name",
-                    )
-                    stream = gr.Checkbox(
-                        value=True,
-                        label="实时传输",
                     )
                 with gr.Tab(label="本地知识问答"):
                     pattern = gr.Radio(
@@ -328,7 +321,6 @@ with gr.Blocks(css=customCSS, theme=small_and_beautiful_theme) as demo:
             user_question,
             chatbot,
             history,
-            stream,
             top_p,
             temperature,
             max_tokens,
@@ -347,7 +339,6 @@ with gr.Blocks(css=customCSS, theme=small_and_beautiful_theme) as demo:
             user_question,
             chatbot,
             history,
-            stream,
             top_p,
             temperature,
             max_tokens,
