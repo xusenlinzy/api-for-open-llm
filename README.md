@@ -114,19 +114,20 @@ python api/app.py \
 
 + `OPENAI_API_BASE`: 后端启动的接口地址，如：http://192.168.0.xx:80/v1
 
-### [命令端启动多轮对话](applications/chat/client.py)
+### [聊天界面](./applications)
 
 ```shell
 cd applications
 
-python chat.py --api_base http://192.168.0.xx:80/v1 --model_name chatglm
+python web_demo.py
 ```
 
 ![chat](images/chat.png)
 
 ### [openai-python](https://github.com/openai/openai-python)
 
-#### 1. Chat Completions
+<details>
+<summary>👉 Chat Completions</summary>
 
 ```python
 import openai
@@ -149,7 +150,10 @@ print(completion.choices[0].message.content)
 # 你好👋！我是人工智能助手 ChatGLM-6B，很高兴见到你，欢迎问我任何问题。
 ```
 
-#### 2. Completions
+</details>
+
+<details>
+<summary>👉 Completions</summary>
 
 ```python
 import openai
@@ -166,7 +170,10 @@ print(completion.choices[0].text)
 # 你好👋！我是人工智能助手 ChatGLM-6B，很高兴见到你，欢迎问我任何问题。
 ```
 
-#### 3. Embeddings
+</details>
+
+<details>
+<summary>👉 Embeddings</summary>
 
 ```python
 import openai
@@ -185,9 +192,12 @@ embedding = openai.Embedding.create(
 print(embedding['data'][0]['embedding'])
 ```
 
+</details>
+
 ### [langchain](https://github.com/hwchase17/langchain)
 
-#### 1. Chat Completions
+<details>
+<summary>👉 Chat Completions</summary>
 
 ```python
 import os
@@ -202,8 +212,10 @@ chat = ChatOpenAI()
 print(chat([HumanMessage(content="你好")]))
 # content='你好👋！我是人工智能助手 ChatGLM-6B，很高兴见到你，欢迎问我任何问题。' additional_kwargs={}
 ```
+</details>
 
-#### 2. Completions
+<details>
+<summary>👉 Completions</summary>
 
 ```python
 import os
@@ -218,7 +230,10 @@ print(llm("你好"))
 # 你好👋！我是人工智能助手 ChatGLM-6B，很高兴见到你，欢迎问我任何问题。
 ```
 
-#### 3. Embeddings
+</details>
+
+<details>
+<summary>👉 Embeddings</summary>
 
 ```python
 import os
@@ -232,6 +247,7 @@ embeddings = OpenAIEmbeddings()
 query_result = embeddings.embed_query("什么是chatgpt？")
 print(query_result)
 ```
+</details>
 
 ### 可接入的项目
 
@@ -281,3 +297,5 @@ DISABLE_PROVIDER_CONFIG_VALIDATION: 'true'
 [7]: [FastChat: An open platform for training, serving, and evaluating large language model based chatbots](https://github.com/lm-sys/FastChat)
 
 [8]: [LangChain: Building applications with LLMs through composability](https://github.com/hwchase17/langchain)
+
+[9]: [ChuanhuChatgpt](https://github.com/GaiZhenbiao/ChuanhuChatGPT)
