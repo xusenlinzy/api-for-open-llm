@@ -9,7 +9,7 @@ Disclaimer: The LLaMA model is a third-party version available on Hugging Face m
 """
 description = """\
 <div align="center" style="margin:16px 0">
-The demo is built on <a href="https://github.com/GaiZhenbiao/ChuanhuChatGPT">OpenLLM</a>.
+The demo is built on <a href="https://github.com/xusenlinzy/api-for-open-llm">OpenLLM</a>.
 </div>
 """
 CONCURRENT_COUNT = 100

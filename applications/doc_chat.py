@@ -7,7 +7,7 @@ from langchain.chains import ConversationChain
 from langchain.llms import OpenAI
 from langchain.prompts import PromptTemplate
 
-from tools.doc_qa import get_related_docs, generate_prompt, init_knowledge_vector_store, CustomEmbeddings
+from tools.doc_qa import DocQAPromptAdapter
 from tools.memory import CustomConversationBufferWindowMemory
 from tools.prompt import ChatPromptTEMPLATE
 
@@ -26,20 +26,13 @@ def main():
         input_variables=["history", "input"], template=ChatPromptTEMPLATE.create(args.model_name)
     )
 
-    embeddings = CustomEmbeddings()
+    doc_adapter = DocQAPromptAdapter(chunk_size=args.chunk_size, chunk_overlap=args.chunk_overlap,)
     doc_path = input("Input your document path here: ")
-    vs_path = init_knowledge_vector_store(
-        embeddings,
-        doc_path,
-        vs_path="vector_store/test",
-        chunk_size=args.chunk_size,
-        chunk_overlap=args.chunk_overlap,
-    )
+    doc_adapter.create_vector_store(doc_path, "vector_store/test")
 
     while True:
         user_input = input("HUMAN: ")
-        related_docs = get_related_docs(user_input, embeddings, vs_path, topk=args.topk)
-        user_input = generate_prompt(related_docs, user_input)
+        user_input = doc_adapter(user_input, topk=args.topk)
         print("AI: ")
         chat_chain.predict(input=user_input)
         print("\n")

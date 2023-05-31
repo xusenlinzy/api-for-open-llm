@@ -1,9 +1,12 @@
 import logging
+import os
+import shutil
 
 import gradio as gr
 import openai
 from backoff import on_exception, expo
 
+from tools.doc_qa import DocQAPromptAdapter
 from tools.web.overwrites import postprocess, reload_javascript
 from tools.web.presets import (
     small_and_beautiful_theme,
@@ -29,6 +32,39 @@ logging.basicConfig(
 )
 
 
+doc_adapter = DocQAPromptAdapter()
+
+
+def get_file_list():
+    if not os.path.exists("doc_store"):
+        return []
+    return os.listdir("doc_store")
+
+
+file_list = get_file_list()
+
+
+def upload_file(file):
+    if not os.path.exists("doc_store"):
+        os.mkdir("docs")
+
+    if file is not None:
+        filename = os.path.basename(file.name)
+        shutil.move(file.name, f"doc_store/{filename}")
+        file_list.insert(0, filename)
+        return gr.Dropdown.update(choices=file_list, value=filename)
+
+
+def add_vector_store(filename):
+    if filename is not None:
+        vs_path = f"vector_store/{filename.split('.')[0]}-{filename.split('.')[-1]}"
+        if not os.path.exists(vs_path):
+            doc_adapter.create_vector_store(f"doc_store/{filename}", vs_path=vs_path)
+        else:
+            doc_adapter.reset_vector_store(vs_path=vs_path)
+    return f"Successfully added vector store for {filename}"
+
+
 @on_exception(expo, openai.error.RateLimitError, max_tries=5)
 def chat_completions_create(params):
     return openai.ChatCompletion.create(**params)
@@ -43,7 +79,8 @@ def predict(
     top_p,
     temperature,
     max_tokens,
-    memory_k
+    memory_k,
+    pattern
 ):
     if text == "":
         yield chatbot, history, "Empty context."
@@ -66,10 +103,11 @@ def predict(
                 }
             ]
         )
+
     messages.append(
         {
             "role": "user",
-            "content": text
+            "content": doc_adapter(text) if pattern != "General" else text
         }
     )
 
@@ -118,6 +156,7 @@ def retry(
     temperature,
     max_tokens,
     memory_k,
+    pattern
 ):
     logging.info("Retry...")
     if len(history) == 0:
@@ -134,7 +173,8 @@ def retry(
         top_p,
         temperature,
         max_tokens,
-        memory_k
+        memory_k,
+        pattern
     ):
         yield x
 
@@ -153,9 +193,9 @@ with gr.Blocks(css=customCSS, theme=small_and_beautiful_theme) as demo:
     gr.Markdown(description_top)
     with gr.Row().style(equal_height=True, scale=1):
         with gr.Column(scale=5):
-            with gr.Row(scale=1):
+            with gr.Row():
                 chatbot = gr.Chatbot(elem_id="chuanhu_chatbot").style(height="100%")
-            with gr.Row(scale=1):
+            with gr.Row():
                 with gr.Column(scale=12):
                     user_input = gr.Textbox(
                         show_label=False, placeholder="Enter text"
@@ -164,24 +204,13 @@ with gr.Blocks(css=customCSS, theme=small_and_beautiful_theme) as demo:
                     submitBtn = gr.Button("Send")
                 with gr.Column(min_width=70, scale=1):
                     cancelBtn = gr.Button("Stop")
-
-            with gr.Row(scale=1):
+            with gr.Row():
                 emptyBtn = gr.Button(
                     "🧹 New Conversation",
                 )
                 retryBtn = gr.Button("🔄 Regenerate")
                 delLastBtn = gr.Button("🗑️ Remove Last Turn")
-        with gr.Column():
-            with gr.Column(min_width=50, scale=1):
-                api_base = gr.Textbox(
-                    placeholder="https://0.0.0.0:80/v1",
-                    label="API base",
-                )
-                model_name = gr.Dropdown(
-                    choices=["chatglm", "moss", "phoenix"],
-                    value="chatglm",
-                    label="Model name"
-                )
+            with gr.Accordion(label="Parameters", open=False):
                 top_p = gr.Slider(
                     minimum=-0,
                     maximum=1.0,
@@ -214,8 +243,50 @@ with gr.Blocks(css=customCSS, theme=small_and_beautiful_theme) as demo:
                     interactive=True,
                     label="Max Memory Window Size",
                 )
+        with gr.Column():
+            with gr.Column(scale=1):
+                api_base = gr.Textbox(
+                    placeholder="https://0.0.0.0:80/v1",
+                    label="API base",
+                )
+                model_name = gr.Dropdown(
+                    choices=["chatglm", "moss", "phoenix"],
+                    value="chatglm",
+                    label="Model name",
+                    visible=True,
+                )
+                pattern = gr.Radio(
+                    choices=['General', 'Document'],
+                    label="Pattern",
+                    value='General',
+                    interactive=True,
+                )
+                file = gr.File(
+                    label="Upload",
+                    visible=True,
+                    file_types=['.txt', '.md', '.docx', '.pdf']
+                )
+                select_file = gr.Dropdown(
+                    choices = file_list,
+                    label="Select a file",
+                    interactive=True,
+                    value=file_list[0] if len(file_list) > 0 else None
+                )
+                add = gr.Button(value="Add to vector store", visible=True)
 
     gr.Markdown(description)
+
+    file.upload(
+        upload_file,
+        inputs=file,
+        outputs=select_file
+    )
+
+    add.click(
+        add_vector_store,
+        inputs=select_file,
+        outputs=status_display,
+    )
 
     predict_args = dict(
         fn=predict,
@@ -228,7 +299,8 @@ with gr.Blocks(css=customCSS, theme=small_and_beautiful_theme) as demo:
             top_p,
             temperature,
             max_tokens,
-            memory_k
+            memory_k,
+            pattern
         ],
         outputs=[chatbot, history, status_display],
         show_progress=True,
@@ -244,7 +316,8 @@ with gr.Blocks(css=customCSS, theme=small_and_beautiful_theme) as demo:
             top_p,
             temperature,
             max_tokens,
-            memory_k
+            memory_k,
+            pattern
         ],
         outputs=[chatbot, history, status_display],
         show_progress=True,
@@ -252,7 +325,6 @@ with gr.Blocks(css=customCSS, theme=small_and_beautiful_theme) as demo:
 
     reset_args = dict(fn=reset_textbox, inputs=[], outputs=[user_input, status_display])
 
-    # Chatbot
     cancelBtn.click(cancel_outputing, [], [status_display])
     transfer_input_args = dict(
         fn=transfer_input,
