@@ -1,4 +1,3 @@
-import datetime
 import os
 import shutil
 from typing import Optional
@@ -18,9 +17,6 @@ PROMPT_TEMPLATE = """已知信息：
 
 
 class CustomEmbeddings(OpenAIEmbeddings):
-
-    openai_api_key = "xxx"
-
     def embed_documents(self, texts, chunk_size=0):
         response = embed_with_retry(
             self,
@@ -45,46 +41,27 @@ def load_file(filepath, chunk_size=500, chunk_overlap=0):
     return docs
 
 
-def init_knowledge_vector_store(embeddings, filepath: str, vs_path: str = None, **kwargs):
-    docs = load_file(filepath, **kwargs)
-    print("Initialing knowledge ...")
-    if vs_path and os.path.isdir(vs_path):
-        vector_store = FAISS.load_local(vs_path, embeddings)
-    else:
-        if not vs_path:
-            vs_path = f"""FAISS_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}"""
-        vector_store = FAISS.from_documents(docs, embeddings)
-        vector_store.save_local(vs_path)
-    return vs_path
-
-
 def generate_prompt(related_docs, query: str, prompt_template=PROMPT_TEMPLATE) -> str:
     context = "\n".join([doc[0].page_content for doc in related_docs])
     return prompt_template.replace("{question}", query).replace("{context}", context)
 
 
-def get_related_docs(query, embeddings, vs_path, topk=3):
-    vector_store = FAISS.load_local(vs_path, embeddings)
-    related_docs_with_score = vector_store.similarity_search_with_score(query, k=topk)
-    return related_docs_with_score
-
-
 class DocQAPromptAdapter:
-    def __init__(self, chunk_size: Optional[int] = 500, chunk_overlap: Optional[int] = 0):
-        self.embeddings = CustomEmbeddings()
+    def __init__(self, chunk_size: Optional[int] = 500, chunk_overlap: Optional[int] = 0, api_key: Optional[str] = "xxx"):
+        self.embeddings = CustomEmbeddings(openai_api_key=api_key)
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
 
         self.vector_store = None
         self.vs_path = None
 
-    def create_vector_store(self, file_path, vs_path):
+    def create_vector_store(self, file_path, vs_path, embeddings=None):
         docs = load_file(file_path, chunk_size=self.chunk_size, chunk_overlap=self.chunk_overlap)
-        self.vector_store = FAISS.from_documents(docs, self.embeddings)
+        self.vector_store = FAISS.from_documents(docs, self.embeddings if not embeddings else embeddings)
         self.vector_store.save_local(vs_path)
 
-    def reset_vector_store(self, vs_path):
-        self.vector_store = FAISS.load_local(vs_path, self.embeddings)
+    def reset_vector_store(self, vs_path, embeddings=None):
+        self.vector_store = FAISS.load_local(vs_path, self.embeddings if not embeddings else embeddings)
 
     @staticmethod
     def delete_files(files):
@@ -98,6 +75,6 @@ class DocQAPromptAdapter:
     def __call__(self, query, vs_path=None, topk=6):
         if vs_path is not None and os.path.exists(vs_path):
             self.reset_vector_store(vs_path)
+        self.vector_store.embedding_function = self.embeddings.embed_query
         related_docs_with_score = self.vector_store.similarity_search_with_score(query, k=topk)
-        prompt = generate_prompt(related_docs_with_score, query)
-        return prompt
+        return generate_prompt(related_docs_with_score, query)
