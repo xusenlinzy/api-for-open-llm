@@ -25,6 +25,7 @@ from tools.web.utils import (
     delete_last_conversation
 )
 
+openai.api_key = "xxx"
 logging.basicConfig(
     level=logging.DEBUG,
     format="%(asctime)s [%(levelname)s] [%(filename)s:%(lineno)d] %(message)s",
@@ -34,11 +35,20 @@ logging.basicConfig(
 doc_adapter = DocQAPromptAdapter()
 
 
-def set_openai_env(api_base, api_key):
+def add_llm(model_name, api_base, models):
+    models = models or {}
+    models.update(
+        {
+            model_name: api_base
+        }
+    )
+    choices = [m[0] for m in models.items()]
+    return "",  "", models, gr.Dropdown.update(choices=choices, value=choices[0])
+
+
+def set_openai_env(api_base):
     openai.api_base = api_base
-    openai.api_key = api_key if api_key else "xxx"
     doc_adapter.embeddings.openai_api_base = api_base
-    doc_adapter.embeddings.openai_api_key = api_key if api_key else "xxx"
 
 
 def get_file_list():
@@ -61,18 +71,19 @@ def upload_file(file):
         return gr.Dropdown.update(choices=file_list, value=filename)
 
 
-def add_vector_store(filename, api_base, api_key):
-    set_openai_env(api_base, api_key)
+def add_vector_store(filename, model_name, models):
+    api_base = models[model_name]
+    set_openai_env(api_base)
     if filename is not None:
         vs_path = f"vector_store/{filename.split('.')[0]}-{filename.split('.')[-1]}"
         if not os.path.exists(vs_path):
             doc_adapter.create_vector_store(f"doc_store/{filename}", vs_path=vs_path)
-            msg = f"Successfully added vector store for {filename} !"
+            msg = f"Successfully added vector store for {filename}!"
         else:
             doc_adapter.reset_vector_store(vs_path=vs_path)
-            msg = f"Successfully loaded vector store for {filename} !"
+            msg = f"Successfully loaded vector store for {filename}!"
     else:
-        msg = "Please select a file !"
+        msg = "Please select a file!"
     return msg
 
 
@@ -83,8 +94,7 @@ def chat_completions_create(params):
 
 def predict(
     model_name,
-    api_base,
-    api_key,
+    models,
     text,
     chatbot,
     history,
@@ -94,7 +104,8 @@ def predict(
     memory_k,
     pattern
 ):
-    set_openai_env(api_base, api_key)
+    api_base = models[model_name]
+    set_openai_env(api_base)
 
     if text == "":
         yield chatbot, history, "Empty context."
@@ -163,8 +174,7 @@ def predict(
 
 def retry(
     model_name,
-    api_base,
-    api_key,
+    models,
     text,
     chatbot,
     history,
@@ -182,8 +192,7 @@ def retry(
     inputs = history.pop()[0]
     for x in predict(
         model_name,
-        api_base,
-        api_key,
+        models,
         inputs,
         chatbot,
         history,
@@ -231,19 +240,21 @@ with gr.Blocks(css=customCSS, theme=small_and_beautiful_theme) as demo:
         with gr.Column():
             with gr.Column(min_width=50, scale=1):
                 with gr.Tab(label="模型"):
+                    model_name = gr.Textbox(
+                        placeholder="chatglm",
+                        label="模型名称",
+                    )
                     api_base = gr.Textbox(
                         placeholder="https://0.0.0.0:80/v1",
-                        label="API base",
+                        label="模型接口地址",
                     )
-                    api_key = gr.Textbox(
-                        placeholder="xxx",
-                        label="API key (optional)",
-                        type="password"
-                    )
-                    model_name = gr.Dropdown(
-                        choices=["chatglm", "moss", "phoenix", "gpt-3.5-turbo"],
-                        value="chatglm",
-                        label="Model name",
+                    add_model = gr.Button("添加模型")
+                    with gr.Accordion(open=False, label="所有模型配置"):
+                        models = gr.Json()
+                    select_model = gr.Dropdown(
+                        choices=[m[0] for m in models.value.items()] if models.value else [],
+                        value=[m[0] for m in models.value.items()][0] if models.value else None,
+                        label="选择模型"
                     )
                 with gr.Tab(label="本地知识问答"):
                     pattern = gr.Radio(
@@ -263,7 +274,7 @@ with gr.Blocks(css=customCSS, theme=small_and_beautiful_theme) as demo:
                         visible=True,
                         file_types=['.txt', '.md', '.docx', '.pdf']
                     )
-                    add = gr.Button(value="添加到知识库", visible=True)
+                    add = gr.Button(value="添加到知识库")
                 with gr.Tab(label="参数"):
                     top_p = gr.Slider(
                         minimum=-0,
@@ -300,24 +311,29 @@ with gr.Blocks(css=customCSS, theme=small_and_beautiful_theme) as demo:
 
     gr.Markdown(description)
 
+    add_model.click(
+        add_llm,
+        inputs=[model_name, api_base, models],
+        outputs=[model_name, api_base, models, select_model],
+    )
+
     file.upload(
         upload_file,
         inputs=file,
-        outputs=select_file
+        outputs=select_file,
     )
 
     add.click(
         add_vector_store,
-        inputs=[select_file, api_base, api_key],
+        inputs=[select_file, select_model, models],
         outputs=status_display,
     )
 
     predict_args = dict(
         fn=predict,
         inputs=[
-            model_name,
-            api_base,
-            api_key,
+            select_model,
+            models,
             user_question,
             chatbot,
             history,
@@ -333,9 +349,8 @@ with gr.Blocks(css=customCSS, theme=small_and_beautiful_theme) as demo:
     retry_args = dict(
         fn=retry,
         inputs=[
-            model_name,
-            api_base,
-            api_key,
+            select_model,
+            models,
             user_question,
             chatbot,
             history,

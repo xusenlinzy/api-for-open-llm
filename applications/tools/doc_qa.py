@@ -32,20 +32,6 @@ class CustomEmbeddings(OpenAIEmbeddings):
         return [r["embedding"] for r in response["data"]]
 
 
-def load_file(filepath, chunk_size=500, chunk_overlap=0):
-    if filepath.lower().endswith(".md"):
-        loader = UnstructuredFileLoader(filepath, mode="elements")
-        docs = loader.load()
-    else:
-        loader = UnstructuredFileLoader(filepath, mode="elements")
-        text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=chunk_size,
-            chunk_overlap=chunk_overlap,
-        )
-        docs = loader.load_and_split(text_splitter=text_splitter)
-    return docs
-
-
 def _get_documents(filepath, chunk_size=500, chunk_overlap=0, two_column=False):
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=chunk_size,
@@ -89,12 +75,12 @@ def _get_documents(filepath, chunk_size=500, chunk_overlap=0, two_column=False):
             logger.debug("Loading EPUB...")
             loader = UnstructuredEPubLoader(filepath)
             texts = loader.load()
+        elif file_type == ".md":
+            loader = UnstructuredFileLoader(filepath, mode="elements")
+            return loader.load()
         else:
-            from langchain.document_loaders import TextLoader
-            logger.debug("Loading text file...")
-
-            loader = TextLoader(filepath, "utf8")
-            texts = loader.load()
+            loader = UnstructuredFileLoader(filepath, mode="elements")
+            return loader.load_and_split(text_splitter=text_splitter)
     except Exception as e:
         import traceback
         logger.error(f"Error loading file: {filepath}")
