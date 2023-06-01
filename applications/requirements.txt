@@ -1,7 +1,12 @@
 gradio==3.28.0
+openai
+langchain
+loguru
 mdtex2html
 Pygments
 markdown
 markdown2
 faiss-cpu
 unstructured
+PyPDF2
+pdfplumber

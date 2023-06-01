@@ -5,8 +5,13 @@ from typing import Optional
 from langchain.document_loaders import UnstructuredFileLoader
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.embeddings.openai import embed_with_retry
+from langchain.schema import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.vectorstores import FAISS
+from loguru import logger
+from tqdm import tqdm
+
+from .parser import parse_pdf
 
 PROMPT_TEMPLATE = """已知信息：
 {context} 
@@ -41,6 +46,89 @@ def load_file(filepath, chunk_size=500, chunk_overlap=0):
     return docs
 
 
+def _get_documents(filepath, chunk_size=500, chunk_overlap=0, two_column=False):
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=chunk_size,
+        chunk_overlap=chunk_overlap,
+    )
+    file_type = os.path.splitext(filepath)[1]
+
+    logger.info(f"Loading file: {filepath}")
+    texts = Document(page_content="", metadata={"source": filepath})
+    try:
+        if file_type == ".pdf":
+            logger.debug("Loading PDF...")
+            try:
+                pdftext = parse_pdf(filepath, two_column).text
+            except:
+                from PyPDF2 import PdfReader
+
+                pdftext = ""
+                with open(filepath, "rb") as pdfFileObj:
+                    pdfReader = PdfReader(pdfFileObj)
+                    for page in tqdm(pdfReader.pages):
+                        pdftext += page.extract_text()
+
+            texts = Document(page_content=pdftext, metadata={"source": filepath})
+
+        elif file_type == ".docx":
+            from langchain.document_loaders import UnstructuredWordDocumentLoader
+
+            logger.debug("Loading Word...")
+            loader = UnstructuredWordDocumentLoader(filepath)
+            texts = loader.load()
+        elif file_type == ".pptx":
+            from langchain.document_loaders import UnstructuredPowerPointLoader
+
+            logger.debug("Loading PowerPoint...")
+            loader = UnstructuredPowerPointLoader(filepath)
+            texts = loader.load()
+        elif file_type == ".epub":
+            from langchain.document_loaders import UnstructuredEPubLoader
+
+            logger.debug("Loading EPUB...")
+            loader = UnstructuredEPubLoader(filepath)
+            texts = loader.load()
+        else:
+            from langchain.document_loaders import TextLoader
+            logger.debug("Loading text file...")
+
+            loader = TextLoader(filepath, "utf8")
+            texts = loader.load()
+    except Exception as e:
+        import traceback
+        logger.error(f"Error loading file: {filepath}")
+        traceback.print_exc()
+
+    return text_splitter.split_documents([texts])
+
+
+def get_documents(filepath, chunk_size=500, chunk_overlap=0, two_column=False):
+    documents = []
+    logger.debug("Loading documents...")
+    if os.path.isfile(filepath):
+        documents.extend(
+            _get_documents(
+                filepath,
+                chunk_size=chunk_size,
+                chunk_overlap=chunk_overlap,
+                two_column=two_column
+            )
+        )
+    else:
+        for file in filepath:
+            documents.extend(
+                _get_documents(
+                    file,
+                    chunk_size=chunk_size,
+                    chunk_overlap=chunk_overlap,
+                    two_column=two_column
+                )
+            )
+    logger.debug("Documents loaded.")
+    return documents
+
+
 def generate_prompt(related_docs, query: str, prompt_template=PROMPT_TEMPLATE) -> str:
     context = "\n".join([doc[0].page_content for doc in related_docs])
     return prompt_template.replace("{question}", query).replace("{context}", context)
@@ -53,11 +141,10 @@ class DocQAPromptAdapter:
         self.chunk_overlap = chunk_overlap
 
         self.vector_store = None
-        self.vs_path = None
 
     def create_vector_store(self, file_path, vs_path, embeddings=None):
-        docs = load_file(file_path, chunk_size=self.chunk_size, chunk_overlap=self.chunk_overlap)
-        self.vector_store = FAISS.from_documents(docs, self.embeddings if not embeddings else embeddings)
+        documents = get_documents(file_path, chunk_size=self.chunk_size, chunk_overlap=self.chunk_overlap)
+        self.vector_store = FAISS.from_documents(documents, self.embeddings if not embeddings else embeddings)
         self.vector_store.save_local(vs_path)
 
     def reset_vector_store(self, vs_path, embeddings=None):
