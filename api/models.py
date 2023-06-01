@@ -1,3 +1,4 @@
+import warnings
 from typing import Optional
 
 import torch
@@ -8,6 +9,27 @@ from transformers import (
     AutoModelForCausalLM,
     BitsAndBytesConfig,
 )
+
+
+def get_gpu_memory(max_gpus=None):
+    """Get available memory for each GPU."""
+    gpu_memory = []
+    num_gpus = (
+        torch.cuda.device_count()
+        if max_gpus is None
+        else min(max_gpus, torch.cuda.device_count())
+    )
+
+    for gpu_id in range(num_gpus):
+        with torch.cuda.device(gpu_id):
+            device = torch.cuda.current_device()
+            gpu_properties = torch.cuda.get_device_properties(device)
+            total_memory = gpu_properties.total_memory / (1024 ** 3)
+            allocated_memory = torch.cuda.memory_allocated() / (1024 ** 3)
+            available_memory = total_memory - allocated_memory
+            gpu_memory.append(available_memory)
+    return gpu_memory
+
 
 # A global registry for all model adapters
 model_adapters = []
@@ -44,7 +66,8 @@ class BaseModelAdapter:
         else:
             tokenizer = self.tokenizer_class.from_pretrained(model_name_or_path, **tokenizer_kwargs)
 
-        device = kwargs.get("device", "cuda:0")
+        device = kwargs.get("device", "cuda")
+        num_gpus = kwargs.get("num_gpus", 1)
         load_in_8bit = kwargs.get("load_in_8bit", False)
         load_in_4bit = kwargs.get("load_in_4bit", False)
 
@@ -55,7 +78,20 @@ class BaseModelAdapter:
             if "torch_dtype" not in model_kwargs:
                 model_kwargs["torch_dtype"] = torch.float16
 
+            if num_gpus != 1:
+                model_kwargs["device_map"] = "auto"
+                model_kwargs["device_map"] = "sequential"  # This is important for not the same VRAM sizes
+                available_gpu_memory = get_gpu_memory(num_gpus)
+                model_kwargs["max_memory"] = {
+                    i: str(int(available_gpu_memory[i] * 0.85)) + "GiB"
+                    for i in range(num_gpus)
+                }
+
             if load_in_8bit or load_in_4bit:
+                if num_gpus != 1:
+                    warnings.warn(
+                        "8-bit/4-bit quantization is not supported for multi-gpu inference."
+                    )
                 model_kwargs["torch_dtype"] = None
                 model_kwargs["load_in_8bit"] = load_in_8bit
                 model_kwargs["load_in_4bit"] = load_in_4bit
@@ -101,7 +137,7 @@ class BaseModelAdapter:
             if quantize and quantize != 16:
                 model = model.quantize(quantize)
 
-        if device != "cpu" and not load_in_4bit and not load_in_8bit:
+        if device != "cpu" and not load_in_4bit and not load_in_8bit and num_gpus == 1:
             model.to(device)
 
         model.eval()
@@ -144,7 +180,7 @@ def load_model(
     model_name_or_path: Optional[str] = None,
     adapter_model: Optional[str] = None,
     quantize: Optional[int] = 16,
-    device: Optional[str] = "cuda:0",
+    device: Optional[str] = "cuda",
     load_in_8bit: Optional[bool] = False,
     **kwargs
 ):

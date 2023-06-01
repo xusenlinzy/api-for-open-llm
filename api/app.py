@@ -1,5 +1,6 @@
 import argparse
 import json
+import os
 import secrets
 from typing import Generator, Optional, Union, Dict, List, Any
 
@@ -416,7 +417,13 @@ if __name__ == "__main__":
         '--lora_model_path', '-lora', type=str, help='lora model_name_or_path', default=None
     )
     parser.add_argument(
-        '--device', '-d', help='cpu or cuda:0 etc .', type=str, default='cuda:0'
+        "--device", type=str, choices=["cpu", "cuda"], default="cuda", help="The device type",
+    )
+    parser.add_argument(
+        "--gpus", type=str, default=None, help="A single GPU like 1 or multiple GPUs like 0,2",
+    )
+    parser.add_argument(
+        "--num-gpus", type=int, default=1, help="Number of GPUs to use",
     )
     parser.add_argument(
         '--quantize', '-q', help='quantize, optional: 16，8，4', type=int, default=16
@@ -428,6 +435,13 @@ if __name__ == "__main__":
     parser.add_argument('--load_in_4bit', action='store_true')
     parser.add_argument("--stream_interval", type=int, default=2)
     args = parser.parse_args()
+
+    if args.gpus:
+        if len(args.gpus.split(",")) < args.num_gpus:
+            raise ValueError(
+                f"Larger --num-gpus ({args.num_gpus}) than --gpus {args.gpus}!"
+            )
+        os.environ["CUDA_VISIBLE_DEVICES"] = args.gpus
 
     app.add_middleware(
         CORSMiddleware,
@@ -445,6 +459,7 @@ if __name__ == "__main__":
         adapter_model=args.lora_model_path,
         quantize=int(args.quantize),
         device=args.device,
+        num_gpus=args.num_gpus,
         load_in_8bit=args.load_in_8bit,
         load_in_4bit=args.load_in_4bit,
     )
