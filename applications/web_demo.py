@@ -37,11 +37,12 @@ doc_adapter = DocQAPromptAdapter()
 
 def add_llm(model_name, api_base, models):
     models = models or {}
-    models.update(
-        {
-            model_name: api_base
-        }
-    )
+    if model_name and api_base:
+        models.update(
+            {
+                model_name: api_base
+            }
+        )
     choices = [m[0] for m in models.items()]
     return "",  "", models, gr.Dropdown.update(choices=choices, value=choices[0])
 
@@ -71,9 +72,12 @@ def upload_file(file):
         return gr.Dropdown.update(choices=file_list, value=filename)
 
 
-def add_vector_store(filename, model_name, models):
+def add_vector_store(filename, model_name, models, chunk_size, chunk_overlap):
     api_base = models[model_name]
     set_openai_env(api_base)
+    doc_adapter.chunk_size = chunk_size
+    doc_adapter.chunk_overlap = chunk_overlap
+
     if filename is not None:
         vs_path = f"vector_store/{filename.split('.')[0]}-{filename.split('.')[-1]}"
         if not os.path.exists(vs_path):
@@ -102,7 +106,8 @@ def predict(
     temperature,
     max_tokens,
     memory_k,
-    pattern
+    is_kgqa,
+    single_turn,
 ):
     api_base = models[model_name]
     set_openai_env(api_base)
@@ -115,24 +120,25 @@ def predict(
         history = []
 
     messages = []
-    for h in history[-memory_k:]:
-        messages.extend(
-            [
-                {
-                    "role": "user",
-                    "content": h[0]
-                },
-                {
-                    "role": "assistant",
-                    "content": h[1]
-                }
-            ]
-        )
+    if not single_turn:
+        for h in history[-memory_k:]:
+            messages.extend(
+                [
+                    {
+                        "role": "user",
+                        "content": h[0]
+                    },
+                    {
+                        "role": "assistant",
+                        "content": h[1]
+                    }
+                ]
+            )
 
     messages.append(
         {
             "role": "user",
-            "content": doc_adapter(text) if pattern != "通用" else text
+            "content": doc_adapter(text) if is_kgqa else text
         }
     )
 
@@ -182,7 +188,8 @@ def retry(
     temperature,
     max_tokens,
     memory_k,
-    pattern
+    is_kgqa,
+    single_turn,
 ):
     logging.info("Retry...")
     if len(history) == 0:
@@ -200,7 +207,8 @@ def retry(
         temperature,
         max_tokens,
         memory_k,
-        pattern
+        is_kgqa,
+        single_turn,
     ):
         yield x
 
@@ -251,18 +259,18 @@ with gr.Blocks(css=customCSS, theme=small_and_beautiful_theme) as demo:
                     add_model = gr.Button("添加模型")
                     with gr.Accordion(open=False, label="所有模型配置"):
                         models = gr.Json()
+                    single_turn = gr.Checkbox(label="使用单轮对话", value=False)
                     select_model = gr.Dropdown(
                         choices=[m[0] for m in models.value.items()] if models.value else [],
                         value=[m[0] for m in models.value.items()][0] if models.value else None,
                         label="选择模型"
                     )
-                with gr.Tab(label="本地知识问答"):
-                    pattern = gr.Radio(
-                        choices=['通用', '知识库'],
-                        label="问答模式",
-                        value='通用',
-                        interactive=True,
+                with gr.Tab(label="知识库问答"):
+                    is_kgqa = gr.Checkbox(
+                        label="使用知识库问答",
+                        value=False,
                     )
+                    gr.Markdown("""**基于本地知识库生成更加准确的回答！**""")
                     select_file = gr.Dropdown(
                         choices=file_list,
                         label="选择文件",
@@ -308,6 +316,22 @@ with gr.Blocks(css=customCSS, theme=small_and_beautiful_theme) as demo:
                         interactive=True,
                         label="Max Memory Window Size",
                     )
+                    chunk_size = gr.Slider(
+                        minimum=100,
+                        maximum=1000,
+                        value=200,
+                        step=100,
+                        interactive=True,
+                        label="Chunk Size",
+                    )
+                    chunk_overlap = gr.Slider(
+                        minimum=0,
+                        maximum=100,
+                        value=0,
+                        step=10,
+                        interactive=True,
+                        label="Chunk Overlap",
+                    )
 
     gr.Markdown(description)
 
@@ -325,7 +349,7 @@ with gr.Blocks(css=customCSS, theme=small_and_beautiful_theme) as demo:
 
     add.click(
         add_vector_store,
-        inputs=[select_file, select_model, models],
+        inputs=[select_file, select_model, models, chunk_size, chunk_overlap],
         outputs=status_display,
     )
 
@@ -341,7 +365,8 @@ with gr.Blocks(css=customCSS, theme=small_and_beautiful_theme) as demo:
             temperature,
             max_tokens,
             memory_k,
-            pattern
+            is_kgqa,
+            single_turn,
         ],
         outputs=[chatbot, history, status_display],
         show_progress=True,
@@ -358,7 +383,8 @@ with gr.Blocks(css=customCSS, theme=small_and_beautiful_theme) as demo:
             temperature,
             max_tokens,
             memory_k,
-            pattern
+            is_kgqa,
+            single_turn,
         ],
         outputs=[chatbot, history, status_display],
         show_progress=True,
