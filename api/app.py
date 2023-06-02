@@ -4,6 +4,7 @@ import os
 import secrets
 from typing import Generator, Optional, Union, Dict, List, Any
 
+import tiktoken
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -351,6 +352,13 @@ async def create_embeddings(request: EmbeddingsRequest, model_name: str = None):
     inputs = request.input
     if isinstance(inputs, str):
         inputs = [inputs]
+    elif isinstance(inputs, list):
+        if isinstance(inputs[0], int):
+            decoding = tiktoken.model.encoding_for_model(model_name)
+            inputs = [decoding.decode(inputs)]
+        elif isinstance(inputs[0], list):
+            decoding = tiktoken.model.encoding_for_model(model_name)
+            inputs = [decoding.decode(text) for text in inputs]
 
     data, token_num = [], 0
     batches = [

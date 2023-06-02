@@ -5,6 +5,7 @@ fastapi
 uvicorn
 tenacity
 sentencepiece
+tiktoken
 loguru
 git+https://github.com/huggingface/transformers.git
 git+https://github.com/huggingface/peft.git
