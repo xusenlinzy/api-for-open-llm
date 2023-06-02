@@ -10,3 +10,6 @@ faiss-cpu
 unstructured
 PyPDF2
 pdfplumber
+sqlalchemy
+tabulate
+pymysql

@@ -1,10 +1,13 @@
 import logging
 import os
+import re
 import shutil
 
 import gradio as gr
 import openai
+import pandas as pd
 from backoff import on_exception, expo
+from sqlalchemy import create_engine
 
 from tools.doc_qa import DocQAPromptAdapter
 from tools.web.overwrites import postprocess, reload_javascript
@@ -25,17 +28,18 @@ from tools.web.utils import (
     delete_last_conversation
 )
 
-openai.api_key = "xxx"
 logging.basicConfig(
     level=logging.DEBUG,
     format="%(asctime)s [%(levelname)s] [%(filename)s:%(lineno)d] %(message)s",
 )
 
 
+openai.api_key = "xxx"
 doc_adapter = DocQAPromptAdapter()
 
 
 def add_llm(model_name, api_base, models):
+    """ 添加模型 """
     models = models or {}
     if model_name and api_base:
         models.update(
@@ -44,15 +48,17 @@ def add_llm(model_name, api_base, models):
             }
         )
     choices = [m[0] for m in models.items()]
-    return "",  "", models, gr.Dropdown.update(choices=choices, value=choices[0])
+    return "",  "", models, gr.Dropdown.update(choices=choices, value=choices[0] if choices else None)
 
 
 def set_openai_env(api_base):
+    """ 配置接口地址 """
     openai.api_base = api_base
     doc_adapter.embeddings.openai_api_base = api_base
 
 
 def get_file_list():
+    """ 获取文件列表 """
     if not os.path.exists("doc_store"):
         return []
     return os.listdir("doc_store")
@@ -62,6 +68,7 @@ file_list = get_file_list()
 
 
 def upload_file(file):
+    """ 上传文件 """
     if not os.path.exists("doc_store"):
         os.mkdir("docs")
 
@@ -75,6 +82,7 @@ def upload_file(file):
 
 
 def add_vector_store(filename, model_name, models, chunk_size, chunk_overlap):
+    """ 将文件转为向量数据存储 """
     api_base = models[model_name]
     set_openai_env(api_base)
     doc_adapter.chunk_size = chunk_size
@@ -93,8 +101,44 @@ def add_vector_store(filename, model_name, models, chunk_size, chunk_overlap):
     return msg
 
 
+def add_db(db_user, db_password, db_host, db_port, db_name, databases):
+    """ 添加数据库 """
+    databases = databases or {}
+    if db_user and db_password and db_host and db_port and db_name:
+        databases.update(
+            {
+                db_name: {
+                    "user": db_user,
+                    "password": db_password,
+                    "host": db_host,
+                    "port": int(db_port)
+                }
+            }
+        )
+    choices = [m[0] for m in databases.items()]
+    return "", "", "", "", "", databases, gr.Dropdown.update(choices=choices, value=choices[0] if choices else None)
+
+
+def get_table_names(select_database, databases):
+    """ 获取数据库表名 """
+    if select_database:
+        db_config = databases[select_database]
+        con = create_engine(f"mysql+pymysql://{db_config['user']}:{db_config['password']}@{db_config['host']}:{db_config['port']}/{select_database}")
+        tables = pd.read_sql("show tables;", con=con).values
+        tables = [t[0] for t in tables]
+        return gr.Dropdown.update(choices=tables, value=[tables[0]])
+
+
+def get_sql_result(x, con):
+    q = r"sql\n(.+?);\n"
+    sql = re.findall(q, x, re.DOTALL)[0] + ";"
+    df = pd.read_sql(sql, con=con).iloc[:10, :]
+    return df.to_markdown(numalign="center", stralign="center")
+
+
 @on_exception(expo, openai.error.RateLimitError, max_tries=5)
 def chat_completions_create(params):
+    """ chat接口 """
     return openai.ChatCompletion.create(**params)
 
 
@@ -110,6 +154,10 @@ def predict(
     memory_k,
     is_kgqa,
     single_turn,
+    is_dbqa,
+    select_database,
+    select_table,
+    databases,
 ):
     api_base = models[model_name]
     set_openai_env(api_base)
@@ -122,20 +170,35 @@ def predict(
         history = []
 
     messages = []
-    if not single_turn:
-        for h in history[-memory_k:]:
-            messages.extend(
-                [
-                    {
-                        "role": "user",
-                        "content": h[0]
-                    },
-                    {
-                        "role": "assistant",
-                        "content": h[1]
-                    }
-                ]
-            )
+    if is_dbqa:
+        temperature = 0.0
+        db_config = databases[select_database]
+        con = create_engine(f"mysql+pymysql://{db_config['user']}:{db_config['password']}@{db_config['host']}:{db_config['port']}/{select_database}")
+        table_schema = ""
+        for t in select_table:
+            table_schema += pd.read_sql(f"show create table {t};", con=con)["Create Table"][0] + "\n\n"
+        table_schema = table_schema.replace("DEFAULT NULL", "")
+        messages.append(
+            {
+                "role": "system",
+                "content": f"你现在是一名SQL助手，能够根据用户的问题生成准确的SQL查询。已知SQL的建表语句为：{table_schema}根据上述数据库信息，回答相关问题。"
+            },
+        )
+    else:
+        if not single_turn:
+            for h in history[-memory_k:]:
+                messages.extend(
+                    [
+                        {
+                            "role": "user",
+                            "content": h[0]
+                        },
+                        {
+                            "role": "assistant",
+                            "content": h[1]
+                        }
+                    ]
+                )
 
     messages.append(
         {
@@ -174,6 +237,14 @@ def predict(
         except:
             pass
 
+    if is_dbqa:
+        try:
+            res = get_sql_result(x, con)
+            a[-1][-1] += "\n\n" + convert_to_markdown(res)
+            b[-1][-1] += "\n\n" + convert_to_markdown(res)
+        except:
+            pass
+
     try:
         yield a, b, "Generate: Success"
     except:
@@ -192,6 +263,10 @@ def retry(
     memory_k,
     is_kgqa,
     single_turn,
+    is_dbqa,
+    select_database,
+    select_table,
+    databases,
 ):
     logging.info("Retry...")
     if len(history) == 0:
@@ -211,6 +286,10 @@ def retry(
         memory_k,
         is_kgqa,
         single_turn,
+        is_dbqa,
+        select_database,
+        select_table,
+        databases,
     ):
         yield x
 
@@ -227,7 +306,9 @@ with gr.Blocks(css=customCSS, theme=small_and_beautiful_theme) as demo:
     with gr.Row():
         gr.HTML(title)
         status_display = gr.Markdown("Success", elem_id="status_display")
+
     gr.Markdown(description_top)
+
     with gr.Row().style(equal_height=True, scale=1):
         with gr.Column(scale=5):
             with gr.Row():
@@ -247,6 +328,7 @@ with gr.Blocks(css=customCSS, theme=small_and_beautiful_theme) as demo:
                 )
                 retryBtn = gr.Button("🔄 重新生成")
                 delLastBtn = gr.Button("🗑️ 删除最旧对话")
+
         with gr.Column():
             with gr.Column(min_width=50, scale=1):
                 with gr.Tab(label="模型"):
@@ -265,12 +347,15 @@ with gr.Blocks(css=customCSS, theme=small_and_beautiful_theme) as demo:
                     select_model = gr.Dropdown(
                         choices=[m[0] for m in models.value.items()] if models.value else [],
                         value=[m[0] for m in models.value.items()][0] if models.value else None,
-                        label="选择模型"
+                        label="选择模型",
+                        interactive=True,
                     )
-                with gr.Tab(label="知识库问答"):
+
+                with gr.Tab(label="知识库"):
                     is_kgqa = gr.Checkbox(
                         label="使用知识库问答",
                         value=False,
+                        interactive=True,
                     )
                     gr.Markdown("""**基于本地知识库生成更加准确的回答！**""")
                     select_file = gr.Dropdown(
@@ -284,7 +369,48 @@ with gr.Blocks(css=customCSS, theme=small_and_beautiful_theme) as demo:
                         visible=True,
                         file_types=['.txt', '.md', '.docx', '.pdf']
                     )
-                    add = gr.Button(value="添加到知识库")
+                    add_vs = gr.Button(value="添加到知识库")
+
+                with gr.Tab(label="数据库"):
+                    with gr.Accordion(open=False, label="数据库配置"):
+                        db_user = gr.Textbox(
+                            placeholder="root",
+                            label="用户名",
+                        )
+                        db_password = gr.Textbox(
+                            placeholder="password",
+                            label="密码",
+                            type="password"
+                        )
+                        db_host = gr.Textbox(
+                            placeholder="0.0.0.0",
+                            label="主机",
+                        )
+                        db_port = gr.Textbox(
+                            placeholder="3306",
+                            label="端口",
+                        )
+                        db_name = gr.Textbox(
+                            placeholder="test",
+                            label="数据库名称",
+                        )
+                    add_database = gr.Button("添加数据库")
+
+                    with gr.Accordion(open=False, label="所有数据库配置"):
+                        databases = gr.Json()
+                    select_database = gr.Dropdown(
+                        choices=[d[0] for d in databases.value.items()] if databases.value else [],
+                        value=[d[0] for d in databases.value.items()][0] if databases.value else None,
+                        interactive=True,
+                        label="选择数据库"
+                    )
+                    select_table = gr.Dropdown(label="选择表", interactive=True, multiselect=True)
+                    is_dbqa = gr.Checkbox(
+                        label="使用数据库问答",
+                        value=False,
+                        interactive=True,
+                    )
+
                 with gr.Tab(label="参数"):
                     top_p = gr.Slider(
                         minimum=-0,
@@ -343,13 +469,25 @@ with gr.Blocks(css=customCSS, theme=small_and_beautiful_theme) as demo:
         outputs=[model_name, api_base, models, select_model],
     )
 
+    add_database.click(
+        add_db,
+        inputs=[db_user, db_password, db_host, db_port, db_name, databases],
+        outputs=[db_user, db_password, db_host, db_port, db_name, databases, select_database],
+    )
+
+    select_database.change(
+        get_table_names,
+        inputs=[select_database, databases],
+        outputs=select_table,
+    )
+
     file.upload(
         upload_file,
         inputs=file,
         outputs=select_file,
     )
 
-    add.click(
+    add_vs.click(
         add_vector_store,
         inputs=[select_file, select_model, models, chunk_size, chunk_overlap],
         outputs=status_display,
@@ -369,6 +507,10 @@ with gr.Blocks(css=customCSS, theme=small_and_beautiful_theme) as demo:
             memory_k,
             is_kgqa,
             single_turn,
+            is_dbqa,
+            select_database,
+            select_table,
+            databases,
         ],
         outputs=[chatbot, history, status_display],
         show_progress=True,
@@ -387,6 +529,10 @@ with gr.Blocks(css=customCSS, theme=small_and_beautiful_theme) as demo:
             memory_k,
             is_kgqa,
             single_turn,
+            is_dbqa,
+            select_database,
+            select_table,
+            databases,
         ],
         outputs=[chatbot, history, status_display],
         show_progress=True,
