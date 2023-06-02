@@ -68,6 +68,8 @@ def upload_file(file):
     if file is not None:
         filename = os.path.basename(file.name)
         shutil.move(file.name, f"doc_store/{filename}")
+        file_list = get_file_list()
+        file_list.remove(filename)
         file_list.insert(0, filename)
         return gr.Dropdown.update(choices=file_list, value=filename)
 
