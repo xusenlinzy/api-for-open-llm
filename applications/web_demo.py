@@ -354,7 +354,6 @@ with gr.Blocks(css=customCSS, theme=small_and_beautiful_theme) as demo:
                             value=[m[0] for m in models.value.items()][0] if models.value else None,
                             label="选择模型",
                             interactive=True,
-                            elem_classes="llm-selector",
                         )
 
                     with gr.Tab(label="知识库"):
@@ -369,7 +368,6 @@ with gr.Blocks(css=customCSS, theme=small_and_beautiful_theme) as demo:
                             label="选择文件",
                             interactive=True,
                             value=file_list[0] if len(file_list) > 0 else None,
-                            elem_classes="llm-selector",
                         )
                         file = gr.File(
                             label="上传文件",
@@ -411,9 +409,9 @@ with gr.Blocks(css=customCSS, theme=small_and_beautiful_theme) as demo:
                             databases = gr.Json(
                                 value={
                                     "complaint_database": {
-                                        "user": "live_monitor",
-                                        "password": "live_monitor",
-                                        "host": "192.168.0.13",
+                                        "user": "dnect_test",
+                                        "password": "Dnect158",
+                                        "host": "192.168.0.158",
                                         "port": 3306
                                     }
                                 }
@@ -423,13 +421,11 @@ with gr.Blocks(css=customCSS, theme=small_and_beautiful_theme) as demo:
                             value=[d[0] for d in databases.value.items()][0] if databases.value else None,
                             interactive=True,
                             label="选择数据库",
-                            elem_classes="llm-selector",
                         )
                         select_table = gr.Dropdown(
                             label="选择表",
                             interactive=True,
                             multiselect=True,
-                            elem_classes="llm-selector",
                         )
                         is_dbqa = gr.Checkbox(
                             label="使用数据库问答",
@@ -456,7 +452,7 @@ with gr.Blocks(css=customCSS, theme=small_and_beautiful_theme) as demo:
                         )
                         max_tokens = gr.Slider(
                             minimum=0,
-                            maximum=512,
+                            maximum=2048,
                             value=512,
                             step=8,
                             interactive=True,
@@ -504,7 +500,7 @@ with gr.Blocks(css=customCSS, theme=small_and_beautiful_theme) as demo:
         outputs=[db_user, db_password, db_host, db_port, db_name, databases, select_database],
     )
 
-    select_database.change(
+    select_database.select(
         get_table_names,
         inputs=[select_database, databases],
         outputs=select_table,

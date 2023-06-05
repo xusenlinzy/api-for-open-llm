@@ -33,10 +33,6 @@ with open("assets/custom.js", "r", encoding="utf-8") as f, open(
 def reload_javascript():
     print("Reloading javascript...")
     js = f"<script>{customJS}</script><script>{kelpyCodos}</script>"
-    js += """\
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-MML-AM_CHTML"></script>
-        <script type="text/x-mathjax-config">MathJax.Hub.Config({skipStartupTypeset: false, tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']],displayMath: [['$$','$$'], ['\\[','\\]']]}});</script>
-    """
 
     def template_response(*args, **kwargs):
         res = GradioTemplateResponseOriginal(*args, **kwargs)
