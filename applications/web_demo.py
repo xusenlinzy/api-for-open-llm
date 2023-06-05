@@ -70,7 +70,7 @@ file_list = get_file_list()
 def upload_file(file):
     """ 上传文件 """
     if not os.path.exists("doc_store"):
-        os.mkdir("docs")
+        os.mkdir("doc_store")
 
     if file is not None:
         filename = os.path.basename(file.name)
@@ -132,8 +132,8 @@ def get_table_names(select_database, databases):
 def get_sql_result(x, con):
     q = r"sql\n(.+?);\n"
     sql = re.findall(q, x, re.DOTALL)[0] + ";"
-    df = pd.read_sql(sql, con=con).iloc[:10, :]
-    return df.to_markdown(numalign="center", stralign="center")
+    df = pd.read_sql(sql, con=con).iloc[:50, :]
+    return df
 
 
 @on_exception(expo, openai.error.RateLimitError, max_tries=5)
@@ -163,7 +163,7 @@ def predict(
     set_openai_env(api_base)
 
     if text == "":
-        yield chatbot, history, "Empty context."
+        yield chatbot, history, "Empty context.", None
         return
 
     if history is None:
@@ -227,26 +227,22 @@ def predict(
             [text, convert_to_markdown(x)]
         ], history + [[text, x]]
 
-        yield a, b, "Generating..."
+        yield a, b, "Generating...", None
 
     if shared_state.interrupted:
         shared_state.recover()
         try:
-            yield a, b, "Stop: Success"
+            yield a, b, "Stop: Success", None
             return
         except:
             pass
 
-    if is_dbqa:
-        try:
-            res = get_sql_result(x, con)
-            a[-1][-1] += "\n\n" + convert_to_markdown(res)
-            b[-1][-1] += "\n\n" + convert_to_markdown(res)
-        except:
-            pass
-
     try:
-        yield a, b, "Generate: Success"
+        if is_dbqa:
+            df = get_sql_result(x, con)
+            yield a, b, "Generate: Success", df
+        else:
+            yield a, b, "Generate: Success", None
     except:
         pass
 
@@ -309,157 +305,190 @@ with gr.Blocks(css=customCSS, theme=small_and_beautiful_theme) as demo:
 
     gr.Markdown(description_top)
 
-    with gr.Row().style(equal_height=True):
-        with gr.Column(scale=5):
-            with gr.Row():
-                chatbot = gr.Chatbot(elem_id="chuanhu_chatbot").style(height="100%")
-            with gr.Row():
-                with gr.Column(scale=12):
-                    user_input = gr.Textbox(
-                        show_label=False, placeholder="Enter text"
-                    ).style(container=False)
-                with gr.Column(min_width=70, scale=1):
-                    submitBtn = gr.Button("发送")
-                with gr.Column(min_width=70, scale=1):
-                    cancelBtn = gr.Button("停止")
-            with gr.Row():
-                emptyBtn = gr.Button(
-                    "🧹 新的对话",
-                )
-                retryBtn = gr.Button("🔄 重新生成")
-                delLastBtn = gr.Button("🗑️ 删除最旧对话")
+    with gr.Tab("Generate"):
+        with gr.Row().style(equal_height=True):
+            with gr.Column(scale=5):
+                with gr.Row():
+                    chatbot = gr.Chatbot(elem_id="chuanhu_chatbot").style(height="100%")
+                with gr.Row():
+                    with gr.Column(scale=12):
+                        user_input = gr.Textbox(
+                            show_label=False, placeholder="Enter text"
+                        ).style(container=False)
+                    with gr.Column(min_width=70, scale=1):
+                        submitBtn = gr.Button("发送")
+                    with gr.Column(min_width=70, scale=1):
+                        cancelBtn = gr.Button("停止")
+                with gr.Row():
+                    emptyBtn = gr.Button(
+                        "🧹 新的对话",
+                    )
+                    retryBtn = gr.Button("🔄 重新生成")
+                    delLastBtn = gr.Button("🗑️ 删除最旧对话")
 
-        with gr.Column():
-            with gr.Column(min_width=50, scale=1):
-                with gr.Tab(label="模型"):
-                    model_name = gr.Textbox(
-                        placeholder="chatglm",
-                        label="模型名称",
-                    )
-                    api_base = gr.Textbox(
-                        placeholder="https://0.0.0.0:80/v1",
-                        label="模型接口地址",
-                    )
-                    add_model = gr.Button("添加模型")
-                    with gr.Accordion(open=False, label="所有模型配置"):
-                        models = gr.Json()
-                    single_turn = gr.Checkbox(label="使用单轮对话", value=False)
-                    select_model = gr.Dropdown(
-                        choices=[m[0] for m in models.value.items()] if models.value else [],
-                        value=[m[0] for m in models.value.items()][0] if models.value else None,
-                        label="选择模型",
-                        interactive=True,
-                    )
+            with gr.Column():
+                with gr.Column(min_width=50, scale=1):
+                    with gr.Tab(label="模型"):
+                        model_name = gr.Textbox(
+                            placeholder="chatglm",
+                            label="模型名称",
+                        )
+                        api_base = gr.Textbox(
+                            placeholder="https://0.0.0.0:80/v1",
+                            label="模型接口地址",
+                        )
+                        add_model = gr.Button(
+                            value="\U0001F31F 添加模型",
+                        )
+                        with gr.Accordion(open=False, label="所有模型配置"):
+                            # models = gr.Json()
+                            models = gr.Json(
+                                value={
+                                    "chatglm": "http://192.168.0.59:80/v1",
+                                    "moss": "http://192.168.0.58:80/v1"
+                                }
+                            )
+                        single_turn = gr.Checkbox(label="使用单轮对话", value=False)
+                        select_model = gr.Dropdown(
+                            choices=[m[0] for m in models.value.items()] if models.value else [],
+                            value=[m[0] for m in models.value.items()][0] if models.value else None,
+                            label="选择模型",
+                            interactive=True,
+                            elem_classes="llm-selector",
+                        )
 
-                with gr.Tab(label="知识库"):
-                    is_kgqa = gr.Checkbox(
-                        label="使用知识库问答",
-                        value=False,
-                        interactive=True,
-                    )
-                    gr.Markdown("""**基于本地知识库生成更加准确的回答！**""")
-                    select_file = gr.Dropdown(
-                        choices=file_list,
-                        label="选择文件",
-                        interactive=True,
-                        value=file_list[0] if len(file_list) > 0 else None
-                    )
-                    file = gr.File(
-                        label="上传文件",
-                        visible=True,
-                        file_types=['.txt', '.md', '.docx', '.pdf']
-                    )
-                    add_vs = gr.Button(value="添加到知识库")
+                    with gr.Tab(label="知识库"):
+                        is_kgqa = gr.Checkbox(
+                            label="使用知识库问答",
+                            value=False,
+                            interactive=True,
+                        )
+                        gr.Markdown("""**基于本地知识库生成更加准确的回答！**""")
+                        select_file = gr.Dropdown(
+                            choices=file_list,
+                            label="选择文件",
+                            interactive=True,
+                            value=file_list[0] if len(file_list) > 0 else None,
+                            elem_classes="llm-selector",
+                        )
+                        file = gr.File(
+                            label="上传文件",
+                            visible=True,
+                            file_types=['.txt', '.md', '.docx', '.pdf']
+                        )
+                        add_vs = gr.Button(value="📖 添加到知识库")
 
-                with gr.Tab(label="数据库"):
-                    with gr.Accordion(open=False, label="数据库配置"):
-                        db_user = gr.Textbox(
-                            placeholder="root",
-                            label="用户名",
-                        )
-                        db_password = gr.Textbox(
-                            placeholder="password",
-                            label="密码",
-                            type="password"
-                        )
-                        db_host = gr.Textbox(
-                            placeholder="0.0.0.0",
-                            label="主机",
-                        )
-                        db_port = gr.Textbox(
-                            placeholder="3306",
-                            label="端口",
-                        )
-                        db_name = gr.Textbox(
-                            placeholder="test",
-                            label="数据库名称",
-                        )
-                    add_database = gr.Button("添加数据库")
+                    with gr.Tab(label="数据库"):
+                        with gr.Accordion(open=False, label="数据库配置"):
+                            with gr.Row():
+                                db_name = gr.Textbox(
+                                    placeholder="test",
+                                    label="数据库名称",
+                                )
+                            with gr.Row():
+                                db_user = gr.Textbox(
+                                    placeholder="root",
+                                    label="用户名",
+                                )
+                                db_password = gr.Textbox(
+                                    placeholder="password",
+                                    label="密码",
+                                    type="password"
+                                )
+                            with gr.Row():
+                                db_host = gr.Textbox(
+                                    placeholder="0.0.0.0",
+                                    label="主机",
+                                )
+                                db_port = gr.Textbox(
+                                    placeholder="3306",
+                                    label="端口",
+                                )
+                        add_database = gr.Button("🐬 添加数据库")
 
-                    with gr.Accordion(open=False, label="所有数据库配置"):
-                        databases = gr.Json()
-                    select_database = gr.Dropdown(
-                        choices=[d[0] for d in databases.value.items()] if databases.value else [],
-                        value=[d[0] for d in databases.value.items()][0] if databases.value else None,
-                        interactive=True,
-                        label="选择数据库"
-                    )
-                    select_table = gr.Dropdown(label="选择表", interactive=True, multiselect=True)
-                    is_dbqa = gr.Checkbox(
-                        label="使用数据库问答",
-                        value=False,
-                        interactive=True,
-                    )
+                        with gr.Accordion(open=False, label="所有数据库配置"):
+                            # databases = gr.Json()
+                            databases = gr.Json(
+                                value={
+                                    "complaint_database": {
+                                        "user": "live_monitor",
+                                        "password": "live_monitor",
+                                        "host": "192.168.0.13",
+                                        "port": 3306
+                                    }
+                                }
+                            )
+                        select_database = gr.Dropdown(
+                            choices=[d[0] for d in databases.value.items()] if databases.value else [],
+                            value=[d[0] for d in databases.value.items()][0] if databases.value else None,
+                            interactive=True,
+                            label="选择数据库",
+                            elem_classes="llm-selector",
+                        )
+                        select_table = gr.Dropdown(
+                            label="选择表",
+                            interactive=True,
+                            multiselect=True,
+                            elem_classes="llm-selector",
+                        )
+                        is_dbqa = gr.Checkbox(
+                            label="使用数据库问答",
+                            value=False,
+                            interactive=True,
+                        )
 
-                with gr.Tab(label="参数"):
-                    top_p = gr.Slider(
-                        minimum=-0,
-                        maximum=1.0,
-                        value=0.95,
-                        step=0.05,
-                        interactive=True,
-                        label="Top-p",
-                    )
-                    temperature = gr.Slider(
-                        minimum=0.1,
-                        maximum=2.0,
-                        value=1,
-                        step=0.1,
-                        interactive=True,
-                        label="Temperature",
-                    )
-                    max_tokens = gr.Slider(
-                        minimum=0,
-                        maximum=512,
-                        value=512,
-                        step=8,
-                        interactive=True,
-                        label="Max Generation Tokens",
-                    )
-                    memory_k = gr.Slider(
-                        minimum=0,
-                        maximum=10,
-                        value=5,
-                        step=1,
-                        interactive=True,
-                        label="Max Memory Window Size",
-                    )
-                    chunk_size = gr.Slider(
-                        minimum=100,
-                        maximum=1000,
-                        value=200,
-                        step=100,
-                        interactive=True,
-                        label="Chunk Size",
-                    )
-                    chunk_overlap = gr.Slider(
-                        minimum=0,
-                        maximum=100,
-                        value=0,
-                        step=10,
-                        interactive=True,
-                        label="Chunk Overlap",
-                    )
+                    with gr.Tab(label="参数"):
+                        top_p = gr.Slider(
+                            minimum=-0,
+                            maximum=1.0,
+                            value=0.95,
+                            step=0.05,
+                            interactive=True,
+                            label="Top-p",
+                        )
+                        temperature = gr.Slider(
+                            minimum=0.1,
+                            maximum=2.0,
+                            value=1,
+                            step=0.1,
+                            interactive=True,
+                            label="Temperature",
+                        )
+                        max_tokens = gr.Slider(
+                            minimum=0,
+                            maximum=512,
+                            value=512,
+                            step=8,
+                            interactive=True,
+                            label="Max Generation Tokens",
+                        )
+                        memory_k = gr.Slider(
+                            minimum=0,
+                            maximum=10,
+                            value=5,
+                            step=1,
+                            interactive=True,
+                            label="Max Memory Window Size",
+                        )
+                        chunk_size = gr.Slider(
+                            minimum=100,
+                            maximum=1000,
+                            value=200,
+                            step=100,
+                            interactive=True,
+                            label="Chunk Size",
+                        )
+                        chunk_overlap = gr.Slider(
+                            minimum=0,
+                            maximum=100,
+                            value=0,
+                            step=10,
+                            interactive=True,
+                            label="Chunk Overlap",
+                        )
+
+    with gr.Tab(label="Query Result"), gr.Column():
+        sql_res = gr.Dataframe(max_rows=10)
 
     gr.Markdown(description)
 
@@ -512,7 +541,7 @@ with gr.Blocks(css=customCSS, theme=small_and_beautiful_theme) as demo:
             select_table,
             databases,
         ],
-        outputs=[chatbot, history, status_display],
+        outputs=[chatbot, history, status_display, sql_res],
         show_progress=True,
     )
     retry_args = dict(
@@ -534,7 +563,7 @@ with gr.Blocks(css=customCSS, theme=small_and_beautiful_theme) as demo:
             select_table,
             databases,
         ],
-        outputs=[chatbot, history, status_display],
+        outputs=[chatbot, history, status_display, sql_res],
         show_progress=True,
     )
 
