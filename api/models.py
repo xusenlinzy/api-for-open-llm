@@ -2,6 +2,7 @@ import warnings
 from typing import Optional
 
 import torch
+from loguru import logger
 from peft import PeftModel
 from transformers import (
     AutoModel,
@@ -73,7 +74,7 @@ class BaseModelAdapter:
 
         model_kwargs = self.model_kwargs
         if device == "cpu":
-            model_kwargs["torch_dtype"] = torch.float32
+            model_kwargs["torch_dtype"] = None
         else:
             if "torch_dtype" not in model_kwargs:
                 model_kwargs["torch_dtype"] = torch.float16
@@ -114,6 +115,9 @@ class BaseModelAdapter:
                 **model_kwargs
             )
 
+        if device == "cpu":
+            model = model.float()
+
         # post process for special tokens
         tokenizer = self.post_tokenizer(tokenizer)
         is_chatglm = "chatglm" in str(type(model))
@@ -122,12 +126,12 @@ class BaseModelAdapter:
             if not is_chatglm:
                 model_vocab_size = model.get_input_embeddings().weight.size(0)
                 tokenzier_vocab_size = len(tokenizer)
-                print(f"Vocab of the base model: {model_vocab_size}")
-                print(f"Vocab of the tokenizer: {tokenzier_vocab_size}")
+                logger.info(f"Vocab of the base model: {model_vocab_size}")
+                logger.info(f"Vocab of the tokenizer: {tokenzier_vocab_size}")
 
                 if model_vocab_size != tokenzier_vocab_size:
                     assert tokenzier_vocab_size > model_vocab_size
-                    print("Resize model embeddings to fit tokenizer")
+                    logger.info("Resize model embeddings to fit tokenizer")
                     model.resize_token_embeddings(tokenzier_vocab_size)
 
             model = self.load_adapter_model(model, adapter_model, model_kwargs)
