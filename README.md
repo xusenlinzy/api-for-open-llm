@@ -79,6 +79,8 @@ docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=chatglm \
 
 + `embedding_name`（可选项）: 嵌入模型的文件所在路径
 
+更多模型的启动命令详见 [SCRIPT.md](./SCRIPT.md)
+
 ### 本地启动
 
 安装 `pytorch` 环境

@@ -362,8 +362,8 @@ async def create_embeddings(request: EmbeddingsRequest, model_name: str = None):
 
     data, token_num = [], 0
     batches = [
-        inputs[i: min(i + 4, len(inputs))]
-        for i in range(0, len(inputs), 4)
+        inputs[i: min(i + 1024, len(inputs))]
+        for i in range(0, len(inputs), 1024)
     ]
     for num_batch, batch in enumerate(batches):
         payload = {
