@@ -91,3 +91,20 @@ docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=guanaco \
     --load_in_4bit \
     --embedding_name GanymedeNil/text2vec-large-chinese
 ```
+
+### Tiger
+
+```shell
+docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=tiger \
+    --ulimit memlock=-1 --ulimit stack=67108864 \
+    -v `pwd`:/workspace \
+    llm-api:pytorch \
+    python api/app.py \
+    --port 80 \
+    --allow-credentials \
+    --model_name tiger \
+    --model_path TigerResearch/tigerbot-7b-sft \
+    --device cuda \
+    --load_in_4bit \
+    --embedding_name GanymedeNil/text2vec-large-chinese
+```

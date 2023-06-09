@@ -4,6 +4,7 @@ from typing import Optional
 import torch
 from loguru import logger
 from peft import PeftModel
+from tqdm import tqdm
 from transformers import (
     AutoModel,
     AutoTokenizer,
@@ -123,18 +124,7 @@ class BaseModelAdapter:
         is_chatglm = "chatglm" in str(type(model))
 
         if adapter_model is not None:
-            if not is_chatglm:
-                model_vocab_size = model.get_input_embeddings().weight.size(0)
-                tokenzier_vocab_size = len(tokenizer)
-                logger.info(f"Vocab of the base model: {model_vocab_size}")
-                logger.info(f"Vocab of the tokenizer: {tokenzier_vocab_size}")
-
-                if model_vocab_size != tokenzier_vocab_size:
-                    assert tokenzier_vocab_size > model_vocab_size
-                    logger.info("Resize model embeddings to fit tokenizer")
-                    model.resize_token_embeddings(tokenzier_vocab_size)
-
-            model = self.load_adapter_model(model, adapter_model, model_kwargs)
+            model = self.load_adapter_model(model, tokenizer, adapter_model, is_chatglm, model_kwargs)
 
         if is_chatglm:
             quantize = kwargs.get("quantize", None)
@@ -148,7 +138,18 @@ class BaseModelAdapter:
 
         return model, tokenizer
 
-    def load_adapter_model(self, model, adapter_model, model_kwargs):
+    def load_adapter_model(self, model, tokenizer, adapter_model, is_chatglm, model_kwargs):
+        if not is_chatglm:
+            model_vocab_size = model.get_input_embeddings().weight.size(0)
+            tokenzier_vocab_size = len(tokenizer)
+            logger.info(f"Vocab of the base model: {model_vocab_size}")
+            logger.info(f"Vocab of the tokenizer: {tokenzier_vocab_size}")
+
+            if model_vocab_size != tokenzier_vocab_size:
+                assert tokenzier_vocab_size > model_vocab_size
+                logger.info("Resize model embeddings to fit tokenizer")
+                model.resize_token_embeddings(tokenzier_vocab_size)
+
         return PeftModel.from_pretrained(
             model,
             adapter_model,
@@ -189,6 +190,15 @@ def load_model(
     **kwargs
 ):
     model_name = model_name.lower()
+
+    if "tiger" in model_name:
+        def skip(*args, **kwargs):
+            pass
+
+        torch.nn.init.kaiming_uniform_ = skip
+        torch.nn.init.uniform_ = skip
+        torch.nn.init.normal_ = skip
+
     adapter = get_model_adapter(model_name)
     model, tokenizer = adapter.load_model(
         model_name_or_path,
@@ -202,6 +212,8 @@ def load_model(
 
 
 class ChatglmModelAdapter(BaseModelAdapter):
+
+    """ https://github.com/THUDM/ChatGLM-6B """
 
     def match(self, model_name):
         return "chatglm" in model_name
@@ -225,6 +237,8 @@ class ChatglmModelAdapter(BaseModelAdapter):
 
 class LlamaModelAdapter(BaseModelAdapter):
 
+    """ https://github.com/project-baize/baize-chatbot """
+
     def match(self, model_name):
         return "alpaca" in model_name or "baize" in model_name or "guanaco" in model_name
 
@@ -240,6 +254,8 @@ class LlamaModelAdapter(BaseModelAdapter):
 
 
 class MossModelAdapter(BaseModelAdapter):
+
+    """ https://github.com/OpenLMLab/MOSS """
 
     def match(self, model_name):
         return "moss" in model_name
@@ -259,6 +275,8 @@ class MossModelAdapter(BaseModelAdapter):
 
 class PhoenixModelAdapter(BaseModelAdapter):
 
+    """ https://github.com/FreedomIntelligence/LLMZoo """
+
     def match(self, model_name):
         return "phoenix" in model_name
 
@@ -277,6 +295,8 @@ class PhoenixModelAdapter(BaseModelAdapter):
 
 class FireflyModelAdapter(BaseModelAdapter):
 
+    """ https://github.com/yangjianxin1/Firefly """
+
     def match(self, model_name):
         return "firefly" in model_name
 
@@ -293,10 +313,61 @@ class FireflyModelAdapter(BaseModelAdapter):
         return "YeungNLP/firefly-2b6"
 
 
+class YuLanChatModelAdapter(BaseModelAdapter):
+
+    """ https://github.com/RUC-GSAI/YuLan-Chat """
+
+    def match(self, model_name):
+        return "yulan" in model_name
+
+    def post_tokenizer(self, tokenizer):
+        tokenizer.bos_token = "<s>"
+        tokenizer.eos_token = "</s>"
+        tokenizer.unk_token = "<unk>"
+        return tokenizer
+
+    @property
+    def model_kwargs(self):
+        return {"low_cpu_mem_usage": True}
+
+    def load_adapter_model(self, model, tokenizer, adapter_model, is_chatglm, model_kwargs):
+        adapter_model = AutoModelForCausalLM.from_pretrained(
+            adapter_model, torch_dtype=torch.float16, low_cpu_mem_usage=True
+        )
+        if model.model.embed_tokens.weight.size(0) + 1 == adapter_model.model.embed_tokens.weight.size(0):
+            model.resize_token_embeddings(len(tokenizer))
+            model.model.embed_tokens.weight.data[-1, :] = 0
+
+        logger.info("Applying the delta")
+        for name, param in tqdm(model.state_dict().items(), desc="Applying delta"):
+            assert name in model.state_dict()
+            param.data += model.state_dict()[name]
+
+        return model
+
+
+class TigerModelAdapter(BaseModelAdapter):
+
+    """ https://github.com/TigerResearch/TigerBot """
+
+    def match(self, model_name):
+        return "tiger" in model_name
+
+    @property
+    def tokenizer_kwargs(self):
+        return {"use_fast": True}
+
+    @property
+    def default_model_name_or_path(self):
+        return "TigerResearch/tigerbot-7b-sft"
+
+
 register_model_adapter(ChatglmModelAdapter)
 register_model_adapter(LlamaModelAdapter)
 register_model_adapter(MossModelAdapter)
 register_model_adapter(PhoenixModelAdapter)
 register_model_adapter(FireflyModelAdapter)
+register_model_adapter(YuLanChatModelAdapter)
+register_model_adapter(TigerModelAdapter)
 
 register_model_adapter(BaseModelAdapter)

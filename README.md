@@ -44,6 +44,8 @@
 | [Phoenix](https://github.com/FreedomIntelligence/LLMZoo)              |  BLOOMZ  |    7B    |      multi       | [FreedomIntelligence/phoenix-inst-chat-7b](https://huggingface.co/FreedomIntelligence/phoenix-inst-chat-7b) |
 | [MOSS](https://github.com/OpenLMLab/MOSS)                             | CodeGen  |   16B    |      en, zh      |              [fnlp/moss-moon-003-sft-int4](https://huggingface.co/fnlp/moss-moon-003-sft-int4)              |
 | [Guanaco](https://github.com/artidoro/qlora/tree/main)                |  LLaMA   | 7/33/65B |        en        |           [timdettmers/guanaco-33b-merged](https://huggingface.co/timdettmers/guanaco-33b-merged)           |
+| [YuLan-Chat](https://github.com/RUC-GSAI/YuLan-Chat)                  |  LLaMA   |  13/65B  |      en, zh      |            [RUCAIBox/YuLan-Chat-13b-delta](https://huggingface.co/RUCAIBox/YuLan-Chat-13b-delta)            |
+| [TigerBot](https://github.com/TigerResearch/TigerBot)                 |  BLOOMZ  |  7/180B  |      en, zh      |            [TigerResearch/tigerbot-7b-sft](https://huggingface.co/TigerResearch/tigerbot-7b-sft)            |
 
 
 ## 🐳 环境配置

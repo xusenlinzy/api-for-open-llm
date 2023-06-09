@@ -76,7 +76,7 @@ class AlpacaPromptAdapter(BasePromptAdapter):
     stop = ["### Instruction", "### Response"]
 
     def match(self, model_name):
-        return "alpaca" in model_name
+        return "alpaca" in model_name or "tiger" in model_name
 
 
 class FireflyPromptAdapter(BasePromptAdapter):
@@ -116,13 +116,24 @@ class BellePromptAdapter(BasePromptAdapter):
 
 class GuanacoPromptAdapter(BasePromptAdapter):
 
-    system_prompt = "A chat between a curious human and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions."
+    system_prompt = "A chat between a curious human and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions.\n"
     user_prompt = "### Human: {}\n### Assistant: "
     assistant_prompt = "{}\n"
     stop = ["### Human", "### Assistant"]
 
     def match(self, model_name):
         return "guanaco" in model_name
+
+
+class YuLanChatPromptAdapter(BasePromptAdapter):
+
+    system_prompt = "The following is a conversation between a human and an AI assistant namely YuLan, developed by GSAI, Renmin University of China. The AI assistant gives helpful, detailed, and polite answers to the user's questions.\n\n"
+    user_prompt = "[|Human|]:{}\n[|AI|]:"
+    assistant_prompt = "{}\n"
+    stop = ["[|Human|]", "[|AI|]"]
+
+    def match(self, model_name):
+        return "yulan" in model_name
 
 
 register_prompt_adapter(MossPromptAdapter)
@@ -132,5 +143,6 @@ register_prompt_adapter(FireflyPromptAdapter)
 register_prompt_adapter(BaizePromptAdapter)
 register_prompt_adapter(BellePromptAdapter)
 register_prompt_adapter(GuanacoPromptAdapter)
+register_prompt_adapter(YuLanChatPromptAdapter)
 
 register_prompt_adapter(BasePromptAdapter)
