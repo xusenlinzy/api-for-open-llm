@@ -43,6 +43,24 @@ docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=chatglm \
     --embedding_name GanymedeNil/text2vec-large-chinese
 ```
 
+ptuing-v2:
+
+```shell
+docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=chatglm \
+    --ulimit memlock=-1 --ulimit stack=67108864 \
+    -v `pwd`:/workspace \
+    llm-api:pytorch \
+    python api/app.py \
+    --port 80 \
+    --allow-credentials \
+    --model_name chatglm \
+    --model_path THUDM/chatglm-6b \
+    --device cuda \
+    --adapter_model_path ptuing_v2_chekpint_dir \
+    --use_ptuning_v2 \
+    --embedding_name GanymedeNil/text2vec-large-chinese
+```
+
 ### MOSS
 
 ```shell

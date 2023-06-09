@@ -422,7 +422,7 @@ if __name__ == "__main__":
         '--model_path', '-m', type=str, help='model_name_or_path', default=None
     )
     parser.add_argument(
-        '--lora_model_path', '-lora', type=str, help='lora model_name_or_path', default=None
+        '--adapter_model_path', type=str, help='lora or ptuing-v2 model_name_or_path', default=None
     )
     parser.add_argument(
         "--device", type=str, choices=["cpu", "cuda"], default="cuda", help="The device type",
@@ -441,6 +441,7 @@ if __name__ == "__main__":
     )
     parser.add_argument('--load_in_8bit', action='store_true')
     parser.add_argument('--load_in_4bit', action='store_true')
+    parser.add_argument("--use_ptuning_v2", action="store_true")
     parser.add_argument("--stream_interval", type=int, default=2)
     args = parser.parse_args()
 
@@ -464,13 +465,15 @@ if __name__ == "__main__":
     model, tokenizer = load_model(
         args.model_name,
         model_name_or_path=args.model_path,
-        adapter_model=args.lora_model_path,
+        adapter_model=args.adapter_model_path,
         quantize=int(args.quantize),
         device=args.device,
         num_gpus=args.num_gpus,
         load_in_8bit=args.load_in_8bit,
         load_in_4bit=args.load_in_4bit,
+        use_ptuning_v2=args.use_ptuning_v2,
     )
+
     model_server = ModelServer(
         model,
         tokenizer,

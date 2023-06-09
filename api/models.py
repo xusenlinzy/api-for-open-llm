@@ -1,3 +1,5 @@
+import json
+import os
 import warnings
 from typing import Optional
 
@@ -6,6 +8,7 @@ from loguru import logger
 from peft import PeftModel
 from tqdm import tqdm
 from transformers import (
+    AutoConfig,
     AutoModel,
     AutoTokenizer,
     AutoModelForCausalLM,
@@ -72,8 +75,19 @@ class BaseModelAdapter:
         num_gpus = kwargs.get("num_gpus", 1)
         load_in_8bit = kwargs.get("load_in_8bit", False)
         load_in_4bit = kwargs.get("load_in_4bit", False)
+        use_ptuning_v2 = kwargs.get("use_ptuning_v2", False)
 
         model_kwargs = self.model_kwargs
+        if use_ptuning_v2 and adapter_model:
+            config = AutoConfig.from_pretrained(model_name_or_path, **model_kwargs)
+            prefix_encoder_file = open(f'{adapter_model}/config.json', 'r')
+            prefix_encoder_config = json.loads(prefix_encoder_file.read())
+            prefix_encoder_file.close()
+
+            config.pre_seq_len = prefix_encoder_config['pre_seq_len']
+            config.prefix_projection = prefix_encoder_config['prefix_projection']
+            model_kwargs["config"] = config
+
         if device == "cpu":
             model_kwargs["torch_dtype"] = None
         else:
@@ -124,7 +138,7 @@ class BaseModelAdapter:
         is_chatglm = "chatglm" in str(type(model))
 
         if adapter_model is not None:
-            model = self.load_adapter_model(model, tokenizer, adapter_model, is_chatglm, model_kwargs)
+            model = self.load_adapter_model(model, tokenizer, adapter_model, is_chatglm, model_kwargs, **kwargs)
 
         if is_chatglm:
             quantize = kwargs.get("quantize", None)
@@ -138,8 +152,9 @@ class BaseModelAdapter:
 
         return model, tokenizer
 
-    def load_adapter_model(self, model, tokenizer, adapter_model, is_chatglm, model_kwargs):
-        if not is_chatglm:
+    def load_adapter_model(self, model, tokenizer, adapter_model, is_chatglm, model_kwargs, **kwargs):
+        use_ptuning_v2 = kwargs.get("use_ptuning_v2", False)
+        if not is_chatglm and adapter_model:
             model_vocab_size = model.get_input_embeddings().weight.size(0)
             tokenzier_vocab_size = len(tokenizer)
             logger.info(f"Vocab of the base model: {model_vocab_size}")
@@ -150,11 +165,22 @@ class BaseModelAdapter:
                 logger.info("Resize model embeddings to fit tokenizer")
                 model.resize_token_embeddings(tokenzier_vocab_size)
 
-        return PeftModel.from_pretrained(
-            model,
-            adapter_model,
-            torch_dtype=model_kwargs.get("torch_dtype", torch.float16),
-        )
+        if use_ptuning_v2:
+            prefix_state_dict = torch.load(os.path.join(adapter_model, "pytorch_model.bin"))
+            new_prefix_state_dict = {}
+            for k, v in prefix_state_dict.items():
+                if k.startswith("transformer.prefix_encoder."):
+                    new_prefix_state_dict[k[len("transformer.prefix_encoder."):]] = v
+            model.transformer.prefix_encoder.load_state_dict(new_prefix_state_dict)
+            model.transformer.prefix_encoder.float()
+        else:
+            model = PeftModel.from_pretrained(
+                model,
+                adapter_model,
+                torch_dtype=model_kwargs.get("torch_dtype", torch.float16),
+            )
+
+        return model
 
     def post_tokenizer(self, tokenizer):
         return tokenizer
@@ -330,7 +356,7 @@ class YuLanChatModelAdapter(BaseModelAdapter):
     def model_kwargs(self):
         return {"low_cpu_mem_usage": True}
 
-    def load_adapter_model(self, model, tokenizer, adapter_model, is_chatglm, model_kwargs):
+    def load_adapter_model(self, model, tokenizer, adapter_model, is_chatglm, model_kwargs, **kwargs):
         adapter_model = AutoModelForCausalLM.from_pretrained(
             adapter_model, torch_dtype=torch.float16, low_cpu_mem_usage=True
         )
