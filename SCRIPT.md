@@ -14,7 +14,7 @@ docker build -t llm-api:pytorch .
 
 + `device`: 是否使用 `GPU`，可选值为 `cuda` 和 `cpu`，默认值为 `cuda`
 
-+ `lora_model_path`（可选项）: `lora` 模型文件所在路径
++ `adapter_model_path`（可选项）: `lora` 或 `ptuing_v2` 模型文件所在路径
 
 + `embedding_name`（可选项）: 嵌入模型的文件所在路径
 
@@ -23,6 +23,8 @@ docker build -t llm-api:pytorch .
 + `load_in_8bit`（可选项）: 使用模型 `8bit` 量化
 
 + `load_in_4bit`（可选项）: 使用模型 `4bit` 量化
+
++ `use_ptuning_v2`（可选项）: 使用 `ptuning_v2` 加载模型
 
 + `stream_interval`（可选项）: 单词流式输出的 `token` 数量
 
