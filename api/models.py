@@ -266,7 +266,7 @@ class LlamaModelAdapter(BaseModelAdapter):
     """ https://github.com/project-baize/baize-chatbot """
 
     def match(self, model_name):
-        return "alpaca" in model_name or "baize" in model_name or "guanaco" in model_name
+        return "alpaca" in model_name or "baize" in model_name or "guanaco" in model_name or "openbuddy-llama" in model_name
 
     def post_tokenizer(self, tokenizer):
         tokenizer.bos_token = "<s>"
@@ -372,7 +372,7 @@ class YuLanChatModelAdapter(BaseModelAdapter):
         return model
 
 
-class TigerModelAdapter(BaseModelAdapter):
+class TigerBotModelAdapter(BaseModelAdapter):
 
     """ https://github.com/TigerResearch/TigerBot """
 
@@ -388,12 +388,29 @@ class TigerModelAdapter(BaseModelAdapter):
         return "TigerResearch/tigerbot-7b-sft"
 
 
+class OpenBuddyFalconModelAdapter(BaseModelAdapter):
+
+    """ https://github.com/OpenBuddy/OpenBuddy """
+
+    def match(self, model_name):
+        return "openbuddy-falcon" in model_name
+
+    @property
+    def model_kwargs(self):
+        return {"trust_remote_code": True}
+
+    @property
+    def default_model_name_or_path(self):
+        return "OpenBuddy/openbuddy-falcon-7b-v5-fp16"
+
+
 register_model_adapter(ChatglmModelAdapter)
 register_model_adapter(LlamaModelAdapter)
 register_model_adapter(MossModelAdapter)
 register_model_adapter(PhoenixModelAdapter)
 register_model_adapter(FireflyModelAdapter)
 register_model_adapter(YuLanChatModelAdapter)
-register_model_adapter(TigerModelAdapter)
+register_model_adapter(TigerBotModelAdapter)
+register_model_adapter(OpenBuddyFalconModelAdapter)
 
 register_model_adapter(BaseModelAdapter)

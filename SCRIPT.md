@@ -126,3 +126,37 @@ docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=tiger \
     --load_in_4bit \
     --embedding_name GanymedeNil/text2vec-large-chinese
 ```
+
+### OpenBuddy
+
+LLaMA
+
+```shell
+docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=openbuddy-llama \
+    --ulimit memlock=-1 --ulimit stack=67108864 \
+    -v `pwd`:/workspace \
+    llm-api:pytorch \
+    python api/app.py \
+    --port 80 \
+    --allow-credentials \
+    --model_name openbuddy-llama \
+    --model_path OpenBuddy/openbuddy-llama-7b-v1.4-fp16 \
+    --device cuda \
+    --embedding_name GanymedeNil/text2vec-large-chinese
+```
+
+Falcon
+
+```shell
+docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=openbuddy-falcon \
+    --ulimit memlock=-1 --ulimit stack=67108864 \
+    -v `pwd`:/workspace \
+    llm-api:pytorch \
+    python api/app.py \
+    --port 80 \
+    --allow-credentials \
+    --model_name openbuddy-falcon \
+    --model_path OpenBuddy/openbuddy-falcon-7b-v5-fp16 \
+    --device cuda \
+    --embedding_name GanymedeNil/text2vec-large-chinese
+```

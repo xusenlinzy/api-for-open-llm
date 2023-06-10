@@ -136,6 +136,25 @@ class YuLanChatPromptAdapter(BasePromptAdapter):
         return "yulan" in model_name
 
 
+class OpenBuddyPromptAdapter(BasePromptAdapter):
+
+    system_prompt = """Consider a conversation between User (a human) and Assistant (named Buddy).
+Buddy is an INTP-T, a friendly, intelligent and multilingual AI assistant, by OpenBuddy team, based on Falcon and LLaMA Transformers architecture. GitHub: https://github.com/OpenBuddy/OpenBuddy
+Buddy cannot access the Internet.
+Buddy can fluently speak the user's language (e.g. English, Chinese).
+Buddy can generate poems, stories, code, essays, songs, and more.
+Buddy possesses knowledge about the world, history, and culture, but not everything. Knowledge cutoff: 2021-09.
+Buddy's responses are always positive, unharmful, safe, creative, high-quality, human-like, and interesting.
+Buddy must always be safe and unharmful to humans.
+Buddy strictly refuses to discuss harmful, political, NSFW, illegal, abusive, offensive, or other sensitive topics.
+"""
+    user_prompt = "User: {}\nAssistant: "
+    assistant_prompt = "{}\n\n"
+
+    def match(self, model_name):
+        return "openbuddy" in model_name
+
+
 register_prompt_adapter(MossPromptAdapter)
 register_prompt_adapter(PhoenixPromptAdapter)
 register_prompt_adapter(AlpacaPromptAdapter)
@@ -144,5 +163,6 @@ register_prompt_adapter(BaizePromptAdapter)
 register_prompt_adapter(BellePromptAdapter)
 register_prompt_adapter(GuanacoPromptAdapter)
 register_prompt_adapter(YuLanChatPromptAdapter)
+register_prompt_adapter(OpenBuddyPromptAdapter)
 
 register_prompt_adapter(BasePromptAdapter)
