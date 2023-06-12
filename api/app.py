@@ -380,7 +380,7 @@ async def create_embeddings(request: EmbeddingsRequest, model_name: str = None):
             {
                 "object": "embedding",
                 "embedding": emb,
-                "index": num_batch * 4 + i,
+                "index": num_batch * 1024 + i,
             }
             for i, emb in enumerate(embedding["embedding"])
         ]
