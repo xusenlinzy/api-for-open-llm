@@ -31,6 +31,13 @@
 
 ---
 
+## 📢 News 
+
++ 2023.6.12 使用 [m3e](https://huggingface.co/moka-ai/m3e-base) 中文嵌入模型（在中文文本分类和文本检索上都优于 `openai-ada-002`）
+
+
++ 2023.6.10 新增 [OpenBuddy](https://github.com/OpenBuddy/OpenBuddy) 仓库训练的中文模型
+
 ## 🐼 模型
 
 支持多种开源大模型
@@ -71,7 +78,7 @@ docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=chatglm \
     --allow-credentials \
     --model_name chatglm \
     --model_path THUDM/chatglm-6b \
-    --embedding_name GanymedeNil/text2vec-large-chinese
+    --embedding_name moka-ai/m3e-base
 ```
 
 主要参数含义：

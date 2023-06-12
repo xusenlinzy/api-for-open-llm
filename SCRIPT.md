@@ -42,7 +42,7 @@ docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=chatglm \
     --model_name chatglm \
     --model_path THUDM/chatglm-6b \
     --device cuda \
-    --embedding_name GanymedeNil/text2vec-large-chinese
+    --embedding_name moka-ai/m3e-base
 ```
 
 ptuing-v2:
@@ -60,7 +60,7 @@ docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=chatglm \
     --device cuda \
     --adapter_model_path ptuing_v2_chekpint_dir \
     --use_ptuning_v2 \
-    --embedding_name GanymedeNil/text2vec-large-chinese
+    --embedding_name moka-ai/m3e-base
 ```
 
 ### MOSS
@@ -76,7 +76,7 @@ docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=moss \
     --model_name moss \
     --model_path fnlp/moss-moon-003-sft-int4 \
     --device cuda \
-    --embedding_name GanymedeNil/text2vec-large-chinese
+    --embedding_name moka-ai/m3e-base
 ```
 
 ### Phoenix
@@ -92,7 +92,7 @@ docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=phoenix \
     --model_name phoenix \
     --model_path FreedomIntelligence/phoenix-inst-chat-7b \
     --device cuda \
-    --embedding_name GanymedeNil/text2vec-large-chinese
+    --embedding_name moka-ai/m3e-base
 ```
 
 ### Guanaco
@@ -109,7 +109,7 @@ docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=guanaco \
     --model_path timdettmers/guanaco-33b-merged \
     --device cuda \
     --load_in_4bit \
-    --embedding_name GanymedeNil/text2vec-large-chinese
+    --embedding_name moka-ai/m3e-base
 ```
 
 ### Tiger
@@ -126,7 +126,7 @@ docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=tiger \
     --model_path TigerResearch/tigerbot-7b-sft \
     --device cuda \
     --load_in_4bit \
-    --embedding_name GanymedeNil/text2vec-large-chinese
+    --embedding_name moka-ai/m3e-base
 ```
 
 ### OpenBuddy
@@ -144,7 +144,7 @@ docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=openbuddy-lla
     --model_name openbuddy-llama \
     --model_path OpenBuddy/openbuddy-llama-7b-v1.4-fp16 \
     --device cuda \
-    --embedding_name GanymedeNil/text2vec-large-chinese
+    --embedding_name moka-ai/m3e-base
 ```
 
 Falcon
@@ -160,5 +160,5 @@ docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=openbuddy-fal
     --model_name openbuddy-falcon \
     --model_path OpenBuddy/openbuddy-falcon-7b-v5-fp16 \
     --device cuda \
-    --embedding_name GanymedeNil/text2vec-large-chinese
+    --embedding_name moka-ai/m3e-base
 ```
