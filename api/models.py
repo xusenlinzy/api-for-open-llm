@@ -63,6 +63,7 @@ class BaseModelAdapter:
         """ Load model through transformers. """
         model_name_or_path = self.default_model_name_or_path if model_name_or_path is None else model_name_or_path
         tokenizer_kwargs = self.tokenizer_kwargs
+
         if adapter_model is not None:
             try:
                 tokenizer = self.tokenizer_class.from_pretrained(adapter_model, **tokenizer_kwargs)
@@ -88,9 +89,7 @@ class BaseModelAdapter:
             config.prefix_projection = prefix_encoder_config['prefix_projection']
             model_kwargs["config"] = config
 
-        if device == "cpu":
-            model_kwargs["torch_dtype"] = None
-        else:
+        if device == "cuda":
             if "torch_dtype" not in model_kwargs:
                 model_kwargs["torch_dtype"] = torch.float16
 
@@ -145,12 +144,19 @@ class BaseModelAdapter:
             if quantize and quantize != 16:
                 model = model.quantize(quantize)
 
-        if device != "cpu" and not load_in_4bit and not load_in_8bit and num_gpus == 1:
+        if device != "cpu" and not load_in_4bit and not load_in_8bit and num_gpus == 1 and "device_map" not in model_kwargs:
             model.to(device)
 
         model.eval()
 
         return model, tokenizer
+
+    def load_lora_model(self, model, adapter_model, model_kwargs):
+        return PeftModel.from_pretrained(
+            model,
+            adapter_model,
+            torch_dtype=model_kwargs.get("torch_dtype", torch.float16),
+        )
 
     def load_adapter_model(self, model, tokenizer, adapter_model, is_chatglm, model_kwargs, **kwargs):
         use_ptuning_v2 = kwargs.get("use_ptuning_v2", False)
@@ -174,11 +180,7 @@ class BaseModelAdapter:
             model.transformer.prefix_encoder.load_state_dict(new_prefix_state_dict)
             model.transformer.prefix_encoder.float()
         else:
-            model = PeftModel.from_pretrained(
-                model,
-                adapter_model,
-                torch_dtype=model_kwargs.get("torch_dtype", torch.float16),
-            )
+            model = self.load_lora_model(model, adapter_model, model_kwargs)
 
         return model
 
@@ -404,6 +406,36 @@ class OpenBuddyFalconModelAdapter(BaseModelAdapter):
         return "OpenBuddy/openbuddy-falcon-7b-v5-fp16"
 
 
+class AnimaModelAdapter(LlamaModelAdapter):
+
+    def match(self, model_name):
+        return "anima" in model_name
+
+    def load_lora_model(self, model, adapter_model, model_kwargs):
+        return PeftModel.from_pretrained(model, adapter_model)
+
+
+class BaiChuanModelAdapter(BaseModelAdapter):
+
+    def match(self, model_name):
+        return "baichuan" in model_name
+
+    def load_lora_model(self, model, adapter_model, model_kwargs):
+        return PeftModel.from_pretrained(model, adapter_model)
+
+    @property
+    def model_kwargs(self):
+        return {"trust_remote_code": True, "torch_dtype": torch.float32, "device_map": "auto"}
+
+    @property
+    def tokenizer_kwargs(self):
+        return {"trust_remote_code": True}
+
+    @property
+    def default_model_name_or_path(self):
+        return "baichuan-inc/baichuan-7B"
+
+
 register_model_adapter(ChatglmModelAdapter)
 register_model_adapter(LlamaModelAdapter)
 register_model_adapter(MossModelAdapter)
@@ -412,5 +444,7 @@ register_model_adapter(FireflyModelAdapter)
 register_model_adapter(YuLanChatModelAdapter)
 register_model_adapter(TigerBotModelAdapter)
 register_model_adapter(OpenBuddyFalconModelAdapter)
+register_model_adapter(AnimaModelAdapter)
+register_model_adapter(BaiChuanModelAdapter)
 
 register_model_adapter(BaseModelAdapter)

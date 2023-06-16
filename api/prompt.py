@@ -76,7 +76,7 @@ class AlpacaPromptAdapter(BasePromptAdapter):
     stop = ["### Instruction", "### Response"]
 
     def match(self, model_name):
-        return "alpaca" in model_name or "tiger" in model_name
+        return "alpaca" in model_name or "tiger" in model_name or "anima" in model_name
 
 
 class FireflyPromptAdapter(BasePromptAdapter):
@@ -155,6 +155,17 @@ Buddy strictly refuses to discuss harmful, political, NSFW, illegal, abusive, of
         return "openbuddy" in model_name
 
 
+class BaichuanPromptAdapter(BasePromptAdapter):
+
+    system_prompt = ""
+    user_prompt = "<human>:{}\n<bot>:"
+    assistant_prompt = "{}\n"
+    stop = ["<human>", "<bot>"]
+
+    def match(self, model_name):
+        return "baichuan" in model_name
+
+
 register_prompt_adapter(MossPromptAdapter)
 register_prompt_adapter(PhoenixPromptAdapter)
 register_prompt_adapter(AlpacaPromptAdapter)
@@ -164,5 +175,6 @@ register_prompt_adapter(BellePromptAdapter)
 register_prompt_adapter(GuanacoPromptAdapter)
 register_prompt_adapter(YuLanChatPromptAdapter)
 register_prompt_adapter(OpenBuddyPromptAdapter)
+register_prompt_adapter(BaichuanPromptAdapter)
 
 register_prompt_adapter(BasePromptAdapter)
