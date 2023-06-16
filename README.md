@@ -10,6 +10,19 @@
     <a href="https://github.com/xusenlinzy/api-for-open-llm"><img src="https://img.shields.io/badge/langurage-py-brightgreen?style=flat&color=blue"></a>
 </p>
 
+
+## 📢 News 
+
++ 2023.6.16 新增 [baichaun-7b](https://github.com/baichuan-inc/baichuan-7B) 模型，启动方式见 [SCRIPT](./SCRIPT.md)
+
+
++ 2023.6.12 使用 [m3e](https://huggingface.co/moka-ai/m3e-base) 中文嵌入模型（在中文文本分类和文本检索上都优于 `openai-ada-002`）
+
+
++ 2023.6.10 新增 [OpenBuddy](https://github.com/OpenBuddy/OpenBuddy) 仓库训练的中文模型
+
+---
+
 此项目为开源大模型的推理实现统一的后端接口，与 `OpenAI` 的响应保持一致，具有以下特性：
 
 + ✨ 以 `OpenAI ChatGPT API` 的方式调用各类开源大模型
@@ -29,18 +42,6 @@
 
 + 🚀 支持加载经过自行训练过的 `lora` 模型
 
-
-## 📢 News 
-
-+ 2023.6.16 新增 [baichaun-7b](https://github.com/baichuan-inc/baichuan-7B) 模型，启动方式见 [SCRIPT](./SCRIPT.md)
-
-
-+ 2023.6.12 使用 [m3e](https://huggingface.co/moka-ai/m3e-base) 中文嵌入模型（在中文文本分类和文本检索上都优于 `openai-ada-002`）
-
-
-+ 2023.6.10 新增 [OpenBuddy](https://github.com/OpenBuddy/OpenBuddy) 仓库训练的中文模型
-
----
 
 ## 🐼 模型
 
