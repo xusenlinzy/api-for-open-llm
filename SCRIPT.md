@@ -165,6 +165,8 @@ docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=openbuddy-fal
 
 ### Baichuan-7b
 
+使用半精度加载模型（大约需要14G显存）
+
 ```shell
 docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=baichuan \
     --ulimit memlock=-1 --ulimit stack=67108864 \
@@ -178,4 +180,12 @@ docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=baichuan \
     --adapter_model_path hiyouga/baichuan-7b-sft \
     --device cuda \
     --embedding_name moka-ai/m3e-base
+```
+
+如果想要使用全精度加载模型，需要修改 [api/model.py](./api/models.py) 第 426 行
+
+```python
+@property
+def model_kwargs(self):
+    return {"trust_remote_code": True, "device_map": "auto", "torch_dtype": torch.float32}
 ```

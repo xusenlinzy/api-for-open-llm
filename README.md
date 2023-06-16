@@ -21,7 +21,8 @@
 
 + 2023.6.10 新增 [OpenBuddy](https://github.com/OpenBuddy/OpenBuddy) 仓库训练的中文模型
 
----
+
+**主要特性**：
 
 此项目为开源大模型的推理实现统一的后端接口，与 `OpenAI` 的响应保持一致，具有以下特性：
 
