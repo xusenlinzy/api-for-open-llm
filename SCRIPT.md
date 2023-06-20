@@ -177,7 +177,7 @@ docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=baichuan \
     --allow-credentials \
     --model_name baichuan \
     --model_path baichuan-inc/baichuan-7B \
-    --adapter_model_path hiyouga/baichuan-7b-sft \
+    --adapter_model_path YeungNLP/firefly-baichuan-7b-qlora-sft \
     --device cuda \
     --embedding_name moka-ai/m3e-base
 ```

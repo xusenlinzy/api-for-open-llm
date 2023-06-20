@@ -81,12 +81,12 @@ class AlpacaPromptAdapter(BasePromptAdapter):
 
 class FireflyPromptAdapter(BasePromptAdapter):
 
-    system_prompt = "Below is an instruction that describes a task. Write a response that appropriately completes the request.\n\n"
-    user_prompt = "<s>{}</s></s>"
+    system_prompt = ""
+    user_prompt = "<s>{}</s>"
     assistant_prompt = "{}</s>"
 
     def match(self, model_name):
-        return "firefly" in model_name
+        return "firefly" in model_name or "baichuan" in model_name
 
 
 class BaizePromptAdapter(BasePromptAdapter):
@@ -155,17 +155,6 @@ Buddy strictly refuses to discuss harmful, political, NSFW, illegal, abusive, of
         return "openbuddy" in model_name
 
 
-class BaichuanPromptAdapter(BasePromptAdapter):
-
-    system_prompt = ""
-    user_prompt = "<human>:{}\n<bot>:"
-    assistant_prompt = "{}\n"
-    stop = ["<human>", "<bot>"]
-
-    def match(self, model_name):
-        return "baichuan" in model_name
-
-
 register_prompt_adapter(MossPromptAdapter)
 register_prompt_adapter(PhoenixPromptAdapter)
 register_prompt_adapter(AlpacaPromptAdapter)
@@ -175,6 +164,5 @@ register_prompt_adapter(BellePromptAdapter)
 register_prompt_adapter(GuanacoPromptAdapter)
 register_prompt_adapter(YuLanChatPromptAdapter)
 register_prompt_adapter(OpenBuddyPromptAdapter)
-register_prompt_adapter(BaichuanPromptAdapter)
 
 register_prompt_adapter(BasePromptAdapter)
