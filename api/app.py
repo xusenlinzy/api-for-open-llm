@@ -439,6 +439,9 @@ if __name__ == "__main__":
     parser.add_argument(
         '--embedding_name', help='embedding model name or path', type=str, default=None
     )
+    parser.add_argument(
+        '--context_len', help='context length for generation', type=int, default=2048
+    )
     parser.add_argument('--load_in_8bit', action='store_true')
     parser.add_argument('--load_in_4bit', action='store_true')
     parser.add_argument("--use_ptuning_v2", action="store_true")
@@ -479,6 +482,7 @@ if __name__ == "__main__":
         tokenizer,
         args.device,
         model_name=args.model_name,
+        context_len=args.context_len,
         stream_interval=args.stream_interval,
     )
 

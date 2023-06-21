@@ -10,21 +10,33 @@ docker build -t llm-api:pytorch .
 
 + `model_name`: 模型名称，如 `chatglm`、`phoenix`、`moss`等
 
+
 + `model_path`: 开源大模型的文件所在路径
+
 
 + `device`: 是否使用 `GPU`，可选值为 `cuda` 和 `cpu`，默认值为 `cuda`
 
+
 + `adapter_model_path`（可选项）: `lora` 或 `ptuing_v2` 模型文件所在路径
+
 
 + `embedding_name`（可选项）: 嵌入模型的文件所在路径
 
+
++ `context_len`（可选项）: 上下文长度，默认为 `2048`
+
+
 + `quantize`（可选项）: `chatglm` 模型的量化等级，可选项为 16、8、4
+
 
 + `load_in_8bit`（可选项）: 使用模型 `8bit` 量化
 
+
 + `load_in_4bit`（可选项）: 使用模型 `4bit` 量化
 
+
 + `use_ptuning_v2`（可选项）: 使用 `ptuning_v2` 加载模型
+
 
 + `stream_interval`（可选项）: 单词流式输出的 `token` 数量
 

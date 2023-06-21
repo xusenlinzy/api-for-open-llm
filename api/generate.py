@@ -295,6 +295,7 @@ class ModelServer:
         tokenizer,
         device,
         model_name,
+        context_len: Optional[int] = None,
         stream_interval: Optional[int] = 2,
     ):
         self.device = device
@@ -303,12 +304,15 @@ class ModelServer:
         self.model_name = model_name.lower()
         self.stream_interval = stream_interval
 
-        if hasattr(self.model.config, "max_sequence_length"):
-            self.context_len = self.model.config.max_sequence_length
-        elif hasattr(self.model.config, "max_position_embeddings"):
-            self.context_len = self.model.config.max_position_embeddings
+        if context_len is None:
+            if hasattr(self.model.config, "max_sequence_length"):
+                self.context_len = self.model.config.max_sequence_length
+            elif hasattr(self.model.config, "max_position_embeddings"):
+                self.context_len = self.model.config.max_position_embeddings
+            else:
+                self.context_len = 2048
         else:
-            self.context_len = 2048
+            self.context_len = context_len
 
         # generate_stream
         self.is_chatglm = "chatglm" in self.model_name
