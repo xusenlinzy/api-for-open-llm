@@ -43,6 +43,8 @@ docker build -t llm-api:pytorch .
 
 ### ChatGLM
 
+chatglm-6b:
+
 ```shell
 docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=chatglm \
     --ulimit memlock=-1 --ulimit stack=67108864 \
@@ -53,6 +55,22 @@ docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=chatglm \
     --allow-credentials \
     --model_name chatglm \
     --model_path THUDM/chatglm-6b \
+    --device cuda \
+    --embedding_name moka-ai/m3e-base
+```
+
+chatglm2-6b:
+
+```shell
+docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=chatglm \
+    --ulimit memlock=-1 --ulimit stack=67108864 \
+    -v `pwd`:/workspace \
+    llm-api:pytorch \
+    python api/app.py \
+    --port 80 \
+    --allow-credentials \
+    --model_name chatglm \
+    --model_path THUDM/chatglm2-6b \
     --device cuda \
     --embedding_name moka-ai/m3e-base
 ```

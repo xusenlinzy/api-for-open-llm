@@ -59,6 +59,7 @@ def chatglm_generate_stream(model, tokenizer, params, device, context_len=2048, 
     echo = params.get("echo", True)
 
     gen_kwargs = {
+        "max_length": context_len,
         "do_sample": True if temperature > 1e-5 else False,
         "top_p": top_p,
         "repetition_penalty": repetition_penalty,
