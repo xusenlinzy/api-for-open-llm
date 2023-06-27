@@ -1,6 +1,5 @@
 import json
 import os
-import warnings
 from typing import Optional
 
 import torch
@@ -95,7 +94,7 @@ class BaseModelAdapter:
 
             if num_gpus != 1:
                 model_kwargs["device_map"] = "auto"
-                model_kwargs["device_map"] = "sequential"  # This is important for not the same VRAM sizes
+                # model_kwargs["device_map"] = "sequential"  # This is important for not the same VRAM sizes
                 available_gpu_memory = get_gpu_memory(num_gpus)
                 model_kwargs["max_memory"] = {
                     i: str(int(available_gpu_memory[i] * 0.85)) + "GiB"
@@ -103,10 +102,6 @@ class BaseModelAdapter:
                 }
 
             if load_in_8bit or load_in_4bit:
-                if num_gpus != 1:
-                    warnings.warn(
-                        "8-bit/4-bit quantization is not supported for multi-gpu inference."
-                    )
                 model_kwargs["torch_dtype"] = None
                 model_kwargs["load_in_8bit"] = load_in_8bit
                 model_kwargs["load_in_4bit"] = load_in_4bit
@@ -122,6 +117,7 @@ class BaseModelAdapter:
                     bnb_4bit_use_double_quant=True,
                     bnb_4bit_quant_type='nf4'
                 ),
+                device_map="auto",
             )
         else:
             model = self.model_class.from_pretrained(
@@ -268,7 +264,7 @@ class LlamaModelAdapter(BaseModelAdapter):
     """ https://github.com/project-baize/baize-chatbot """
 
     def match(self, model_name):
-        return "alpaca" in model_name or "baize" in model_name or "guanaco" in model_name or "openbuddy-llama" in model_name
+        return "alpaca" in model_name or "baize" in model_name or "openbuddy-llama" in model_name
 
     def post_tokenizer(self, tokenizer):
         tokenizer.bos_token = "<s>"
@@ -436,6 +432,34 @@ class BaiChuanModelAdapter(BaseModelAdapter):
         return "baichuan-inc/baichuan-7B"
 
 
+class GuanacoModelAdapter(LlamaModelAdapter):
+
+    def match(self, model_name):
+        return "guanaco" in model_name
+
+    def load_model(self, model_name_or_path: Optional[str] = None, adapter_model: Optional[str] = None, **kwargs):
+        """ Load model through transformers. """
+        model_name_or_path = self.default_model_name_or_path if model_name_or_path is None else model_name_or_path
+        tokenizer_kwargs = self.tokenizer_kwargs
+        tokenizer = self.tokenizer_class.from_pretrained(model_name_or_path, **tokenizer_kwargs)
+
+        model = self.model_class.from_pretrained(
+            model_name_or_path,
+            torch_dtype=torch.bfloat16,
+            device_map="auto",
+            quantization_config=BitsAndBytesConfig(
+                load_in_4bit=True,
+                bnb_4bit_compute_dtype=torch.bfloat16,
+                bnb_4bit_use_double_quant=True,
+                bnb_4bit_quant_type='nf4'
+            ),
+        )
+
+        model.eval()
+
+        return model, self.post_tokenizer(tokenizer)
+
+
 register_model_adapter(ChatglmModelAdapter)
 register_model_adapter(LlamaModelAdapter)
 register_model_adapter(MossModelAdapter)
@@ -446,5 +470,6 @@ register_model_adapter(TigerBotModelAdapter)
 register_model_adapter(OpenBuddyFalconModelAdapter)
 register_model_adapter(AnimaModelAdapter)
 register_model_adapter(BaiChuanModelAdapter)
+register_model_adapter(GuanacoModelAdapter)
 
 register_model_adapter(BaseModelAdapter)

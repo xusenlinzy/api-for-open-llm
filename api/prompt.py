@@ -119,7 +119,7 @@ class GuanacoPromptAdapter(BasePromptAdapter):
     system_prompt = "A chat between a curious human and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions.\n"
     user_prompt = "### Human: {}\n### Assistant: "
     assistant_prompt = "{}\n"
-    stop = ["### Human", "### Assistant"]
+    stop = ["### Human", "### Assistant", "##"]
 
     def match(self, model_name):
         return "guanaco" in model_name

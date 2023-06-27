@@ -119,7 +119,10 @@ def get_gen_params(
         gen_params["stop"] = model_server.stop
 
     if stop is not None:
-        gen_params.update({"stop": stop})
+        if isinstance(stop, str):
+            stop = [stop]
+
+        gen_params["stop"] = gen_params["stop"] + stop if "stop" in gen_params else stop
 
     logger.debug(f"==== request ====\n{gen_params}")
     return gen_params
@@ -431,7 +434,7 @@ if __name__ == "__main__":
         "--gpus", type=str, default=None, help="A single GPU like 1 or multiple GPUs like 0,2",
     )
     parser.add_argument(
-        "--num-gpus", type=int, default=1, help="Number of GPUs to use",
+        "--num_gpus", type=int, default=1, help="Number of GPUs to use",
     )
     parser.add_argument(
         '--quantize', '-q', help='quantize, optional: 16，8，4', type=int, default=16
@@ -451,7 +454,7 @@ if __name__ == "__main__":
     if args.gpus:
         if len(args.gpus.split(",")) < args.num_gpus:
             raise ValueError(
-                f"Larger --num-gpus ({args.num_gpus}) than --gpus {args.gpus}!"
+                f"Larger --num_gpus ({args.num_gpus}) than --gpus {args.gpus}!"
             )
         os.environ["CUDA_VISIBLE_DEVICES"] = args.gpus
 
