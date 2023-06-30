@@ -75,14 +75,18 @@ def chatglm_generate_stream(model, tokenizer, params, device, context_len=2048, 
         for message in messages:
             role, content = message["role"], message["content"]
             if role == 'user':
-                question = content
+                question += content
             elif role in ['assistant', 'AI', 'system']:
                 if role == 'system':
                     history.append((content, "好的，我明白了，我会尽可能准确地回答您的问题。"))
                 else:
                     history.append((question, content))
+                    question = ""
             else:
                 raise ValueError(f"Unknown role: {message['role']}")
+
+        if question:
+            query = question + query
     else:
         query, history = messages, []
 

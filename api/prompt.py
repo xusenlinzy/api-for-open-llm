@@ -30,11 +30,23 @@ class BasePromptAdapter:
 
     def generate_prompt(self, messages: List[Dict[str, str]]) -> str:
         prompt = self.system_prompt
+        user_content = ""
         for message in messages:
-            if message["role"] == 'user':
-                prompt += self.user_prompt.format(message['content'])
-            elif message["role"] in ['assistant', "AI"]:
-                prompt += self.assistant_prompt.format(message['content'])
+            role, content = message["role"], message["content"]
+            if role == "system":
+                prompt = content
+            elif role == "user":
+                user_content += content
+            elif role in ["assistant", "AI"]:
+                prompt += self.user_prompt.format(user_content)
+                prompt += self.assistant_prompt.format(content)
+                user_content = ""
+            else:
+                raise ValueError(f"Unknown role: {message['role']}")
+
+        if user_content:
+            prompt += self.user_prompt.format(user_content)
+
         return prompt
 
 
