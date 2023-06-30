@@ -7,8 +7,8 @@ tenacity
 sentencepiece
 tiktoken
 loguru
-git+https://github.com/huggingface/transformers.git
+transformers>=4.30.1
 git+https://github.com/huggingface/peft.git
-git+https://github.com/huggingface/accelerate.git
+accelerate>=0.20.3
 triton
 sentence-transformers
