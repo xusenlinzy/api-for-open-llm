@@ -421,7 +421,7 @@ class BaiChuanModelAdapter(BaseModelAdapter):
 
     @property
     def model_kwargs(self):
-        return {"trust_remote_code": True, "device_map": "auto"}
+        return {"trust_remote_code": True}
 
     @property
     def tokenizer_kwargs(self):
