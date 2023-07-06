@@ -1,9 +1,11 @@
 import argparse
 import json
 import os
+import sys
+sys.path.insert(0, '.')
 import secrets
 from typing import Generator, Optional, Union, Dict, List, Any
-
+import time
 import tiktoken
 import uvicorn
 from fastapi import FastAPI
@@ -297,7 +299,7 @@ async def create_completion(request: CompletionRequest):
     error_check_ret = check_requests(request)
     if error_check_ret is not None:
         return error_check_ret
-
+    start_time = time.time()
     if isinstance(request.prompt, str):
         request.prompt = [request.prompt]
 
@@ -339,7 +341,7 @@ async def create_completion(request: CompletionRequest):
             task_usage = UsageInfo.parse_obj(content["usage"])
             for usage_key, usage_value in task_usage.dict().items():
                 setattr(usage, usage_key, getattr(usage, usage_key) + usage_value)
-
+        logger.info(f"consume time  = {(time.time() - start_time)}s, response = {str(choices)}")
         return CompletionResponse(
             model=request.model, choices=choices, usage=UsageInfo.parse_obj(usage)
         )
@@ -450,7 +452,7 @@ if __name__ == "__main__":
     parser.add_argument("--use_ptuning_v2", action="store_true")
     parser.add_argument("--stream_interval", type=int, default=2)
     args = parser.parse_args()
-
+    sys.path.insert(0, args.model_path)
     if args.gpus:
         if len(args.gpus.split(",")) < args.num_gpus:
             raise ValueError(
