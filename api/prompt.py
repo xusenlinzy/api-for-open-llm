@@ -167,6 +167,17 @@ Buddy strictly refuses to discuss harmful, political, NSFW, illegal, abusive, of
         return "openbuddy" in model_name
 
 
+class InternLMPromptAdapter(BasePromptAdapter):
+
+    system_prompt = ""
+    user_prompt = "<|User|>:{}<eoh>\n<|Bot|>:"
+    assistant_prompt = "{}<eoa>\n"
+    stop = ["<|User|>", "<|Bot|>", "<eoa>"]
+
+    def match(self, model_name):
+        return "internlm" in model_name
+
+
 register_prompt_adapter(MossPromptAdapter)
 register_prompt_adapter(PhoenixPromptAdapter)
 register_prompt_adapter(AlpacaPromptAdapter)
@@ -176,5 +187,6 @@ register_prompt_adapter(BellePromptAdapter)
 register_prompt_adapter(GuanacoPromptAdapter)
 register_prompt_adapter(YuLanChatPromptAdapter)
 register_prompt_adapter(OpenBuddyPromptAdapter)
+register_prompt_adapter(InternLMPromptAdapter)
 
 register_prompt_adapter(BasePromptAdapter)

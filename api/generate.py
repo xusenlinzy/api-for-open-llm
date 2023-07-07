@@ -49,21 +49,8 @@ def chatglm_stream_token_num(tokenizer, query: str, history: List[Tuple[str, str
     return sum([len(x) for x in inputs["input_ids"]])
 
 
-def internlm_stream_token_num(tokenizer, query: str, history: List[Tuple[str, str]] = None):
-    if history is None:
-        history = []
-    prompt = ""
-    for record in history:
-        prompt += f"""<s><|User|>:{record[0]}<eoh>\n<|Bot|>:{record[1]}<eoa>\n"""
-    if len(prompt) == 0:
-        prompt += "<s>"
-    prompt += f"""<|User|>:{query}<eoh>\n<|Bot|>:"""
-    inputs = tokenizer([prompt])
-    return sum([len(x) for x in inputs["input_ids"]])
-
-
 @torch.inference_mode()
-def chatglm_generate_stream(model_name, model, tokenizer, params, device, context_len=2048, stream_interval=2):
+def chatglm_generate_stream(model, tokenizer, params, device, context_len=2048, stream_interval=2):
     """Generate text using model's chat api"""
     messages = params["prompt"]
     temperature = float(params.get("temperature", 0.95))
@@ -81,8 +68,6 @@ def chatglm_generate_stream(model_name, model, tokenizer, params, device, contex
 
     if temperature > 1e-5:
         gen_kwargs["temperature"] = temperature
-    if "internlm" in model_name:
-        gen_kwargs["max_new_tokens"] = params.get("max_new_tokens", 1024)
 
     if isinstance(messages, list):
         query = messages.pop()["content"]
@@ -106,10 +91,7 @@ def chatglm_generate_stream(model_name, model, tokenizer, params, device, contex
     else:
         query, history = messages, []
 
-    if "internlm" in model_name:
-        input_echo_len = internlm_stream_token_num(tokenizer, query, history)
-    else:
-        input_echo_len = chatglm_stream_token_num(tokenizer, query, history)
+    input_echo_len = chatglm_stream_token_num(tokenizer, query, history)
 
     for i, (response, new_hist) in enumerate(
         model.stream_chat(tokenizer, query, history, **gen_kwargs)
@@ -148,7 +130,7 @@ def chatglm_generate_stream(model_name, model, tokenizer, params, device, contex
 
 @torch.inference_mode()
 def generate_stream(
-    model_name, model, tokenizer, params, device, context_len=2048, stream_interval=2
+    model, tokenizer, params, device, context_len=2048, stream_interval=2
 ):
     prompt = params["prompt"]
     len_prompt = len(prompt)
@@ -347,7 +329,7 @@ class ModelServer:
             self.context_len = context_len
 
         # generate_stream
-        self.has_chat_fct = "chatglm" in self.model_name or "internlm" in self.model_name
+        self.has_chat_fct = "chatglm" in self.model_name
         if self.has_chat_fct:
             self.generate_stream_func = chatglm_generate_stream
             self.prompt_adapter = None
@@ -375,7 +357,6 @@ class ModelServer:
 
         try:
             for output in self.generate_stream_func(
-                self.model_name,
                 self.model,
                 self.tokenizer,
                 params,
@@ -416,7 +397,6 @@ class ModelServer:
         try:
             ret = {"text": "", "error_code": 0}
             for output in self.generate_stream_func(
-                self.model_name,
                 self.model,
                 self.tokenizer,
                 params,
