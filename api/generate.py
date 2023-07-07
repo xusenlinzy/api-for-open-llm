@@ -49,8 +49,21 @@ def chatglm_stream_token_num(tokenizer, query: str, history: List[Tuple[str, str
     return sum([len(x) for x in inputs["input_ids"]])
 
 
+def internlm_stream_token_num(tokenizer, query: str, history: List[Tuple[str, str]] = None):
+    if history is None:
+        history = []
+    prompt = ""
+    for record in history:
+        prompt += f"""<s><|User|>:{record[0]}<eoh>\n<|Bot|>:{record[1]}<eoa>\n"""
+    if len(prompt) == 0:
+        prompt += "<s>"
+    prompt += f"""<|User|>:{query}<eoh>\n<|Bot|>:"""
+    inputs = tokenizer([prompt])
+    return sum([len(x) for x in inputs["input_ids"]])
+
+
 @torch.inference_mode()
-def chatglm_generate_stream(model, tokenizer, params, device, context_len=2048, stream_interval=2):
+def chatglm_generate_stream(model_name, model, tokenizer, params, device, context_len=2048, stream_interval=2):
     """Generate text using model's chat api"""
     messages = params["prompt"]
     temperature = float(params.get("temperature", 0.95))
@@ -65,8 +78,11 @@ def chatglm_generate_stream(model, tokenizer, params, device, context_len=2048, 
         "repetition_penalty": repetition_penalty,
         "logits_processor": None,
     }
+
     if temperature > 1e-5:
         gen_kwargs["temperature"] = temperature
+    if "internlm" in model_name:
+        gen_kwargs["max_new_tokens"] = params.get("max_new_tokens", 1024)
 
     if isinstance(messages, list):
         query = messages.pop()["content"]
@@ -90,7 +106,10 @@ def chatglm_generate_stream(model, tokenizer, params, device, context_len=2048, 
     else:
         query, history = messages, []
 
-    input_echo_len = chatglm_stream_token_num(tokenizer, query, history)
+    if "internlm" in model_name:
+        input_echo_len = internlm_stream_token_num(tokenizer, query, history)
+    else:
+        input_echo_len = chatglm_stream_token_num(tokenizer, query, history)
 
     for i, (response, new_hist) in enumerate(
         model.stream_chat(tokenizer, query, history, **gen_kwargs)
@@ -129,7 +148,7 @@ def chatglm_generate_stream(model, tokenizer, params, device, context_len=2048, 
 
 @torch.inference_mode()
 def generate_stream(
-    model, tokenizer, params, device, context_len=2048, stream_interval=2
+    model_name, model, tokenizer, params, device, context_len=2048, stream_interval=2
 ):
     prompt = params["prompt"]
     len_prompt = len(prompt)
@@ -169,6 +188,7 @@ def generate_stream(
         )
 
     past_key_values = None
+    first_tokens = None
     for i in range(max_new_tokens):
         if i == 0:
             if model.config.is_encoder_decoder:
@@ -215,6 +235,11 @@ def generate_stream(
             last_token_logits = last_token_logits.float().to("cpu")
 
         if temperature < 1e-5 or top_p < 1e-8:  # greedy
+            if i == 0:
+                first_token_probs = torch.softmax(last_token_logits, dim=-1)
+                first_token_probs, first_token_indices = torch.topk(first_token_probs, k=10, largest=True, sorted=True)
+                first_tokens = [tokenizer.decode(int(i)) for i in first_token_indices]
+                first_tokens = dict(zip(first_tokens, first_token_probs.tolist()))
             token = int(torch.argmax(last_token_logits))
         else:
             probs = torch.softmax(last_token_logits, dim=-1)
@@ -262,6 +287,7 @@ def generate_stream(
                     "prompt_tokens": input_echo_len,
                     "completion_tokens": i,
                     "total_tokens": input_echo_len + i,
+                    "first_tokens": first_tokens
                 },
                 "finish_reason": None,
             }
@@ -283,6 +309,7 @@ def generate_stream(
             "prompt_tokens": input_echo_len,
             "completion_tokens": i,
             "total_tokens": input_echo_len + i,
+            "first_tokens": first_tokens
         },
         "finish_reason": finish_reason,
     }
@@ -348,6 +375,7 @@ class ModelServer:
 
         try:
             for output in self.generate_stream_func(
+                self.model_name,
                 self.model,
                 self.tokenizer,
                 params,
@@ -388,6 +416,7 @@ class ModelServer:
         try:
             ret = {"text": "", "error_code": 0}
             for output in self.generate_stream_func(
+                self.model_name,
                 self.model,
                 self.tokenizer,
                 params,
@@ -422,7 +451,7 @@ class ModelServer:
         try:
             tokenizer = self.tokenizer
             is_llama = "llama" in str(type(self.model))  # vicuna support batch inference
-            is_chatglm = self.is_chatglm
+            is_chatglm = "chatglm" in self.model_name
             is_t5 = "t5" in str(type(self.model))
             if is_llama:
                 encoding = tokenizer.batch_encode_plus(
