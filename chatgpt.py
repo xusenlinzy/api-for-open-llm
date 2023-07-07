@@ -166,7 +166,7 @@ async def create_embeddings(request: EmbeddingsRequest, model_name: str = None):
     if request.model is None:
         request.model = model_name
 
-    res = await _completions_create_async(request.dict(exclude_none=True))
+    res = await _embeddings_create_async(request.dict(exclude_none=True))
     return res if res else {}
 
 

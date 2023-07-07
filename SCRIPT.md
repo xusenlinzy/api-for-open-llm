@@ -38,7 +38,7 @@ docker build -t llm-api:pytorch .
 + `use_ptuning_v2`（可选项）: 使用 `ptuning_v2` 加载模型
 
 
-+ `stream_interval`（可选项）: 单词流式输出的 `token` 数量
++ `stream_interval`（可选项）: 流式输出的 `token` 数量
 
 
 ### ChatGLM
@@ -218,4 +218,22 @@ docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=baichuan \
 @property
 def model_kwargs(self):
     return {"trust_remote_code": True, "device_map": "auto", "torch_dtype": torch.float32}
+```
+
+### InternLM
+
+internlm-chat-7b:
+
+```shell
+docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=internlm \
+    --ulimit memlock=-1 --ulimit stack=67108864 \
+    -v `pwd`:/workspace \
+    llm-api:pytorch \
+    python api/app.py \
+    --port 80 \
+    --allow-credentials \
+    --model_name internlm \
+    --model_path internlm/internlm-chat-7b \
+    --device cuda \
+    --embedding_name moka-ai/m3e-base
 ```

@@ -460,6 +460,26 @@ class GuanacoModelAdapter(LlamaModelAdapter):
         return model, self.post_tokenizer(tokenizer)
 
 
+class InternLMModelAdapter(BaseModelAdapter):
+
+    """ https://github.com/InternLM/InternLM """
+
+    def match(self, model_name):
+        return "internlm" in model_name
+
+    @property
+    def model_kwargs(self):
+        return {"trust_remote_code": True}
+
+    @property
+    def tokenizer_kwargs(self):
+        return {"use_fast": False, "trust_remote_code": True}
+
+    @property
+    def default_model_name_or_path(self):
+        return "internlm/internlm-chat-7b"
+
+
 register_model_adapter(ChatglmModelAdapter)
 register_model_adapter(LlamaModelAdapter)
 register_model_adapter(MossModelAdapter)
@@ -471,5 +491,6 @@ register_model_adapter(OpenBuddyFalconModelAdapter)
 register_model_adapter(AnimaModelAdapter)
 register_model_adapter(BaiChuanModelAdapter)
 register_model_adapter(GuanacoModelAdapter)
+register_model_adapter(InternLMModelAdapter)
 
 register_model_adapter(BaseModelAdapter)

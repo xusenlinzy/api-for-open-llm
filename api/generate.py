@@ -320,8 +320,8 @@ class ModelServer:
             self.context_len = context_len
 
         # generate_stream
-        self.is_chatglm = "chatglm" in self.model_name
-        if self.is_chatglm:
+        self.has_chat_fct = "chatglm" in self.model_name or "internlm" in self.model_name
+        if self.has_chat_fct:
             self.generate_stream_func = chatglm_generate_stream
             self.prompt_adapter = None
         else:
@@ -340,7 +340,7 @@ class ModelServer:
         return ret
 
     def generate_prompt(self, messages):
-        return messages if self.is_chatglm else self.prompt_adapter.generate_prompt(messages)
+        return messages if self.has_chat_fct else self.prompt_adapter.generate_prompt(messages)
 
     def generate_stream_gate(self, params):
         if isinstance(params["prompt"], list):
