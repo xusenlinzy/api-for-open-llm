@@ -291,7 +291,7 @@ async def create_chat_completion(request: ChatCompletionRequest):
         for usage_key, usage_value in task_usage.dict().items():
             if usage_key != "first_tokens":
                 setattr(usage, usage_key, getattr(usage, usage_key) + usage_value)
-        usage.first_tokens = content["usage"]["first_tokens"]
+        usage.first_tokens = content["usage"].get("first_tokens", None)
 
     return ChatCompletionResponse(model=request.model, choices=choices, usage=usage)
 
