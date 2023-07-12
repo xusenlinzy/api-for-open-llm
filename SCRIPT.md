@@ -26,7 +26,7 @@ docker build -t llm-api:pytorch .
 + `context_len`（可选项）: 上下文长度，默认为 `2048`
 
 
-+ `quantize`（可选项）: `chatglm` 模型的量化等级，可选项为 16、8、4
++ `quantize`（可选项）: `chatglm`、`baichuan-13b` 模型的量化等级，可选项为 16、8、4
 
 
 + `load_in_8bit`（可选项）: 使用模型 `8bit` 量化
@@ -201,7 +201,7 @@ docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=openbuddy-fal
 docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=baichuan-7b \
     --ulimit memlock=-1 --ulimit stack=67108864 \
     -v `pwd`:/workspace \
-    llm:pytorch-1.14 \
+    llm-api:pytorch \
     python api/app.py \
     --port 80 \
     --allow-credentials \
@@ -212,7 +212,7 @@ docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=baichuan-7b \
     --embedding_name moka-ai/m3e-base
 ```
 
-如果想要使用全精度加载模型，需要修改 [api/model.py](./api/models.py) 第 426 行
+如果想要使用全精度加载模型，需要修改 [api/model.py](./api/models.py) 第 424 行
 
 ```python
 @property
@@ -227,7 +227,7 @@ def model_kwargs(self):
 docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=baichuan-13b-chat \
     --ulimit memlock=-1 --ulimit stack=67108864 \
     -v `pwd`:/workspace \
-    llm:pytorch-1.14 \
+    llm-api:pytorch \
     python api/app.py \
     --port 80 \
     --allow-credentials \
@@ -236,6 +236,16 @@ docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=baichuan-13b-
     --device cuda \
     --embedding_name moka-ai/m3e-base
 ```
+
+若模型加载到 `GPU` 太慢，可以通过修改 [api/model.py](./api/models.py) 第 423 行
+
+```python
+@property
+def model_kwargs(self):
+    return {"trust_remote_code": True, "device_map": "auto"}
+```
+
+使用 `quantize` 参数进行量化，例如 `--quantize 8`
 
 
 ### InternLM
