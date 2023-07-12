@@ -100,7 +100,7 @@ class ChatGLM2PromptAdapter(BasePromptAdapter):
                 user_content.append(content)
             elif role in ["assistant", "AI"]:
                 u_content = "\n".join(user_content)
-                prompt += f"[Round {i}]\n{self.user_prompt.format(u_content)}"
+                prompt += f"[Round {i}]\n\n{self.user_prompt.format(u_content)}"
                 prompt += self.assistant_prompt.format(content)
                 user_content = []
                 i += 1
@@ -109,7 +109,7 @@ class ChatGLM2PromptAdapter(BasePromptAdapter):
 
         if user_content:
             u_content = "\n".join(user_content)
-            prompt += f"[Round {i}]\n{self.user_prompt.format(u_content)}"
+            prompt += f"[Round {i}]\n\n{self.user_prompt.format(u_content)}"
 
         return prompt
 
