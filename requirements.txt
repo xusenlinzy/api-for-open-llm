@@ -13,3 +13,4 @@ accelerate>=0.20.3
 triton
 sentence-transformers
 transformers_stream_generator
+cpm_kernels
