@@ -1,6 +1,6 @@
 import gc
 from typing import Iterable, List, Tuple, Optional
-
+from transformers.generation.utils import GenerationConfig
 import torch
 import torch.nn.functional as F
 from transformers.generation.logits_process import (
@@ -132,21 +132,19 @@ def chatglm_generate_stream(model, tokenizer, params, device, context_len=2048, 
 def baichuan_generate_stream(model, tokenizer, params, device, context_len=2048, stream_interval=2):
     """Generate text using model's chat api"""
     messages = params["prompt"]
-    temperature = float(params.get("temperature", 0.95))
-    top_p = float(params.get("top_p", 0.7))
-    repetition_penalty = float(params.get("repetition_penalty", 1.0))
+    temperature = float(params.get("temperature", 0.3))
+    top_p = float(params.get("top_p", 0.85))
+    repetition_penalty = float(params.get("repetition_penalty", 1.1))
     echo = params.get("echo", True)
 
-    gen_kwargs = {
-        "max_new_tokens": params.get("max_new_tokens", 2048),
-        "do_sample": True if temperature > 1e-5 else False,
-        "top_p": top_p,
-        "repetition_penalty": repetition_penalty,
-        "logits_processor": None,
-    }
+    generation_config = GenerationConfig(
+        max_new_tokens=params.get("max_new_tokens", 2048),
+        top_p=top_p,
+        repetition_penalty=repetition_penalty,
+    )
 
     if temperature > 1e-5:
-        gen_kwargs["temperature"] = temperature
+        generation_config.temperature = temperature
 
     if isinstance(messages, str):
         messages = {"role": "user", "content": messages}
@@ -166,7 +164,7 @@ def baichuan_generate_stream(model, tokenizer, params, device, context_len=2048,
     input_echo_len = len(total_input)
 
     for i, response in enumerate(
-        model.chat(tokenizer, messages, **gen_kwargs)
+        model.chat(tokenizer, messages, stream=True, generation_config=generation_config)
     ):
         if echo:
             output = messages[-1]["content"] + " " + response
