@@ -1,6 +1,6 @@
 import gc
 from typing import Iterable, List, Tuple, Optional
-from transformers.generation.utils import GenerationConfig
+
 import torch
 import torch.nn.functional as F
 from transformers.generation.logits_process import (
@@ -10,6 +10,7 @@ from transformers.generation.logits_process import (
     TopKLogitsWarper,
     TopPLogitsWarper,
 )
+from transformers.generation.utils import GenerationConfig
 
 from api.constants import ErrorCode
 from api.prompt import get_prompt_adapter
@@ -147,7 +148,7 @@ def baichuan_generate_stream(model, tokenizer, params, device, context_len=2048,
         generation_config.temperature = temperature
 
     if isinstance(messages, str):
-        messages = {"role": "user", "content": messages}
+        messages = [{"role": "user", "content": messages}]
 
     total_input, round_input = [], []
     for i, message in enumerate(messages[::-1]):
