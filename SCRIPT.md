@@ -212,7 +212,7 @@ docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=baichuan-7b \
     --embedding_name moka-ai/m3e-base
 ```
 
-如果想要使用全精度加载模型，需要修改 [api/model.py](./api/models.py) 第 424 行
+如果想要使用全精度加载模型，需要修改 [api/model.py](./api/models.py) 第 425 行
 
 ```python
 @property
@@ -237,7 +237,7 @@ docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=baichuan-13b-
     --embedding_name moka-ai/m3e-base
 ```
 
-若模型加载到 `GPU` 太慢，可以通过修改 [api/model.py](https://github.com/xusenlinzy/api-for-open-llm/blob/c9508ea20f40a33c4a52a62ffac8817860e11ad1/api/models.py#L425)
+若模型加载到 `GPU` 太慢，可以通过修改 [api/model.py](./api/models.py) 第 425 行
 
 ```python
 @property
