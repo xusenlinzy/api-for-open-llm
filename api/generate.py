@@ -10,7 +10,6 @@ from transformers.generation.logits_process import (
     TopKLogitsWarper,
     TopPLogitsWarper,
 )
-from transformers.generation.utils import GenerationConfig
 
 from api.constants import ErrorCode
 from api.prompt import get_prompt_adapter
@@ -99,76 +98,6 @@ def chatglm_generate_stream(model, tokenizer, params, device, context_len=2048, 
     ):
         if echo:
             output = query + " " + response
-        else:
-            output = response
-
-        yield {
-            "text": output,
-            "usage": {
-                "prompt_tokens": input_echo_len,
-                "completion_tokens": i,
-                "total_tokens": input_echo_len + i,
-            },
-            "finish_reason": None,
-        }
-
-    # TODO: ChatGLM stop when it reach max length
-    # Only last stream result contains finish_reason, we set finish_reason as stop
-    ret = {
-        "text": output,
-        "usage": {
-            "prompt_tokens": input_echo_len,
-            "completion_tokens": i,
-            "total_tokens": input_echo_len + i,
-        },
-        "finish_reason": "stop",
-    }
-    yield ret
-
-    gc.collect()
-    torch.cuda.empty_cache()
-
-
-@torch.inference_mode()
-def baichuan_generate_stream(model, tokenizer, params, device, context_len=2048, stream_interval=2):
-    """Generate text using model's chat api"""
-    messages = params["prompt"]
-    temperature = float(params.get("temperature", 0.3))
-    top_p = float(params.get("top_p", 0.85))
-    repetition_penalty = float(params.get("repetition_penalty", 1.1))
-    echo = params.get("echo", True)
-
-    generation_config = GenerationConfig(
-        max_new_tokens=params.get("max_new_tokens", 2048),
-        top_p=top_p,
-        repetition_penalty=repetition_penalty,
-    )
-
-    if temperature > 1e-5:
-        generation_config.temperature = temperature
-
-    if isinstance(messages, str):
-        messages = [{"role": "user", "content": messages}]
-
-    total_input, round_input = [], []
-    for i, message in enumerate(messages[::-1]):
-        content_tokens = tokenizer.encode(message['content'])
-        if message['role'] == 'user':
-            round_input = [model.generation_config.user_token_id] + content_tokens + round_input
-            total_input = round_input + total_input
-            round_input = []
-        elif message['role'] == 'assistant':
-            round_input = [model.generation_config.assistant_token_id] + content_tokens + [model.generation_config.eos_token_id] + round_input
-        else:
-            raise ValueError(f"message role not supported yet: {message['role']}")
-
-    input_echo_len = len(total_input)
-
-    for i, response in enumerate(
-        model.chat(tokenizer, messages, stream=True, generation_config=generation_config)
-    ):
-        if echo:
-            output = messages[-1]["content"] + " " + response
         else:
             output = response
 
@@ -400,12 +329,9 @@ class ModelServer:
             self.context_len = context_len
 
         # generate_stream
-        self.has_chat_fct = "chatglm" in self.model_name or "baichuan-13b" in self.model_name
+        self.has_chat_fct = "chatglm" in self.model_name
         if "chatglm" in self.model_name:
             self.generate_stream_func = chatglm_generate_stream
-            self.prompt_adapter = None
-        elif "baichuan-13b" in self.model_name:
-            self.generate_stream_func = baichuan_generate_stream
             self.prompt_adapter = None
         else:
             self.generate_stream_func = generate_stream

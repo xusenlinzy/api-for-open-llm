@@ -12,3 +12,4 @@ git+https://github.com/huggingface/peft.git
 accelerate>=0.20.3
 triton
 sentence-transformers
+transformers_stream_generator

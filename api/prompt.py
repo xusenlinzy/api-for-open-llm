@@ -178,6 +178,17 @@ class InternLMPromptAdapter(BasePromptAdapter):
         return "internlm" in model_name
 
 
+class BaiChuanPromptAdapter(BasePromptAdapter):
+
+    system_prompt = ""
+    user_prompt = "<reserved_102>:{}\n<reserved_103>"
+    assistant_prompt = "{}"
+    stop = ["<reserved_102>", "<reserved_103>"]
+
+    def match(self, model_name):
+        return "baichuan-13b" in model_name
+
+
 register_prompt_adapter(MossPromptAdapter)
 register_prompt_adapter(PhoenixPromptAdapter)
 register_prompt_adapter(AlpacaPromptAdapter)
@@ -188,5 +199,6 @@ register_prompt_adapter(GuanacoPromptAdapter)
 register_prompt_adapter(YuLanChatPromptAdapter)
 register_prompt_adapter(OpenBuddyPromptAdapter)
 register_prompt_adapter(InternLMPromptAdapter)
+register_prompt_adapter(BaiChuanPromptAdapter)
 
 register_prompt_adapter(BasePromptAdapter)
