@@ -30,22 +30,86 @@ class BasePromptAdapter:
 
     def generate_prompt(self, messages: List[Dict[str, str]]) -> str:
         prompt = self.system_prompt
-        user_content = ""
+        user_content = []
         for message in messages:
             role, content = message["role"], message["content"]
-            if role == "system":
-                prompt = content
-            elif role == "user":
-                user_content += content
+            if role in ["user", "system"]:
+                user_content.append(content)
             elif role in ["assistant", "AI"]:
-                prompt += self.user_prompt.format(user_content)
+                prompt += self.user_prompt.format("\n".join(user_content))
                 prompt += self.assistant_prompt.format(content)
-                user_content = ""
+                user_content = []
             else:
                 raise ValueError(f"Unknown role: {message['role']}")
 
         if user_content:
-            prompt += self.user_prompt.format(user_content)
+            prompt += self.user_prompt.format("\n".join(user_content))
+
+        return prompt
+
+
+class ChatGLMPromptAdapter(BasePromptAdapter):
+
+    system_prompt = ""
+    user_prompt = "问：{}\n答："
+    assistant_prompt = "{}\n"
+
+    def match(self, model_name):
+        return model_name == "chatglm"
+
+    def generate_prompt(self, messages: List[Dict[str, str]]) -> str:
+        prompt = self.system_prompt
+        user_content = []
+        i = 0
+        for message in messages:
+            role, content = message["role"], message["content"]
+            if role in ["user", "system"]:
+                user_content.append(content)
+            elif role in ["assistant", "AI"]:
+                u_content = "\n".join(user_content)
+                prompt += f"[Round {i}]\n{self.user_prompt.format(u_content)}"
+                prompt += self.assistant_prompt.format(content)
+                user_content = []
+                i += 1
+            else:
+                raise ValueError(f"Unknown role: {message['role']}")
+
+        if user_content:
+            u_content = "\n".join(user_content)
+            prompt += f"[Round {i}]\n{self.user_prompt.format(u_content)}"
+
+        return prompt
+
+
+class ChatGLM2PromptAdapter(BasePromptAdapter):
+
+    system_prompt = ""
+    user_prompt = "问：{}\n\n答："
+    assistant_prompt = "{}\n\n"
+
+    def match(self, model_name):
+        return model_name == "chatglm2"
+
+    def generate_prompt(self, messages: List[Dict[str, str]]) -> str:
+        prompt = self.system_prompt
+        user_content = []
+        i = 1
+        for message in messages:
+            role, content = message["role"], message["content"]
+            if role in ["user", "system"]:
+                user_content.append(content)
+            elif role in ["assistant", "AI"]:
+                u_content = "\n".join(user_content)
+                prompt += f"[Round {i}]\n{self.user_prompt.format(u_content)}"
+                prompt += self.assistant_prompt.format(content)
+                user_content = []
+                i += 1
+            else:
+                raise ValueError(f"Unknown role: {message['role']}")
+
+        if user_content:
+            u_content = "\n".join(user_content)
+            prompt += f"[Round {i}]\n{self.user_prompt.format(u_content)}"
 
         return prompt
 
@@ -189,6 +253,8 @@ class BaiChuanPromptAdapter(BasePromptAdapter):
         return "baichuan-13b" in model_name
 
 
+register_prompt_adapter(ChatGLMPromptAdapter)
+register_prompt_adapter(ChatGLM2PromptAdapter)
 register_prompt_adapter(MossPromptAdapter)
 register_prompt_adapter(PhoenixPromptAdapter)
 register_prompt_adapter(AlpacaPromptAdapter)

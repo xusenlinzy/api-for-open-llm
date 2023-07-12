@@ -62,14 +62,14 @@ docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=chatglm \
 chatglm2-6b:
 
 ```shell
-docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=chatglm \
+docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=chatglm2 \
     --ulimit memlock=-1 --ulimit stack=67108864 \
     -v `pwd`:/workspace \
     llm-api:pytorch \
     python api/app.py \
     --port 80 \
     --allow-credentials \
-    --model_name chatglm \
+    --model_name chatglm2 \
     --model_path THUDM/chatglm2-6b \
     --device cuda \
     --embedding_name moka-ai/m3e-base
