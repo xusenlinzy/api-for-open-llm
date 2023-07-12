@@ -342,7 +342,10 @@ async def create_completion(request: CompletionRequest):
 
             task_usage = UsageInfo.parse_obj(content["usage"])
             for usage_key, usage_value in task_usage.dict().items():
-                setattr(usage, usage_key, getattr(usage, usage_key) + usage_value)
+                if usage_key != "first_tokens":
+                    setattr(usage, usage_key, getattr(usage, usage_key) + usage_value)
+            usage.first_tokens = content["usage"].get("first_tokens", None)
+            
         logger.info(f"consume time  = {(time.time() - start_time)}s, response = {str(choices)}")
         return CompletionResponse(
             model=request.model, choices=choices, usage=UsageInfo.parse_obj(usage)
