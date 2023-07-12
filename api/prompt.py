@@ -181,7 +181,7 @@ class InternLMPromptAdapter(BasePromptAdapter):
 class BaiChuanPromptAdapter(BasePromptAdapter):
 
     system_prompt = ""
-    user_prompt = "<reserved_102>:{}<reserved_103>"
+    user_prompt = "<reserved_102>{}<reserved_103>"
     assistant_prompt = "{}"
     stop = ["<reserved_102>", "<reserved_103>"]
 
