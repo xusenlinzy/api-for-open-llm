@@ -131,11 +131,12 @@ class BaseModelAdapter:
         # post process for special tokens
         tokenizer = self.post_tokenizer(tokenizer)
         is_chatglm = "chatglm" in str(type(model))
+        is_baichuan = "baichuan" in str(type(model))
 
         if adapter_model is not None:
             model = self.load_adapter_model(model, tokenizer, adapter_model, is_chatglm, model_kwargs, **kwargs)
 
-        if is_chatglm:
+        if is_chatglm or is_baichuan:
             quantize = kwargs.get("quantize", None)
             if quantize and quantize != 16:
                 model = model.quantize(quantize)

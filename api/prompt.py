@@ -98,7 +98,7 @@ class FireflyPromptAdapter(BasePromptAdapter):
     assistant_prompt = "{}</s>"
 
     def match(self, model_name):
-        return "firefly" in model_name or "baichuan" in model_name
+        return "firefly" in model_name or "baichuan-7b" in model_name
 
 
 class BaizePromptAdapter(BasePromptAdapter):

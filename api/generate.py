@@ -129,6 +129,78 @@ def chatglm_generate_stream(model, tokenizer, params, device, context_len=2048, 
 
 
 @torch.inference_mode()
+def baichuan_generate_stream(model, tokenizer, params, device, context_len=2048, stream_interval=2):
+    """Generate text using model's chat api"""
+    messages = params["prompt"]
+    temperature = float(params.get("temperature", 0.95))
+    top_p = float(params.get("top_p", 0.7))
+    repetition_penalty = float(params.get("repetition_penalty", 1.0))
+    echo = params.get("echo", True)
+
+    gen_kwargs = {
+        "max_new_tokens": params.get("max_new_tokens", 2048),
+        "do_sample": True if temperature > 1e-5 else False,
+        "top_p": top_p,
+        "repetition_penalty": repetition_penalty,
+        "logits_processor": None,
+    }
+
+    if temperature > 1e-5:
+        gen_kwargs["temperature"] = temperature
+
+    if isinstance(messages, str):
+        messages = {"role": "user", "content": messages}
+
+    total_input, round_input = [], []
+    for i, message in enumerate(messages[::-1]):
+        content_tokens = tokenizer.encode(message['content'])
+        if message['role'] == 'user':
+            round_input = [model.generation_config.user_token_id] + content_tokens + round_input
+            total_input = round_input + total_input
+            round_input = []
+        elif message['role'] == 'assistant':
+            round_input = [model.generation_config.assistant_token_id] + content_tokens + [model.generation_config.eos_token_id] + round_input
+        else:
+            raise ValueError(f"message role not supported yet: {message['role']}")
+
+    input_echo_len = len(total_input)
+
+    for i, response in enumerate(
+        model.chat(tokenizer, messages, **gen_kwargs)
+    ):
+        if echo:
+            output = messages[-1]["content"] + " " + response
+        else:
+            output = response
+
+        yield {
+            "text": output,
+            "usage": {
+                "prompt_tokens": input_echo_len,
+                "completion_tokens": i,
+                "total_tokens": input_echo_len + i,
+            },
+            "finish_reason": None,
+        }
+
+    # TODO: ChatGLM stop when it reach max length
+    # Only last stream result contains finish_reason, we set finish_reason as stop
+    ret = {
+        "text": output,
+        "usage": {
+            "prompt_tokens": input_echo_len,
+            "completion_tokens": i,
+            "total_tokens": input_echo_len + i,
+        },
+        "finish_reason": "stop",
+    }
+    yield ret
+
+    gc.collect()
+    torch.cuda.empty_cache()
+
+
+@torch.inference_mode()
 def generate_stream(
     model, tokenizer, params, device, context_len=2048, stream_interval=2
 ):
@@ -329,9 +401,12 @@ class ModelServer:
             self.context_len = context_len
 
         # generate_stream
-        self.has_chat_fct = "chatglm" in self.model_name
-        if self.has_chat_fct:
+        self.has_chat_fct = "chatglm" in self.model_name or "baichuan-13b" in self.model_name
+        if "chatglm" in self.model_name:
             self.generate_stream_func = chatglm_generate_stream
+            self.prompt_adapter = None
+        elif "baichuan-13b" in self.model_name:
+            self.generate_stream_func = baichuan_generate_stream
             self.prompt_adapter = None
         else:
             self.generate_stream_func = generate_stream

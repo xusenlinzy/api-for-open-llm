@@ -198,14 +198,14 @@ docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=openbuddy-fal
 使用半精度加载模型（大约需要14G显存）
 
 ```shell
-docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=baichuan \
+docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=baichuan-7b \
     --ulimit memlock=-1 --ulimit stack=67108864 \
     -v `pwd`:/workspace \
     llm:pytorch-1.14 \
     python api/app.py \
     --port 80 \
     --allow-credentials \
-    --model_name baichuan \
+    --model_name baichuan-7b \
     --model_path baichuan-inc/baichuan-7B \
     --adapter_model_path YeungNLP/firefly-baichuan-7b-qlora-sft \
     --device cuda \
@@ -217,8 +217,26 @@ docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=baichuan \
 ```python
 @property
 def model_kwargs(self):
-    return {"trust_remote_code": True, "device_map": "auto", "torch_dtype": torch.float32}
+    return {"trust_remote_code": True, "torch_dtype": torch.float32}
 ```
+
+
+### Baichuan-13b-chat
+
+```shell
+docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=baichuan-13b-chat \
+    --ulimit memlock=-1 --ulimit stack=67108864 \
+    -v `pwd`:/workspace \
+    llm:pytorch-1.14 \
+    python api/app.py \
+    --port 80 \
+    --allow-credentials \
+    --model_name baichuan-13b-chat \
+    --model_path baichuan-inc/Baichuan-13B-Chat \
+    --device cuda \
+    --embedding_name moka-ai/m3e-base
+```
+
 
 ### InternLM
 

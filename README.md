@@ -13,7 +13,11 @@
 
 ## 📢 News 
 
-+ 2023.7.7 新增 [InternLM](https://github.com/InternLM/InternLM) 模型，启动方式见 [SCRIPT](./SCRIPT.md)
+
++ 2023.7.12 新增 [baichuan-13b-chat](https://github.com/baichuan-inc/Baichuan-13B)，启动方式见 [baichuan-13b-chat](https://github.com/xusenlinzy/api-for-open-llm/blob/master/SCRIPT.md#baichuan-13b-chat)
+
+
++ 2023.7.7 新增 [InternLM](https://github.com/InternLM/InternLM) 模型，启动方式见 [internlm-chat-7b](https://github.com/xusenlinzy/api-for-open-llm/blob/master/SCRIPT.md#internlm)
 
 
 + 2023.6.26 新增 [ChatGLM2-6b](https://github.com/THUDM/ChatGLM2-6B) 模型
@@ -50,6 +54,7 @@
 
 | Model                                                                 |   Backbone   | #Params  | Claimed language |                                               checkpoint link                                               |
 |:----------------------------------------------------------------------|:------------:|:--------:|:----------------:|:-----------------------------------------------------------------------------------------------------------:|
+| [baichuan-13b-chat](https://github.com/baichuan-inc/Baichuan-13B)     |   Baichuan   |   13B    |      en, zh      |           [baichuan-inc/Baichuan-13B-Chat](https://huggingface.co/baichuan-inc/Baichuan-13B-Chat)           |
 | [InternLM](https://github.com/InternLM/InternLM)                      |   InternLM   |    7B    |      en, zh      |                [internlm/internlm-chat-7b](https://huggingface.co/internlm/internlm-chat-7b)                |
 | [ChatGLM2](https://github.com/THUDM/ChatGLM2-6B)                      |     GLM      |  6/130B  |      en, zh      |                        [THUDM/chatglm2-6b](https://huggingface.co/THUDM/chatglm2-6b)                        |
 | [baichaun-7b](https://github.com/baichuan-inc/baichuan-7B)            |   Baichuan   |    7B    |      en, zh      |                 [baichuan-inc/baichuan-7B](https://huggingface.co/baichuan-inc/baichuan-7B)                 |
