@@ -237,7 +237,7 @@ docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=baichuan-13b-
     --embedding_name moka-ai/m3e-base
 ```
 
-若模型加载到 `GPU` 太慢，可以通过修改 [api/model.py](./api/models.py) 第 423 行
+若模型加载到 `GPU` 太慢，可以通过修改 [api/model.py](https://github.com/xusenlinzy/api-for-open-llm/blob/c9508ea20f40a33c4a52a62ffac8817860e11ad1/api/models.py#L425)
 
 ```python
 @property
@@ -245,7 +245,7 @@ def model_kwargs(self):
     return {"trust_remote_code": True, "device_map": "auto"}
 ```
 
-使用 `quantize` 参数进行量化，例如 `--quantize 8`
+可以使用 `quantize` 参数进行量化，例如 `--quantize 8`
 
 
 ### InternLM

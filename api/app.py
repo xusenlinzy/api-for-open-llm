@@ -2,7 +2,9 @@ import argparse
 import json
 import os
 import sys
+
 sys.path.insert(0, '.')
+
 import secrets
 from typing import Generator, Optional, Union, Dict, List, Any
 import time
@@ -457,7 +459,9 @@ if __name__ == "__main__":
     parser.add_argument("--use_ptuning_v2", action="store_true")
     parser.add_argument("--stream_interval", type=int, default=2)
     args = parser.parse_args()
+
     sys.path.insert(0, args.model_path)
+
     if args.gpus:
         if len(args.gpus.split(",")) < args.num_gpus:
             raise ValueError(

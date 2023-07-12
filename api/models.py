@@ -414,6 +414,8 @@ class AnimaModelAdapter(LlamaModelAdapter):
 
 class BaiChuanModelAdapter(BaseModelAdapter):
 
+    """ https://github.com/baichuan-inc/Baichuan-13B """
+
     def match(self, model_name):
         return "baichuan" in model_name
 
