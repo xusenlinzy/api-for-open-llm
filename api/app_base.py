@@ -1,6 +1,4 @@
-import argparse
 import json
-import os
 import sys
 
 sys.path.insert(0, '.')
@@ -98,15 +96,15 @@ def check_requests(request) -> Optional[JSONResponse]:
 
 
 def get_gen_params(
-        model_name: str,
-        messages: Union[str, List[Dict[str, str]]],
-        *,
-        temperature: float,
-        top_p: float,
-        max_tokens: Optional[int],
-        echo: Optional[bool],
-        stream: Optional[bool],
-        stop: Optional[Union[str, List[str]]] = None,
+    model_name: str,
+    messages: Union[str, List[Dict[str, str]]],
+    *,
+    temperature: float,
+    top_p: float,
+    max_tokens: Optional[int],
+    echo: Optional[bool],
+    stream: Optional[bool],
+    stop: Optional[Union[str, List[str]]] = None,
 ) -> Dict[str, Any]:
     if not max_tokens:
         max_tokens = 1024
@@ -135,7 +133,7 @@ def get_gen_params(
 
 
 async def chat_completion_stream_generator(
-        model_name: str, gen_params: Dict[str, Any], n: int
+    model_name: str, gen_params: Dict[str, Any], n: int
 ) -> Generator[str, Any, None]:
     """
     Event stream format:
@@ -435,6 +433,7 @@ def main(args1):
         load_in_4bit=args.load_in_4bit,
         use_ptuning_v2=args.use_ptuning_v2,
     )
+
     global model_server
     model_server = ModelServer(
         model,
@@ -444,6 +443,7 @@ def main(args1):
         context_len=args.context_len,
         stream_interval=args.stream_interval,
     )
+
     global embed_client
     embed_client = None
     if args.embedding_name:

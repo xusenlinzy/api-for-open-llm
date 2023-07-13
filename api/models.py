@@ -206,13 +206,13 @@ class BaseModelAdapter:
 
 
 def load_model(
-        model_name: str,
-        model_name_or_path: Optional[str] = None,
-        adapter_model: Optional[str] = None,
-        quantize: Optional[int] = 16,
-        device: Optional[str] = "cuda",
-        load_in_8bit: Optional[bool] = False,
-        **kwargs
+    model_name: str,
+    model_name_or_path: Optional[str] = None,
+    adapter_model: Optional[str] = None,
+    quantize: Optional[int] = 16,
+    device: Optional[str] = "cuda",
+    load_in_8bit: Optional[bool] = False,
+    **kwargs
 ):
     model_name = model_name.lower()
 
