@@ -1,7 +1,7 @@
 openai
 langchain
 bitsandbytes
-fastapi
+fastapi==0.95.1
 uvicorn
 tenacity
 sentencepiece

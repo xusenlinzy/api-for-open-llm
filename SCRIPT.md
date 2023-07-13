@@ -1,10 +1,20 @@
-## docker build
+## docker 镜像
+
+构建镜像
 
 ```shell
 docker build -t llm-api:pytorch .
 ```
 
-## docker run
+或者拉取已经构建好的镜像
+
+```shell
+docker pull xusenlinzy/llm-api:latest
+```
+
+**使用拉取的镜像需要将下面命令中的镜像名称替换成 `xusenlinzy/llm-api:latest`**
+
+## docker 启动模型
 
 ### 主要参数
 
