@@ -461,6 +461,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     sys.path.insert(0, args.model_path)
+    # 这里设置的gpus没有用，需要重新设置一次
+    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpus
 
     if args.gpus:
         if len(args.gpus.split(",")) < args.num_gpus:
