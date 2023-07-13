@@ -57,7 +57,6 @@ MODEL_NAME_MAP = {
     "chatglm-6b": "chatglm",
     "internlm": "internlm",
     "internlm-chat-7b": "internlm",
-
 }
 
 
@@ -125,7 +124,7 @@ async def show_available_models():
 
 
 @app.post("/v1/chat/completions")
-async def chat_completions(request: ChatCompletionRequest):
+async def create_chat_completions(request: ChatCompletionRequest):
     assert request.model in MODEL_NAME_MAP.keys(), f"Model {request.model} not launched!"
     model_name = MODEL_NAME_MAP[request.model]
     openai.api_base = MODEL_LIST[model_name]["api_base"]
