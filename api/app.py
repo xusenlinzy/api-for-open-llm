@@ -43,6 +43,9 @@ from api.protocol import (
 
 app = FastAPI()
 headers = {"User-Agent": "Chat API Server"}
+args = None
+embed_client = None
+model_server = None
 
 
 def create_error_response(code: int, message: str) -> JSONResponse:
@@ -84,7 +87,7 @@ def check_requests(request) -> Optional[JSONResponse]:
             f"{request.top_p} is greater than the maximum of 1 - 'temperature'",
         )
     if request.stop is not None and (
-        not isinstance(request.stop, str) and not isinstance(request.stop, list)
+            not isinstance(request.stop, str) and not isinstance(request.stop, list)
     ):
         return create_error_response(
             ErrorCode.PARAM_OUT_OF_RANGE,
@@ -95,17 +98,16 @@ def check_requests(request) -> Optional[JSONResponse]:
 
 
 def get_gen_params(
-    model_name: str,
-    messages: Union[str, List[Dict[str, str]]],
-    *,
-    temperature: float,
-    top_p: float,
-    max_tokens: Optional[int],
-    echo: Optional[bool],
-    stream: Optional[bool],
-    stop: Optional[Union[str, List[str]]] = None,
+        model_name: str,
+        messages: Union[str, List[Dict[str, str]]],
+        *,
+        temperature: float,
+        top_p: float,
+        max_tokens: Optional[int],
+        echo: Optional[bool],
+        stream: Optional[bool],
+        stop: Optional[Union[str, List[str]]] = None,
 ) -> Dict[str, Any]:
-
     if not max_tokens:
         max_tokens = 1024
 
@@ -133,7 +135,7 @@ def get_gen_params(
 
 
 async def chat_completion_stream_generator(
-    model_name: str, gen_params: Dict[str, Any], n: int
+        model_name: str, gen_params: Dict[str, Any], n: int
 ) -> Generator[str, Any, None]:
     """
     Event stream format:
@@ -347,7 +349,7 @@ async def create_completion(request: CompletionRequest):
                 if usage_key != "first_tokens":
                     setattr(usage, usage_key, getattr(usage, usage_key) + usage_value)
             usage.first_tokens = content["usage"].get("first_tokens", None)
-            
+
         logger.info(f"consume time  = {(time.time() - start_time)}s, response = {str(choices)}")
         return CompletionResponse(
             model=request.model, choices=choices, usage=UsageInfo.parse_obj(usage)
@@ -409,68 +411,9 @@ async def create_embeddings(request: EmbeddingsRequest, model_name: str = None):
     ).dict(exclude_none=True)
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="OpenAI Compatible RESTful API server."
-    )
-    parser.add_argument("--host", type=str, default="0.0.0.0", help="host name")
-    parser.add_argument("--port", type=int, default=8000, help="port number")
-    parser.add_argument(
-        "--allow-credentials", action="store_true", help="allow credentials"
-    )
-    parser.add_argument(
-        "--allowed-origins", type=json.loads, default=["*"], help="allowed origins"
-    )
-    parser.add_argument(
-        "--allowed-methods", type=json.loads, default=["*"], help="allowed methods"
-    )
-    parser.add_argument(
-        "--allowed-headers", type=json.loads, default=["*"], help="allowed headers"
-    )
-    parser.add_argument(
-        '--model_name', type=str, help='chatglm, moss, phoenix', default='chatglm'
-    )
-    parser.add_argument(
-        '--model_path', '-m', type=str, help='model_name_or_path', default=None
-    )
-    parser.add_argument(
-        '--adapter_model_path', type=str, help='lora or ptuing-v2 model_name_or_path', default=None
-    )
-    parser.add_argument(
-        "--device", type=str, choices=["cpu", "cuda"], default="cuda", help="The device type",
-    )
-    parser.add_argument(
-        "--gpus", type=str, default=None, help="A single GPU like 1 or multiple GPUs like 0,2",
-    )
-    parser.add_argument(
-        "--num_gpus", type=int, default=1, help="Number of GPUs to use",
-    )
-    parser.add_argument(
-        '--quantize', '-q', help='quantize, optional: 16，8，4', type=int, default=16
-    )
-    parser.add_argument(
-        '--embedding_name', help='embedding model name or path', type=str, default=None
-    )
-    parser.add_argument(
-        '--context_len', help='context length for generation', type=int, default=2048
-    )
-    parser.add_argument('--load_in_8bit', action='store_true')
-    parser.add_argument('--load_in_4bit', action='store_true')
-    parser.add_argument("--use_ptuning_v2", action="store_true")
-    parser.add_argument("--stream_interval", type=int, default=2)
-    args = parser.parse_args()
-
-    sys.path.insert(0, args.model_path)
-
-    if args.gpus:
-        logger.info(f"load model in GPUs = {args.gpus}")
-        if len(args.gpus.split(",")) < args.num_gpus:
-            raise ValueError(
-                f"Larger --num_gpus ({args.num_gpus}) than --gpus {args.gpus}!"
-            )
-        os.environ["CUDA_VISIBLE_DEVICES"] = args.gpus
-        os.system(f"export CUDA_VISIBLE_DEVICES={args.gpus}")
-
+def main(args1):
+    global args
+    args = args1
     app.add_middleware(
         CORSMiddleware,
         allow_origins=args.allowed_origins,
@@ -492,7 +435,7 @@ if __name__ == "__main__":
         load_in_4bit=args.load_in_4bit,
         use_ptuning_v2=args.use_ptuning_v2,
     )
-
+    global model_server
     model_server = ModelServer(
         model,
         tokenizer,
@@ -501,7 +444,7 @@ if __name__ == "__main__":
         context_len=args.context_len,
         stream_interval=args.stream_interval,
     )
-
+    global embed_client
     embed_client = None
     if args.embedding_name:
         embed_client = SentenceTransformer(args.embedding_name, device=args.device)
