@@ -4,7 +4,6 @@ import concurrent.futures
 import json
 import traceback
 import warnings
-from typing import List, Optional, Dict, Union, Any
 
 import openai
 import uvicorn
@@ -13,7 +12,15 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from loguru import logger
-from pydantic import BaseModel
+
+from api.protocol import (
+    ChatCompletionRequest,
+    CompletionRequest,
+    ModelCard,
+    ModelList,
+    ModelPermission,
+    EmbeddingsRequest,
+)
 
 warnings.filterwarnings("ignore")
 
@@ -25,44 +32,33 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+openai.api_key = "xxx"
 
+MODEL_LIST = {
+    "chatglm": {
+        "api_base": "http://192.168.x.xx:7890/v1",
+        "model_names":
+        [
+            "chatglm",
+            "chatglm-6b"
+        ]
+    },
+    "internlm": {
+        "api_base": "http://192.168.x.xx:8002/v1",
+        "model_names":
+        [
+            "internlm",
+            "internlm-chat-7b"
+        ]
+    }
+}
+MODEL_NAME_MAP = {
+    "chatglm": "chatglm",
+    "chatglm-6b": "chatglm",
+    "internlm": "internlm",
+    "internlm-chat-7b": "internlm",
 
-class ChatCompletionRequest(BaseModel):
-    model: str
-    messages: List[Dict[str, str]]
-    temperature: Optional[float] = 0.7
-    top_p: Optional[float] = 1.0
-    n: Optional[int] = 1
-    max_tokens: Optional[int] = 2048
-    stop: Optional[Union[str, List[str]]] = None
-    stream: Optional[bool] = False
-    presence_penalty: Optional[float] = 0.0
-    frequency_penalty: Optional[float] = 0.0
-    user: Optional[str] = None
-
-
-class CompletionRequest(BaseModel):
-    model: str
-    prompt: Union[str, List[str]]
-    suffix: Optional[str] = None
-    temperature: Optional[float] = 0.7
-    n: Optional[int] = 1
-    max_tokens: Optional[int] = None
-    stop: Optional[Union[str, List[str]]] = None
-    stream: Optional[bool] = False
-    top_p: Optional[float] = 1.0
-    logprobs: Optional[int] = None
-    echo: Optional[bool] = False
-    presence_penalty: Optional[float] = 0.0
-    frequency_penalty: Optional[float] = 0.0
-    user: Optional[str] = None
-
-
-class EmbeddingsRequest(BaseModel):
-    model: Optional[str] = None
-    engine: Optional[str] = None
-    input: Union[str, List[Any]]
-    user: Optional[str] = None
+}
 
 
 @on_exception(expo, openai.error.RateLimitError, max_tries=5)
@@ -119,8 +115,20 @@ async def _embeddings_create_async(params):
     return result
 
 
+@app.get("/v1/models")
+async def show_available_models():
+    model_cards = []
+    model_list = MODEL_LIST.keys()
+    for m in model_list:
+        model_cards.append(ModelCard(id=m, root=m, permission=[ModelPermission()]))
+    return ModelList(data=model_cards)
+
+
 @app.post("/v1/chat/completions")
 async def chat_completions(request: ChatCompletionRequest):
+    assert request.model in MODEL_NAME_MAP.keys(), f"Model {request.model} not launched!"
+    model_name = MODEL_NAME_MAP[request.model]
+    openai.api_base = MODEL_LIST[model_name]["api_base"]
     res = await _chat_completions_create_async(request.dict(exclude_none=True))
 
     async def chat_generator():
@@ -129,18 +137,21 @@ async def chat_completions(request: ChatCompletionRequest):
             return
 
         for openai_object in res:
-            yield json.dumps(openai_object.to_dict_recursive(), ensure_ascii=False, separators=(",", ":"))
+            yield f"data: {json.dumps(openai_object.to_dict_recursive(), ensure_ascii=False, separators=(',', ':'))}\n\n"
 
         yield "data: [DONE]\n\n"
 
     if request.stream:
-        return StreamingResponse(chat_generator, media_type="text/event-stream")
+        return StreamingResponse(chat_generator(), media_type="text/event-stream")
     else:
         return res.to_dict_recursive() if res else {}
 
 
 @app.post("/v1/completions")
 async def create_completion(request: CompletionRequest):
+    assert request.model in MODEL_NAME_MAP.keys(), f"Model {request.model} not launched!"
+    model_name = MODEL_NAME_MAP[request.model]
+    openai.api_base = MODEL_LIST[model_name]["api_base"]
     res = await _completions_create_async(request.dict(exclude_none=True))
 
     async def completion_generator():
@@ -149,12 +160,12 @@ async def create_completion(request: CompletionRequest):
             return
 
         for openai_object in res:
-            yield json.dumps(openai_object.to_dict_recursive(), ensure_ascii=False, separators=(",", ":"))
+            yield f"data: {json.dumps(openai_object.to_dict_recursive(), ensure_ascii=False, separators=(',', ':'))}\n\n"
 
         yield "data: [DONE]\n\n"
 
     if request.stream:
-        return StreamingResponse(completion_generator, media_type="text/event-stream")
+        return StreamingResponse(completion_generator(), media_type="text/event-stream")
     else:
         return res.to_dict_recursive() if res else {}
 
@@ -166,17 +177,17 @@ async def create_embeddings(request: EmbeddingsRequest, model_name: str = None):
     if request.model is None:
         request.model = model_name
 
+    assert request.model in MODEL_NAME_MAP.keys(), f"Model {request.model} not launched!"
+    model_name = MODEL_NAME_MAP[request.model]
+    openai.api_base = MODEL_LIST[model_name]["api_base"]
     res = await _embeddings_create_async(request.dict(exclude_none=True))
     return res if res else {}
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Simple API server for ChatGPT')
-    parser.add_argument('--api_key', type=str, help='API KEY', default=None, required=True)
     parser.add_argument('--host', '-H', type=str, help='host name', default='0.0.0.0')
-    parser.add_argument('--port', '-P', type=int, help='port number', default=80)
+    parser.add_argument('--port', '-P', type=int, help='port number', default=9009)
 
     args = parser.parse_args()
-    openai.api_key = args.api_key
-
     uvicorn.run(app, host=args.host, port=args.port)
