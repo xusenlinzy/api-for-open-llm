@@ -18,7 +18,10 @@
 ## 📢 News 
 
 
-+ 2023.7.14 支持在一个 `API BASE` 下调用多个模型，使用方式：① 根据 [SCRIPT.md](./SCRIPT.md) 启动多个模型；② 修改 [chatgpt.py](./chatgpt.py) 中的 `MODEL_LIST`，将启动的模型加入进去；③ 运行 [chatgpt.py](./chatgpt.py)
++ 2023.7.14 支持在一个 `API BASE` 下调用多个模型
+   + ① 根据 [SCRIPT.md](./SCRIPT.md) 启动多个模型
+   + ② 修改 [chatgpt.py](./chatgpt.py) 中的 `MODEL_LIST`，将启动的模型加入进去
+   + ③ `python chatgpt.py`
 
 
 + 2023.7.12 新增 [baichuan-13b-chat](https://github.com/baichuan-inc/Baichuan-13B)，启动方式见 [baichuan-13b-chat](https://github.com/xusenlinzy/api-for-open-llm/blob/master/SCRIPT.md#baichuan-13b-chat)
@@ -32,6 +35,8 @@
 
 + 2023.6.12 使用 [m3e](https://huggingface.co/moka-ai/m3e-base) 中文嵌入模型（在中文文本分类和文本检索上都优于 `openai-ada-002`）
 
+
+---
 
 **主要特性**：
 
