@@ -34,13 +34,23 @@ app.add_middleware(
 )
 openai.api_key = "xxx"
 
+# 根据模型名称选择不同的模型接口
 MODEL_LIST = {
     "chatglm": {
-        "api_base": "http://192.168.x.xx:7890/v1",
-        "model_names":
+        "api_base": "http://192.168.x.xx:8000/v1",
+        "model_names":  # 如果模型名称在下面的列表中，则使用上面的 api_base
         [
             "chatglm",
-            "chatglm-6b"
+            "chatglm-6b",
+            # "gpt-3.5-turbo"  # 对于 ChatGPT-Next-Web 和 dify 等应用，指定模型名称为 gpt-3.5-turbo，因此需要加上
+        ]
+    },
+    "chatglm2": {
+        "api_base": "http://192.168.x.xx:8001/v1",
+        "model_names":
+        [
+            "chatglm2",
+            "chatglm2-6b",
         ]
     },
     "internlm": {
@@ -50,14 +60,18 @@ MODEL_LIST = {
             "internlm",
             "internlm-chat-7b"
         ]
+    },
+    "baichuan-13b": {
+        "api_base": "http://192.168.x.xx:8003/v1",
+        "model_names":
+        [
+            "baichuan",
+            "baichuan-chat-13b"
+        ]
     }
 }
-MODEL_NAME_MAP = {
-    "chatglm": "chatglm",
-    "chatglm-6b": "chatglm",
-    "internlm": "internlm",
-    "internlm-chat-7b": "internlm",
-}
+
+MODEL_NAME_MAP = {name: m for m, v in MODEL_LIST.items() for name in v["model_names"]}
 
 
 @on_exception(expo, openai.error.RateLimitError, max_tries=5)
