@@ -18,7 +18,7 @@
 ## 📢 News
 
 
-+ 【2023.7.15】 支持 [starchat](https://huggingface.co/HuggingFaceH4/starchat-beta) 模型，启动方式见 [baichuan-13b-chat](https://github.com/xusenlinzy/api-for-open-llm/blob/master/SCRIPT.md#starchat)
++ 【2023.7.15】 支持 [starchat](https://huggingface.co/HuggingFaceH4/starchat-beta) 模型，启动方式见 [starchat](https://github.com/xusenlinzy/api-for-open-llm/blob/master/SCRIPT.md#starchat)
 
 
 + 【2023.7.14】 支持在一个 `API BASE` 下调用多个模型
