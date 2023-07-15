@@ -275,3 +275,22 @@ docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=internlm \
     --device cuda \
     --embedding_name moka-ai/m3e-base
 ```
+
+### StarChat
+
+starchat-beta:
+
+```shell
+docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=starchat \
+    --ulimit memlock=-1 --ulimit stack=67108864 \
+    -v `pwd`:/workspace \
+    llm-api:pytorch \
+    python api/app.py \
+    --port 80 \
+    --allow-credentials \
+    --model_name starchat \
+    --model_path HuggingFaceH4/starchat-beta \
+    --device cuda \
+    --load_in_8bit \
+    --embedding_name moka-ai/m3e-base
+```

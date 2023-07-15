@@ -253,6 +253,32 @@ class BaiChuanPromptAdapter(BasePromptAdapter):
         return "baichuan-13b" in model_name
 
 
+class StarChatPromptAdapter(BasePromptAdapter):
+    """ https://huggingface.co/HuggingFaceH4/starchat-beta """
+
+    system_prompt = "<|system|>\n{}<|end|>\n"
+    user_prompt = "<|user|>\n{}<|end|>\n"
+    assistant_prompt = "<|assistant|>\n{}<|end|>\n"
+    stop = ["<|user|>", "<|assistant|>", "<|end|>"]
+
+    def match(self, model_name):
+        return "starchat" in model_name or "starcode" in model_name
+
+    def generate_prompt(self, messages: List[Dict[str, str]]) -> str:
+        prompt = ""
+        for message in messages:
+            if message["role"] == "system":
+                prompt += self.system_prompt.format(message["content"])
+            if message["role"] == "user":
+                prompt += self.user_prompt.format(message["content"])
+            else:
+                prompt += self.assistant_prompt.format(message["content"])
+
+        prompt += "<|assistant|>\n"
+
+        return prompt
+
+
 register_prompt_adapter(ChatGLMPromptAdapter)
 register_prompt_adapter(ChatGLM2PromptAdapter)
 register_prompt_adapter(MossPromptAdapter)
@@ -266,5 +292,6 @@ register_prompt_adapter(YuLanChatPromptAdapter)
 register_prompt_adapter(OpenBuddyPromptAdapter)
 register_prompt_adapter(InternLMPromptAdapter)
 register_prompt_adapter(BaiChuanPromptAdapter)
+register_prompt_adapter(StarChatPromptAdapter)
 
 register_prompt_adapter(BasePromptAdapter)

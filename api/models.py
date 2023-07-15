@@ -102,7 +102,6 @@ class BaseModelAdapter:
                 }
 
             if load_in_8bit or load_in_4bit:
-                model_kwargs["torch_dtype"] = None
                 model_kwargs["load_in_8bit"] = load_in_8bit
                 model_kwargs["load_in_4bit"] = load_in_4bit
                 model_kwargs["device_map"] = "auto"
@@ -472,6 +471,17 @@ class InternLMModelAdapter(BaseModelAdapter):
     @property
     def default_model_name_or_path(self):
         return "internlm/internlm-chat-7b"
+
+
+class StarCodeModelAdapter(BaseModelAdapter):
+    """ https://github.com/bigcode-project/starcoder """
+
+    def match(self, model_name):
+        return "starcode" in model_name or "starchat" in model_name
+
+    @property
+    def tokenizer_kwargs(self):
+        return {}
 
 
 register_model_adapter(ChatglmModelAdapter)
