@@ -246,7 +246,7 @@ class BaiChuanPromptAdapter(BasePromptAdapter):
 
     system_prompt = ""
     user_prompt = "<reserved_102>{}<reserved_103>"
-    assistant_prompt = "{}"
+    assistant_prompt = "{}</s>"
     stop = ["<reserved_102>", "<reserved_103>"]
 
     def match(self, model_name):
@@ -265,7 +265,7 @@ class StarChatPromptAdapter(BasePromptAdapter):
         return "starchat" in model_name or "starcode" in model_name
 
     def generate_prompt(self, messages: List[Dict[str, str]]) -> str:
-        prompt = ""
+        prompt = "<|system|>\n<|end|>\n"
         for message in messages:
             if message["role"] == "system":
                 prompt += self.system_prompt.format(message["content"])

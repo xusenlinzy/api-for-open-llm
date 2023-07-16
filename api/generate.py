@@ -343,6 +343,24 @@ def generate_stream(
     torch.cuda.empty_cache()
 
 
+SEQUENCE_LENGTH_KEYS = [
+    "max_sequence_length",
+    "seq_length",
+    "max_position_embeddings",
+    "max_seq_len",
+]
+
+
+def get_context_length(config):
+    """Get the context length of a model from a huggingface model config."""
+    for key in SEQUENCE_LENGTH_KEYS:
+        if hasattr(config, key):
+            val = getattr(config, key)
+            if val is not None:
+                return val
+    return 2048
+
+
 class ModelServer:
     def __init__(
         self,
@@ -360,12 +378,7 @@ class ModelServer:
         self.stream_interval = stream_interval
 
         if context_len is None:
-            if hasattr(self.model.config, "max_sequence_length"):
-                self.context_len = self.model.config.max_sequence_length
-            elif hasattr(self.model.config, "max_position_embeddings"):
-                self.context_len = self.model.config.max_position_embeddings
-            else:
-                self.context_len = 2048
+            self.context_len = get_context_length(self.model.config)
         else:
             self.context_len = context_len
 
