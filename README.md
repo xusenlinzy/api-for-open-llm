@@ -33,10 +33,10 @@
 + 【2023.7.7】 支持 [InternLM](https://github.com/InternLM/InternLM) 模型，启动方式见 [internlm-chat-7b](https://github.com/xusenlinzy/api-for-open-llm/blob/master/SCRIPT.md#internlm)
 
 
-+ 【023.6.26】 支持 [ChatGLM2-6b](https://github.com/THUDM/ChatGLM2-6B) 模型
++ 【2023.6.26】 支持 [ChatGLM2-6b](https://github.com/THUDM/ChatGLM2-6B) 模型
 
 
-+ 2023.6.12 使用 [m3e](https://huggingface.co/moka-ai/m3e-base) 中文嵌入模型（在中文文本分类和文本检索上都优于 `openai-ada-002`）
++ 【2023.6.12】 使用 [m3e](https://huggingface.co/moka-ai/m3e-base) 中文嵌入模型（在中文文本分类和文本检索上都优于 `openai-ada-002`）
 
 
 ---
