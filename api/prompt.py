@@ -319,5 +319,6 @@ register_prompt_adapter(OpenBuddyPromptAdapter)
 register_prompt_adapter(InternLMPromptAdapter)
 register_prompt_adapter(BaiChuanPromptAdapter)
 register_prompt_adapter(StarChatPromptAdapter)
+register_prompt_adapter(AquilaChatPromptAdapter)
 
 register_prompt_adapter(BasePromptAdapter)
