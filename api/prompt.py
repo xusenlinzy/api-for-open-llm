@@ -243,9 +243,10 @@ class InternLMPromptAdapter(BasePromptAdapter):
 
 
 class BaiChuanPromptAdapter(BasePromptAdapter):
+    """ https://github.com/lm-sys/FastChat/blob/main/fastchat/conversation.py """
 
     system_prompt = ""
-    user_prompt = "<reserved_102>{}<reserved_103>"
+    user_prompt = "<reserved_102> {}<reserved_103> "
     assistant_prompt = "{}</s>"
     stop = ["<reserved_102>", "<reserved_103>"]
 
