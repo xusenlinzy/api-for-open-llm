@@ -294,3 +294,21 @@ docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=starchat \
     --load_in_8bit \
     --embedding_name moka-ai/m3e-base
 ```
+
+### AquilaChat-7B
+
+aquila-chat-7b:
+
+```shell
+docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=aquila-chat-7b \
+    --ulimit memlock=-1 --ulimit stack=67108864 \
+    -v `pwd`:/workspace \
+    llm-api:pytorch \
+    python api/app.py \
+    --port 80 \
+    --allow-credentials \
+    --model_name aquila-chat-7b \
+    --model_path BAAI/AquilaChat-7B \
+    --device cuda \
+    --embedding_name moka-ai/m3e-base
+```

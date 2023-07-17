@@ -483,6 +483,29 @@ class StarCodeModelAdapter(BaseModelAdapter):
     def tokenizer_kwargs(self):
         return {}
 
+    @property
+    def default_model_name_or_path(self):
+        return "HuggingFaceH4/starchat-beta"
+
+
+class AquilaModelAdapter(BaseModelAdapter):
+    """ https://github.com/FlagAI-Open/FlagAI """
+
+    def match(self, model_name):
+        return "Aquila" in model_name
+
+    @property
+    def model_kwargs(self):
+        return {"trust_remote_code": True}
+
+    @property
+    def tokenizer_kwargs(self):
+        return {"trust_remote_code": True}
+
+    @property
+    def default_model_name_or_path(self):
+        return "BAAI/AquilaChat-7B"
+
 
 register_model_adapter(ChatglmModelAdapter)
 register_model_adapter(LlamaModelAdapter)
@@ -496,5 +519,6 @@ register_model_adapter(AnimaModelAdapter)
 register_model_adapter(BaiChuanModelAdapter)
 register_model_adapter(GuanacoModelAdapter)
 register_model_adapter(InternLMModelAdapter)
+register_model_adapter(AquilaModelAdapter)
 
 register_model_adapter(BaseModelAdapter)

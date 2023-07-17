@@ -279,6 +279,32 @@ class StarChatPromptAdapter(BasePromptAdapter):
         return prompt
 
 
+class AquilaChatPromptAdapter(BasePromptAdapter):
+    """ https://github.com/FlagAI-Open/FlagAI/blob/6f5d412558d73d5d12b8b55d56f51942f80252c1/examples/Aquila/Aquila-chat/cyg_conversation.py """
+
+    system_prompt = "System: {}###"
+    user_prompt = "Human: {}###"
+    assistant_prompt = "Assistant: {}###"
+    stop = ["###", "[UNK]", "</s>"]
+
+    def match(self, model_name):
+        return "Aquila" in model_name or "Aquila" in model_name
+
+    def generate_prompt(self, messages: List[Dict[str, str]]) -> str:
+        prompt = "A chat between a curious human and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the human's questions."
+        for message in messages:
+            if message["role"] == "system":
+                prompt += self.system_prompt.format(message["content"])
+            if message["role"] == "user":
+                prompt += self.user_prompt.format(message["content"])
+            else:
+                prompt += self.assistant_prompt.format(message["content"])
+
+        prompt += "Assistant: "
+
+        return prompt
+
+
 register_prompt_adapter(ChatGLMPromptAdapter)
 register_prompt_adapter(ChatGLM2PromptAdapter)
 register_prompt_adapter(MossPromptAdapter)
