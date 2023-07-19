@@ -13,27 +13,7 @@ from transformers import (
     AutoModelForCausalLM,
     BitsAndBytesConfig,
 )
-
-
-def get_gpu_memory(max_gpus=None):
-    """Get available memory for each GPU."""
-    gpu_memory = []
-    num_gpus = (
-        torch.cuda.device_count()
-        if max_gpus is None
-        else min(max_gpus, torch.cuda.device_count())
-    )
-
-    for gpu_id in range(num_gpus):
-        with torch.cuda.device(gpu_id):
-            device = torch.cuda.current_device()
-            gpu_properties = torch.cuda.get_device_properties(device)
-            total_memory = gpu_properties.total_memory / (1024 ** 3)
-            allocated_memory = torch.cuda.memory_allocated() / (1024 ** 3)
-            available_memory = total_memory - allocated_memory
-            gpu_memory.append(available_memory)
-    return gpu_memory
-
+from transformers.utils.versions import require_version
 
 # A global registry for all model adapters
 model_adapters = []
@@ -62,67 +42,84 @@ class BaseModelAdapter:
         """ Load model through transformers. """
         model_name_or_path = self.default_model_name_or_path if model_name_or_path is None else model_name_or_path
         tokenizer_kwargs = self.tokenizer_kwargs
+        tokenizer_kwargs.update()
 
         if adapter_model is not None:
             try:
-                tokenizer = self.tokenizer_class.from_pretrained(adapter_model, **tokenizer_kwargs)
+                tokenizer = self.tokenizer_class.from_pretrained(
+                    adapter_model,
+                    use_fast=self.tokenizer_kwargs.get("use_fast", False),
+                    trust_remote_code=True,
+                )
             except OSError:
-                tokenizer = self.tokenizer_class.from_pretrained(model_name_or_path, **tokenizer_kwargs)
+                tokenizer = self.tokenizer_class.from_pretrained(
+                    model_name_or_path,
+                    use_fast=self.tokenizer_kwargs.get("use_fast", False),
+                    trust_remote_code=True,
+        )
         else:
-            tokenizer = self.tokenizer_class.from_pretrained(model_name_or_path, **tokenizer_kwargs)
+            tokenizer = self.tokenizer_class.from_pretrained(
+                model_name_or_path,
+                use_fast=self.tokenizer_kwargs.get("use_fast", False),
+                trust_remote_code=True,
+            )
 
+        config_kwargs = self.model_kwargs
         device = kwargs.get("device", "cuda")
         num_gpus = kwargs.get("num_gpus", 1)
-        load_in_8bit = kwargs.get("load_in_8bit", False)
-        load_in_4bit = kwargs.get("load_in_4bit", False)
-        use_ptuning_v2 = kwargs.get("use_ptuning_v2", False)
+        if device == "cuda":
+            if "torch_dtype" not in config_kwargs:
+                config_kwargs["torch_dtype"] = torch.float16
+            if num_gpus != 1:
+                config_kwargs["device_map"] = "auto"
+                # model_kwargs["device_map"] = "sequential"  # This is important for not the same VRAM sizes
 
-        model_kwargs = self.model_kwargs
+        # Quantization configurations (using bitsandbytes library).
+        if kwargs.get("load_in_8bit", False):
+            require_version("bitsandbytes>=0.37.0", "To fix: pip install bitsandbytes>=0.37.0")
+
+            config_kwargs["load_in_8bit"] = True
+            config_kwargs["quantization_config"] = BitsAndBytesConfig(
+                load_in_8bit=True,
+                llm_int8_threshold=6.0,
+            )
+            config_kwargs["device_map"] = "auto" if device == "cuda" else None
+
+            logger.info("Quantizing model to 8 bit.")
+
+        elif kwargs.get("load_in_4bit", False):
+            require_version("bitsandbytes>=0.39.0", "To fix: pip install bitsandbytes>=0.39.0")
+            require_version("peft>=0.4.0.dev0", "To fix: pip install git+https://github.com/huggingface/peft.git")
+
+            config_kwargs["load_in_4bit"] = True
+            config_kwargs["quantization_config"] = BitsAndBytesConfig(
+                load_in_4bit=True,
+                bnb_4bit_compute_dtype=torch.float16,
+                bnb_4bit_use_double_quant=True,
+                bnb_4bit_quant_type="nf4",
+            )
+            config_kwargs["device_map"] = "auto" if device == "cuda" else None
+
+            logger.info("Quantizing model to 4 bit.")
+
+        config = AutoConfig.from_pretrained(model_name_or_path, trust_remote_code=True)
+
+        use_ptuning_v2 = kwargs.get("use_ptuning_v2", False)
         if use_ptuning_v2 and adapter_model:
-            config = AutoConfig.from_pretrained(model_name_or_path, **model_kwargs)
             prefix_encoder_file = open(f'{adapter_model}/config.json', 'r')
             prefix_encoder_config = json.loads(prefix_encoder_file.read())
             prefix_encoder_file.close()
 
             config.pre_seq_len = prefix_encoder_config['pre_seq_len']
             config.prefix_projection = prefix_encoder_config['prefix_projection']
-            model_kwargs["config"] = config
 
-        if device == "cuda":
-            if "torch_dtype" not in model_kwargs:
-                model_kwargs["torch_dtype"] = torch.float16
-
-            if num_gpus != 1:
-                model_kwargs["device_map"] = "auto"
-                # model_kwargs["device_map"] = "sequential"  # This is important for not the same VRAM sizes
-                available_gpu_memory = get_gpu_memory(num_gpus)
-                model_kwargs["max_memory"] = {
-                    i: str(int(available_gpu_memory[i] * 0.85)) + "GiB"
-                    for i in range(num_gpus)
-                }
-
-            if load_in_8bit or load_in_4bit:
-                model_kwargs["load_in_8bit"] = load_in_8bit
-                model_kwargs["load_in_4bit"] = load_in_4bit
-                model_kwargs["device_map"] = "auto"
-
-        if load_in_4bit:
-            model = self.model_class.from_pretrained(
-                model_name_or_path,
-                torch_dtype=torch.bfloat16,
-                quantization_config=BitsAndBytesConfig(
-                    load_in_4bit=True,
-                    bnb_4bit_compute_dtype=torch.bfloat16,
-                    bnb_4bit_use_double_quant=True,
-                    bnb_4bit_quant_type='nf4'
-                ),
-                device_map="auto",
-            )
-        else:
-            model = self.model_class.from_pretrained(
-                model_name_or_path,
-                **model_kwargs
-            )
+        # Load and prepare pretrained models (without valuehead).
+        model = self.model_class.from_pretrained(
+            model_name_or_path,
+            config=config,
+            trust_remote_code=True,
+            **config_kwargs
+        )
 
         if device == "cpu":
             model = model.float()
@@ -133,16 +130,18 @@ class BaseModelAdapter:
         is_baichuan = "baichuan" in str(type(model))
 
         if adapter_model is not None:
-            model = self.load_adapter_model(model, tokenizer, adapter_model, is_chatglm, model_kwargs, **kwargs)
+            model = self.load_adapter_model(model, tokenizer, adapter_model, is_chatglm, config_kwargs, **kwargs)
 
         if is_chatglm or is_baichuan:
             quantize = kwargs.get("quantize", None)
             if quantize and quantize != 16:
+                logger.info(f"Quantizing model to {quantize} bit.")
                 model = model.quantize(quantize)
 
-        if device != "cpu" and not load_in_4bit and not load_in_8bit and num_gpus == 1 and "device_map" not in model_kwargs:
+        if device == "cuda" and num_gpus == 1 and "device_map" not in config_kwargs:
             model.to(device)
 
+        # inference mode
         model.eval()
 
         return model, tokenizer
@@ -246,14 +245,6 @@ class ChatglmModelAdapter(BaseModelAdapter):
         return AutoModel
 
     @property
-    def model_kwargs(self):
-        return {"trust_remote_code": True}
-
-    @property
-    def tokenizer_kwargs(self):
-        return {"use_fast": False, "trust_remote_code": True}
-
-    @property
     def default_model_name_or_path(self):
         return "THUDM/chatglm-6b"
 
@@ -281,14 +272,6 @@ class MossModelAdapter(BaseModelAdapter):
 
     def match(self, model_name):
         return "moss" in model_name
-
-    @property
-    def model_kwargs(self):
-        return {"trust_remote_code": True}
-
-    @property
-    def tokenizer_kwargs(self):
-        return {"use_fast": False, "trust_remote_code": True}
 
     @property
     def default_model_name_or_path(self):
@@ -387,10 +370,6 @@ class OpenBuddyFalconModelAdapter(BaseModelAdapter):
         return "openbuddy-falcon" in model_name
 
     @property
-    def model_kwargs(self):
-        return {"trust_remote_code": True}
-
-    @property
     def default_model_name_or_path(self):
         return "OpenBuddy/openbuddy-falcon-7b-v5-fp16"
 
@@ -414,14 +393,6 @@ class BaiChuanModelAdapter(BaseModelAdapter):
         return PeftModel.from_pretrained(model, adapter_model)
 
     @property
-    def model_kwargs(self):
-        return {"trust_remote_code": True}
-
-    @property
-    def tokenizer_kwargs(self):
-        return {"trust_remote_code": True}
-
-    @property
     def default_model_name_or_path(self):
         return "baichuan-inc/baichuan-7B"
 
@@ -431,42 +402,12 @@ class GuanacoModelAdapter(LlamaModelAdapter):
     def match(self, model_name):
         return "guanaco" in model_name
 
-    def load_model(self, model_name_or_path: Optional[str] = None, adapter_model: Optional[str] = None, **kwargs):
-        """ Load model through transformers. """
-        model_name_or_path = self.default_model_name_or_path if model_name_or_path is None else model_name_or_path
-        tokenizer_kwargs = self.tokenizer_kwargs
-        tokenizer = self.tokenizer_class.from_pretrained(model_name_or_path, **tokenizer_kwargs)
-
-        model = self.model_class.from_pretrained(
-            model_name_or_path,
-            torch_dtype=torch.bfloat16,
-            device_map="auto",
-            quantization_config=BitsAndBytesConfig(
-                load_in_4bit=True,
-                bnb_4bit_compute_dtype=torch.bfloat16,
-                bnb_4bit_use_double_quant=True,
-                bnb_4bit_quant_type='nf4'
-            ),
-        )
-
-        model.eval()
-
-        return model, self.post_tokenizer(tokenizer)
-
 
 class InternLMModelAdapter(BaseModelAdapter):
     """ https://github.com/InternLM/InternLM """
 
     def match(self, model_name):
         return "internlm" in model_name
-
-    @property
-    def model_kwargs(self):
-        return {"trust_remote_code": True}
-
-    @property
-    def tokenizer_kwargs(self):
-        return {"use_fast": False, "trust_remote_code": True}
 
     @property
     def default_model_name_or_path(self):
@@ -493,14 +434,6 @@ class AquilaModelAdapter(BaseModelAdapter):
 
     def match(self, model_name):
         return "Aquila" in model_name
-
-    @property
-    def model_kwargs(self):
-        return {"trust_remote_code": True}
-
-    @property
-    def tokenizer_kwargs(self):
-        return {"trust_remote_code": True}
 
     @property
     def default_model_name_or_path(self):

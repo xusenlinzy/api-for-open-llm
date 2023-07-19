@@ -222,12 +222,12 @@ docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=baichuan-7b \
     --embedding_name moka-ai/m3e-base
 ```
 
-如果想要使用全精度加载模型，需要修改 [api/model.py](./api/models.py) 第 425 行
+如果想要使用全精度加载模型，需要修改
 
 ```python
 @property
 def model_kwargs(self):
-    return {"trust_remote_code": True, "torch_dtype": torch.float32}
+    return {"torch_dtype": torch.float32}
 ```
 
 
@@ -247,12 +247,12 @@ docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=baichuan-13b-
     --embedding_name moka-ai/m3e-base
 ```
 
-若模型加载到 `GPU` 太慢，可以通过修改 [api/model.py](./api/models.py) 第 425 行
+若模型加载到 `GPU` 太慢，可以通过修改
 
 ```python
 @property
 def model_kwargs(self):
-    return {"trust_remote_code": True, "device_map": "auto"}
+    return {"device_map": "auto"}
 ```
 
 可以使用 `quantize` 参数进行量化，例如 `--quantize 8`
