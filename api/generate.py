@@ -168,14 +168,14 @@ def generate_stream(
     )
 
     input_ids = tokenizer(prompt).input_ids
-    output_ids = list(input_ids)
 
     if model.config.is_encoder_decoder:
         max_src_len = context_len
     else:  # truncate
-        max_src_len = context_len - max_new_tokens - 8
+        max_src_len = context_len - max_new_tokens - 1
 
     input_ids = input_ids[-max_src_len:]
+    output_ids = list(input_ids)
     input_echo_len = len(input_ids)
 
     if model.config.is_encoder_decoder:
@@ -348,6 +348,7 @@ SEQUENCE_LENGTH_KEYS = [
     "seq_length",
     "max_position_embeddings",
     "max_seq_len",
+    "model_max_length",
 ]
 
 

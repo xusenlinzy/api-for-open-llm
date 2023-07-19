@@ -1,5 +1,7 @@
 from typing import List, Dict
 
+from api.protocol import Role
+
 # A global registry for all prompt adapters
 prompt_adapters = []
 
@@ -33,9 +35,9 @@ class BasePromptAdapter:
         user_content = []
         for message in messages:
             role, content = message["role"], message["content"]
-            if role in ["user", "system"]:
+            if role in [Role.USER, Role.SYSTEM]:
                 user_content.append(content)
-            elif role in ["assistant", "AI"]:
+            elif role == Role.ASSISTANT:
                 prompt += self.user_prompt.format("\n".join(user_content))
                 prompt += self.assistant_prompt.format(content)
                 user_content = []
@@ -63,9 +65,9 @@ class ChatGLMPromptAdapter(BasePromptAdapter):
         i = 0
         for message in messages:
             role, content = message["role"], message["content"]
-            if role in ["user", "system"]:
+            if role in [Role.USER, Role.SYSTEM]:
                 user_content.append(content)
-            elif role in ["assistant", "AI"]:
+            elif role == Role.ASSISTANT:
                 u_content = "\n".join(user_content)
                 prompt += f"[Round {i}]\n{self.user_prompt.format(u_content)}"
                 prompt += self.assistant_prompt.format(content)
@@ -96,9 +98,9 @@ class ChatGLM2PromptAdapter(BasePromptAdapter):
         i = 1
         for message in messages:
             role, content = message["role"], message["content"]
-            if role in ["user", "system"]:
+            if role in [Role.USER, Role.SYSTEM]:
                 user_content.append(content)
-            elif role in ["assistant", "AI"]:
+            elif role == Role.ASSISTANT:
                 u_content = "\n".join(user_content)
                 prompt += f"[Round {i}]\n\n{self.user_prompt.format(u_content)}"
                 prompt += self.assistant_prompt.format(content)
@@ -268,9 +270,9 @@ class StarChatPromptAdapter(BasePromptAdapter):
     def generate_prompt(self, messages: List[Dict[str, str]]) -> str:
         prompt = "<|system|>\n<|end|>\n"
         for message in messages:
-            if message["role"] == "system":
+            if message["role"] == Role.SYSTEM:
                 prompt += self.system_prompt.format(message["content"])
-            if message["role"] == "user":
+            if message["role"] == Role.USER:
                 prompt += self.user_prompt.format(message["content"])
             else:
                 prompt += self.assistant_prompt.format(message["content"])
@@ -294,14 +296,44 @@ class AquilaChatPromptAdapter(BasePromptAdapter):
     def generate_prompt(self, messages: List[Dict[str, str]]) -> str:
         prompt = "A chat between a curious human and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the human's questions."
         for message in messages:
-            if message["role"] == "system":
+            if message["role"] == Role.SYSTEM:
                 prompt += self.system_prompt.format(message["content"])
-            if message["role"] == "user":
+            if message["role"] == Role.ASSISTANT:
                 prompt += self.user_prompt.format(message["content"])
             else:
                 prompt += self.assistant_prompt.format(message["content"])
 
         prompt += "Assistant: "
+
+        return prompt
+
+
+class Llama2ChatPromptAdapter(BasePromptAdapter):
+    """ https://github.com/facebookresearch/llama/blob/main/llama/generation.py """
+
+    system_prompt = "<s><<SYS>>\n{}\n<</SYS>>\n\n"
+    user_prompt = "[INST] {} "
+    assistant_prompt = "[/INST] {} </s><s>"
+    stop = ["[INST]", "[/INST]"]
+
+    def match(self, model_name):
+        return "llama2" in model_name
+
+    def generate_prompt(self, messages: List[Dict[str, str]]) -> str:
+        prompt = """You are a helpful, respectful and honest assistant. Always answer as helpfully as possible, while being safe.  Your answers should not include any harmful, unethical, racist, sexist, toxic, dangerous, or illegal content. Please ensure that your responses are socially unbiased and positive in nature.
+
+If a question does not make any sense, or is not factually coherent, explain why instead of answering something not correct. If you don't know the answer to a question, please don't share false information."""
+        prompt = self.system_prompt.format(prompt)
+        for i, message in enumerate(messages):
+            if i == 0:
+                prompt += message["content"]
+            else:
+                if message["role"] == Role.USER:
+                    prompt += self.user_prompt.format(message["content"])
+                else:
+                    prompt += self.assistant_prompt.format(message["content"])
+
+        prompt += "[/INST] "
 
         return prompt
 
@@ -321,5 +353,6 @@ register_prompt_adapter(InternLMPromptAdapter)
 register_prompt_adapter(BaiChuanPromptAdapter)
 register_prompt_adapter(StarChatPromptAdapter)
 register_prompt_adapter(AquilaChatPromptAdapter)
+register_prompt_adapter(Llama2ChatPromptAdapter)
 
 register_prompt_adapter(BasePromptAdapter)

@@ -1,8 +1,15 @@
 import secrets
 import time
+from enum import Enum
 from typing import Literal, Optional, List, Dict, Any, Union
 
 from pydantic import BaseModel, Field
+
+
+class Role(str, Enum):
+    USER = "user"
+    ASSISTANT = "assistant"
+    SYSTEM = "system"
 
 
 class ErrorResponse(BaseModel):
