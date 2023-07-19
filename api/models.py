@@ -56,7 +56,7 @@ class BaseModelAdapter:
                     model_name_or_path,
                     use_fast=self.tokenizer_kwargs.get("use_fast", False),
                     trust_remote_code=True,
-        )
+                )
         else:
             tokenizer = self.tokenizer_class.from_pretrained(
                 model_name_or_path,
@@ -120,6 +120,9 @@ class BaseModelAdapter:
             trust_remote_code=True,
             **config_kwargs
         )
+
+        if hasattr(model, "ntk_inv_freq"):
+            logger.info("Apply NTK scaling")
 
         if device == "cpu":
             model = model.float()

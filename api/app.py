@@ -66,6 +66,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "--stream_interval", type=int, default=2
     )
+    parser.add_argument(
+        '--alpha', type=str, default=None, help="The scaling factor of NTK method, can be a float or 'auto'. "
+    )
     args = parser.parse_args()
     sys.path.insert(0, args.model_path)
 
@@ -76,6 +79,10 @@ if __name__ == "__main__":
                 f"Larger --num_gpus ({args.num_gpus}) than --gpus {args.gpus}!"
             )
         os.environ["CUDA_VISIBLE_DEVICES"] = args.gpus
+
+    if args.alpha is not None:
+        from api.patches import apply_ntk_scaling_patch
+        apply_ntk_scaling_patch(args.alpha)
 
     from api.app_base import main
 
