@@ -1,6 +1,6 @@
 gradio==3.28.0
 openai
-langchain
+langchain==0.0.166
 loguru
 mdtex2html
 Pygments
@@ -13,3 +13,4 @@ pdfplumber
 sqlalchemy
 tabulate
 pymysql
+tiktoken

@@ -364,10 +364,10 @@ async def create_embeddings(request: EmbeddingsRequest, model_name: str = None):
         inputs = [inputs]
     elif isinstance(inputs, list):
         if isinstance(inputs[0], int):
-            decoding = tiktoken.model.encoding_for_model(model_name)
+            decoding = tiktoken.model.encoding_for_model(request.model)
             inputs = [decoding.decode(inputs)]
         elif isinstance(inputs[0], list):
-            decoding = tiktoken.model.encoding_for_model(model_name)
+            decoding = tiktoken.model.encoding_for_model(request.model)
             inputs = [decoding.decode(text) for text in inputs]
 
     data, token_num = [], 0
