@@ -14,3 +14,4 @@ sqlalchemy
 tabulate
 pymysql
 tiktoken
+nltk~=3.8.1

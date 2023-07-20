@@ -4,6 +4,7 @@ import re
 import shutil
 
 import gradio as gr
+import nltk
 import openai
 import pandas as pd
 from backoff import on_exception, expo
@@ -32,6 +33,9 @@ logging.basicConfig(
     level=logging.DEBUG,
     format="%(asctime)s [%(levelname)s] [%(filename)s:%(lineno)d] %(message)s",
 )
+
+NLTK_DATA_PATH = os.path.join(os.path.dirname(__file__), "nltk_data")
+nltk.data.path = [NLTK_DATA_PATH] + nltk.data.path
 
 
 openai.api_key = "xxx"
