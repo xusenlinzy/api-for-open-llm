@@ -1,11 +1,9 @@
+import argparse
 import json
-import sys
-
-sys.path.insert(0, '.')
-
 import secrets
-from typing import Generator, Optional, Union, Dict, List, Any
 import time
+from typing import Generator, Optional, Union, Dict, List, Any
+
 import tiktoken
 import uvicorn
 from fastapi import FastAPI
@@ -16,7 +14,7 @@ from sentence_transformers import SentenceTransformer
 
 from api.constants import ErrorCode
 from api.generate import ModelServer
-from api.models import load_model
+from api.model_adapter import load_model
 from api.protocol import (
     ChatCompletionRequest,
     ChatCompletionResponse,
@@ -41,9 +39,9 @@ from api.protocol import (
 
 app = FastAPI()
 headers = {"User-Agent": "Chat API Server"}
-args = None
-embed_client = None
-model_server = None
+args: argparse.Namespace = None
+embed_client: SentenceTransformer = None
+model_server: ModelServer = None
 
 
 def create_error_response(code: int, message: str) -> JSONResponse:
@@ -412,6 +410,7 @@ async def create_embeddings(request: EmbeddingsRequest, model_name: str = None):
 def main(args1):
     global args
     args = args1
+
     app.add_middleware(
         CORSMiddleware,
         allow_origins=args.allowed_origins,
@@ -422,6 +421,7 @@ def main(args1):
 
     logger.info(f"args: {args}")
 
+    # load model and tokenizer
     model, tokenizer = load_model(
         args.model_name,
         model_name_or_path=args.model_path,
@@ -434,6 +434,7 @@ def main(args1):
         use_ptuning_v2=args.use_ptuning_v2,
     )
 
+    # launch a model server
     global model_server
     model_server = ModelServer(
         model,
@@ -442,11 +443,13 @@ def main(args1):
         model_name=args.model_name,
         context_len=args.context_len,
         stream_interval=args.stream_interval,
+        prompt_name=args.prompt_name,
     )
 
     global embed_client
     embed_client = None
     if args.embedding_name:
+        # launch a embedding server
         embed_client = SentenceTransformer(args.embedding_name, device=args.device)
 
     uvicorn.run(app, host=args.host, port=args.port, log_level="info")

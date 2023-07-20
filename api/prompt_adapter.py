@@ -1,27 +1,18 @@
-from typing import List, Dict
+import sys
+from typing import List, Dict, Optional
 
 from api.protocol import Role
 
-# A global registry for all prompt adapters
-prompt_adapters = []
-
-
-def register_prompt_adapter(cls):
-    """Register a prompt adapter."""
-    prompt_adapters.append(cls())
-
-
-def get_prompt_adapter(model_name: str):
-    """Get a prompt adapter for a model_name."""
-    for adapter in prompt_adapters:
-        if adapter.match(model_name):
-            return adapter
-    raise ValueError(f"No valid prompt adapter for {model_name}")
+if sys.version_info >= (3, 9):
+    from functools import cache
+else:
+    from functools import lru_cache as cache
 
 
 class BasePromptAdapter:
     """The base and the default model prompt adapter."""
 
+    name = "default"
     system_prompt: str = "You are a helpful assistant!\n"
     user_prompt: str = "Human: {}\nAssistant: "
     assistant_prompt: str = "{}\n"
@@ -50,8 +41,32 @@ class BasePromptAdapter:
         return prompt
 
 
+# A global registry for all prompt adapters
+prompt_adapters: List[BasePromptAdapter] = []
+prompt_adapter_dict: Dict[str, BasePromptAdapter] = {}
+
+
+def register_prompt_adapter(cls):
+    """Register a prompt adapter."""
+    prompt_adapters.append(cls())
+    prompt_adapter_dict[cls().name] = cls()
+
+
+@cache
+def get_prompt_adapter(model_name: str, prompt_name: Optional[str] = None):
+    """Get a prompt adapter for a model name or prompt name."""
+    if prompt_name is not None:
+        return prompt_adapter_dict[prompt_name]
+    else:
+        for adapter in prompt_adapters:
+            if adapter.match(model_name):
+                return adapter
+    raise ValueError(f"No valid prompt adapter for {model_name}")
+
+
 class ChatGLMPromptAdapter(BasePromptAdapter):
 
+    name = "chatglm"
     system_prompt = ""
     user_prompt = "问：{}\n答："
     assistant_prompt = "{}\n"
@@ -85,6 +100,7 @@ class ChatGLMPromptAdapter(BasePromptAdapter):
 
 class ChatGLM2PromptAdapter(BasePromptAdapter):
 
+    name = "chatglm2"
     system_prompt = ""
     user_prompt = "问：{}\n\n答："
     assistant_prompt = "{}\n\n"
@@ -118,6 +134,7 @@ class ChatGLM2PromptAdapter(BasePromptAdapter):
 
 class MossPromptAdapter(BasePromptAdapter):
 
+    name = "moss"
     system_prompt = """You are an AI assistant whose name is MOSS.
 - MOSS is a conversational language model that is developed by Fudan University. It is designed to be helpful, honest, and harmless.
 - MOSS can understand and communicate fluently in the language chosen by the user such as English and 中文. MOSS can perform any language-based tasks.
@@ -138,6 +155,7 @@ Capabilities and tools that MOSS can possess.
 
 class PhoenixPromptAdapter(BasePromptAdapter):
 
+    name = "phoenix"
     system_prompt = "A chat between a curious human and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the human's questions.\n\n"
     user_prompt = "Human: <s>{}</s>Assistant: <s>"
     assistant_prompt = "{}</s>"
@@ -148,6 +166,7 @@ class PhoenixPromptAdapter(BasePromptAdapter):
 
 class AlpacaPromptAdapter(BasePromptAdapter):
 
+    name = "alpaca"
     system_prompt = "Below is an instruction that describes a task. Write a response that appropriately completes the request.\n\n"
     user_prompt = "### Instruction:\n\n{}\n\n### Response:\n\n"
     assistant_prompt = "{}\n\n"
@@ -159,6 +178,7 @@ class AlpacaPromptAdapter(BasePromptAdapter):
 
 class FireflyPromptAdapter(BasePromptAdapter):
 
+    name = "firefly"
     system_prompt = ""
     user_prompt = "<s>{}</s>"
     assistant_prompt = "{}</s>"
@@ -169,6 +189,7 @@ class FireflyPromptAdapter(BasePromptAdapter):
 
 class BaizePromptAdapter(BasePromptAdapter):
 
+    name = "baize"
     system_prompt = "The following is a conversation between a human and an AI assistant named Baize (named after a mythical creature in Chinese folklore). " \
                     "Baize is an open-source AI assistant developed by UCSD and Sun Yat-Sen University. The human and the AI " \
                     "assistant take turns chatting. Human statements start with [|Human|] and AI assistant statements start with " \
@@ -184,6 +205,7 @@ class BaizePromptAdapter(BasePromptAdapter):
 
 class BellePromptAdapter(BasePromptAdapter):
 
+    name = "belle"
     system_prompt = ""
     user_prompt = "Human: {}\n\nAssistant: "
     assistant_prompt = "{}\n\n"
@@ -194,6 +216,7 @@ class BellePromptAdapter(BasePromptAdapter):
 
 class GuanacoPromptAdapter(BasePromptAdapter):
 
+    name = "guanaco"
     system_prompt = "A chat between a curious human and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions.\n"
     user_prompt = "### Human: {}\n### Assistant: "
     assistant_prompt = "{}\n"
@@ -205,6 +228,7 @@ class GuanacoPromptAdapter(BasePromptAdapter):
 
 class YuLanChatPromptAdapter(BasePromptAdapter):
 
+    name = "yulan"
     system_prompt = "The following is a conversation between a human and an AI assistant namely YuLan, developed by GSAI, Renmin University of China. The AI assistant gives helpful, detailed, and polite answers to the user's questions.\n\n"
     user_prompt = "[|Human|]:{}\n[|AI|]:"
     assistant_prompt = "{}\n"
@@ -216,6 +240,7 @@ class YuLanChatPromptAdapter(BasePromptAdapter):
 
 class OpenBuddyPromptAdapter(BasePromptAdapter):
 
+    name = "openbuddy"
     system_prompt = """Consider a conversation between User (a human) and Assistant (named Buddy).
 Buddy is an INTP-T, a friendly, intelligent and multilingual AI assistant, by OpenBuddy team, based on Falcon and LLaMA Transformers architecture. GitHub: https://github.com/OpenBuddy/OpenBuddy
 Buddy cannot access the Internet.
@@ -235,6 +260,7 @@ Buddy strictly refuses to discuss harmful, political, NSFW, illegal, abusive, of
 
 class InternLMPromptAdapter(BasePromptAdapter):
 
+    name = "internlm"
     system_prompt = ""
     user_prompt = "<|User|>:{}<eoh>\n<|Bot|>:"
     assistant_prompt = "{}<eoa>\n"
@@ -247,6 +273,7 @@ class InternLMPromptAdapter(BasePromptAdapter):
 class BaiChuanPromptAdapter(BasePromptAdapter):
     """ https://github.com/lm-sys/FastChat/blob/main/fastchat/conversation.py """
 
+    name = "baichuan"
     system_prompt = ""
     user_prompt = "<reserved_102> {}<reserved_103> "
     assistant_prompt = "{}</s>"
@@ -259,6 +286,7 @@ class BaiChuanPromptAdapter(BasePromptAdapter):
 class StarChatPromptAdapter(BasePromptAdapter):
     """ https://huggingface.co/HuggingFaceH4/starchat-beta """
 
+    name = "starchat"
     system_prompt = "<|system|>\n{}<|end|>\n"
     user_prompt = "<|user|>\n{}<|end|>\n"
     assistant_prompt = "<|assistant|>\n{}<|end|>\n"
@@ -285,6 +313,7 @@ class StarChatPromptAdapter(BasePromptAdapter):
 class AquilaChatPromptAdapter(BasePromptAdapter):
     """ https://github.com/FlagAI-Open/FlagAI/blob/6f5d412558d73d5d12b8b55d56f51942f80252c1/examples/Aquila/Aquila-chat/cyg_conversation.py """
 
+    name = "aquila"
     system_prompt = "System: {}###"
     user_prompt = "Human: {}###"
     assistant_prompt = "Assistant: {}###"
@@ -311,6 +340,7 @@ class AquilaChatPromptAdapter(BasePromptAdapter):
 class Llama2ChatPromptAdapter(BasePromptAdapter):
     """ https://github.com/facebookresearch/llama/blob/main/llama/generation.py """
 
+    name = "llama2"
     system_prompt = "<s><<SYS>>\n{}\n<</SYS>>\n\n"
     user_prompt = "[INST] {} "
     assistant_prompt = "[/INST] {} </s><s>"
@@ -355,4 +385,5 @@ register_prompt_adapter(StarChatPromptAdapter)
 register_prompt_adapter(AquilaChatPromptAdapter)
 register_prompt_adapter(Llama2ChatPromptAdapter)
 
+# After all adapters, try the default base adapter.
 register_prompt_adapter(BasePromptAdapter)

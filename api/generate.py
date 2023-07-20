@@ -14,7 +14,7 @@ from transformers.generation.logits_process import (
 )
 
 from api.constants import ErrorCode
-from api.prompt import get_prompt_adapter
+from api.prompt_adapter import get_prompt_adapter
 
 server_error_msg = (
     "**NETWORK ERROR DUE TO HIGH TRAFFIC. PLEASE REGENERATE OR REFRESH THIS PAGE.**"
@@ -371,11 +371,13 @@ class ModelServer:
         model_name,
         context_len: Optional[int] = None,
         stream_interval: Optional[int] = 2,
+        prompt_name: Optional[str] = None,
     ):
         self.device = device
         self.model = model
         self.tokenizer = tokenizer
         self.model_name = model_name.lower()
+        self.prompt_name = prompt_name.lower() if prompt_name is not None else None
         self.stream_interval = stream_interval
 
         if context_len is None:
@@ -390,7 +392,7 @@ class ModelServer:
         else:
             self.generate_stream_func = generate_stream
 
-        self.prompt_adapter = get_prompt_adapter(self.model_name)
+        self.prompt_adapter = get_prompt_adapter(self.model_name, prompt_name=self.prompt_name)
 
     def count_token(self, params):
         prompt = params["prompt"]

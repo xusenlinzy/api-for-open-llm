@@ -55,19 +55,22 @@ if __name__ == "__main__":
         '--context_len', help='context length for generation', type=int, default=2048
     )
     parser.add_argument(
-        '--load_in_8bit', action='store_true'
+        '--load_in_8bit', action='store_true', help='load in 8 bit'
     )
     parser.add_argument(
-        '--load_in_4bit', action='store_true'
+        '--load_in_4bit', action='store_true', help='load in 4 bit'
     )
     parser.add_argument(
-        "--use_ptuning_v2", action="store_true"
+        "--use_ptuning_v2", action="store_true", help='use ptuning v2 method for chatglm'
     )
     parser.add_argument(
-        "--stream_interval", type=int, default=2
+        "--stream_interval", type=int, default=2, help='interval for stream output'
     )
     parser.add_argument(
         '--alpha', type=str, default=None, help="The scaling factor of NTK method, can be a float or 'auto'. "
+    )
+    parser.add_argument(
+        '--prompt_name', type=str, default=None, help="The prompt name for convasation. "
     )
     args = parser.parse_args()
     sys.path.insert(0, args.model_path)
@@ -84,6 +87,6 @@ if __name__ == "__main__":
         from api.patches import apply_ntk_scaling_patch
         apply_ntk_scaling_patch(args.alpha)
 
-    from api.app_base import main
+    from api.router import main
 
     main(args)

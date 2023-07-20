@@ -51,6 +51,9 @@ docker pull xusenlinzy/llm-api:latest
 + `stream_interval`（可选项）: 流式输出的 `token` 数量
 
 
++ `prompt_name`（可选项）: 使用的对话模板名称，如果不指定，则将根据模型名找到对应的模板
+
+
 ### ChatGLM
 
 chatglm-6b:
@@ -312,3 +315,5 @@ docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=aquila-chat-7
     --device cuda \
     --embedding_name moka-ai/m3e-base
 ```
+
+

@@ -1,5 +1,7 @@
 import json
 import os
+import sys
+from typing import List
 from typing import Optional
 
 import torch
@@ -7,62 +9,39 @@ from loguru import logger
 from peft import PeftModel
 from tqdm import tqdm
 from transformers import (
-    AutoConfig,
     AutoModel,
+    AutoConfig,
     AutoTokenizer,
     AutoModelForCausalLM,
     BitsAndBytesConfig,
 )
 from transformers.utils.versions import require_version
 
-# A global registry for all model adapters
-model_adapters = []
-
-
-def register_model_adapter(cls):
-    """Register a model adapter."""
-    model_adapters.append(cls())
-
-
-def get_model_adapter(model_name: str):
-    """Get a model adapter for a model_name."""
-    for adapter in model_adapters:
-        if adapter.match(model_name):
-            return adapter
-    raise ValueError(f"No valid model adapter for {model_name}")
+if sys.version_info >= (3, 9):
+    from functools import cache
+else:
+    from functools import lru_cache as cache
 
 
 class BaseModelAdapter:
     """The base and the default model adapter."""
 
-    def match(self, model_name):
+    def match(self, model_name: str):
         return True
 
     def load_model(self, model_name_or_path: Optional[str] = None, adapter_model: Optional[str] = None, **kwargs):
         """ Load model through transformers. """
         model_name_or_path = self.default_model_name_or_path if model_name_or_path is None else model_name_or_path
-        tokenizer_kwargs = self.tokenizer_kwargs
-        tokenizer_kwargs.update()
+        tokenizer_kwargs = {"trust_remote_code": True, "use_fast": False}
+        tokenizer_kwargs.update(self.tokenizer_kwargs)
 
         if adapter_model is not None:
             try:
-                tokenizer = self.tokenizer_class.from_pretrained(
-                    adapter_model,
-                    use_fast=self.tokenizer_kwargs.get("use_fast", False),
-                    trust_remote_code=True,
-                )
+                tokenizer = self.tokenizer_class.from_pretrained(adapter_model, **tokenizer_kwargs)
             except OSError:
-                tokenizer = self.tokenizer_class.from_pretrained(
-                    model_name_or_path,
-                    use_fast=self.tokenizer_kwargs.get("use_fast", False),
-                    trust_remote_code=True,
-                )
+                tokenizer = self.tokenizer_class.from_pretrained(model_name_or_path, **tokenizer_kwargs)
         else:
-            tokenizer = self.tokenizer_class.from_pretrained(
-                model_name_or_path,
-                use_fast=self.tokenizer_kwargs.get("use_fast", False),
-                trust_remote_code=True,
-            )
+            tokenizer = self.tokenizer_class.from_pretrained(model_name_or_path, **tokenizer_kwargs)
 
         config_kwargs = self.model_kwargs
         device = kwargs.get("device", "cuda")
@@ -199,11 +178,29 @@ class BaseModelAdapter:
 
     @property
     def tokenizer_kwargs(self):
-        return {"use_fast": False}
+        return {}
 
     @property
     def default_model_name_or_path(self):
         return "zpn/llama-7b"
+
+
+# A global registry for all model adapters
+model_adapters: List[BaseModelAdapter] = []
+
+
+def register_model_adapter(cls):
+    """Register a model adapter."""
+    model_adapters.append(cls())
+
+
+@cache
+def get_model_adapter(model_name: str) -> BaseModelAdapter:
+    """Get a model adapter for a model name."""
+    for adapter in model_adapters:
+        if adapter.match(model_name):
+            return adapter
+    raise ValueError(f"No valid model adapter for {model_name}")
 
 
 def load_model(
@@ -225,6 +222,7 @@ def load_model(
         torch.nn.init.uniform_ = skip
         torch.nn.init.normal_ = skip
 
+    # get model adapter
     adapter = get_model_adapter(model_name)
     model, tokenizer = adapter.load_model(
         model_name_or_path,
@@ -249,7 +247,7 @@ class ChatglmModelAdapter(BaseModelAdapter):
 
     @property
     def default_model_name_or_path(self):
-        return "THUDM/chatglm-6b"
+        return "THUDM/chatglm2-6b"
 
 
 class LlamaModelAdapter(BaseModelAdapter):
@@ -257,7 +255,7 @@ class LlamaModelAdapter(BaseModelAdapter):
 
     def match(self, model_name):
         return "alpaca" in model_name or "baize" in model_name or "openbuddy-llama" in model_name or \
-            "ziya-llama" in model_name.lower()
+            "ziya-llama" in model_name or "llama2" in model_name
 
     def post_tokenizer(self, tokenizer):
         tokenizer.bos_token = "<s>"
@@ -397,7 +395,7 @@ class BaiChuanModelAdapter(BaseModelAdapter):
 
     @property
     def default_model_name_or_path(self):
-        return "baichuan-inc/baichuan-7B"
+        return "baichuan-inc/Baichuan-13B-Chat"
 
 
 class GuanacoModelAdapter(LlamaModelAdapter):
@@ -457,4 +455,5 @@ register_model_adapter(GuanacoModelAdapter)
 register_model_adapter(InternLMModelAdapter)
 register_model_adapter(AquilaModelAdapter)
 
+# After all adapters, try the default base adapter.
 register_model_adapter(BaseModelAdapter)
