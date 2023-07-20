@@ -246,8 +246,13 @@ def generate_stream(
             if i == 0:
                 first_token_probs = torch.softmax(last_token_logits, dim=-1)
                 first_token_probs, first_token_indices = torch.topk(first_token_probs, k=10, largest=True, sorted=True)
-                first_tokens = [tokenizer.decode(int(i)) for i in first_token_indices]
-                first_tokens = dict(zip(first_tokens, first_token_probs.tolist()))
+                topk_tokens = [tokenizer.decode(int(i)) for i in first_token_indices]
+
+                first_tokens = {}
+                for t, p in zip(topk_tokens, first_token_probs.tolist()):
+                    if t in first_tokens and p < first_tokens[t]:
+                        continue
+                    first_tokens[t] = p
 
             _, indices = torch.topk(last_token_logits, 2)
             tokens = [int(index) for index in indices.tolist()]
