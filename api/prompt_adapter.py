@@ -320,7 +320,7 @@ class AquilaChatPromptAdapter(BasePromptAdapter):
     stop = ["###", "[UNK]", "</s>"]
 
     def match(self, model_name):
-        return "Aquila" in model_name or "Aquila" in model_name
+        return "aquila" in model_name
 
     def generate_prompt(self, messages: List[Dict[str, str]]) -> str:
         prompt = "A chat between a curious human and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the human's questions."
