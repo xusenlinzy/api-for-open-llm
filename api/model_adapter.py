@@ -434,7 +434,7 @@ class AquilaModelAdapter(BaseModelAdapter):
     """ https://github.com/FlagAI-Open/FlagAI """
 
     def match(self, model_name):
-        return "Aquila" in model_name
+        return "aquila" in model_name
 
     @property
     def default_model_name_or_path(self):
