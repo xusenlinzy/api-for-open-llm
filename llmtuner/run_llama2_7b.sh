@@ -1,11 +1,9 @@
-output_model=checkpoints/llama2/sft_7b_chat
-if [ ! -d ${output_model} ];then
-    mkdir ${output_model}
-fi
-cp ./finetune.sh ${output_model}
-deepspeed --include localhost:0 --master_port 29510 train.py \
-    --model_name_or_path meta-llama/Llama-2-7b-chat-hf \
-    --train_file ./data/train_sft.csv \
+output_model=checkpoints/llama2/sft-7b-chat
+cp ./run_llama2_7b.sh ${output_model}
+deepspeed --include localhost:0 --master_port 29510 train_llama2.py \
+    --tokenizer_name ./openbuddy_tokenizer \
+    --model_name_or_path ./checkpoints/llama2-7b-chat \
+    --train_file ./data/dummy_data.jsonl \
     --per_device_train_batch_size 1 \
     --do_train \
     --use_fast_tokenizer false \

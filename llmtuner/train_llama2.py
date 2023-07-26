@@ -32,7 +32,6 @@ from transformers import (
 )
 from transformers.trainer_pt_utils import LabelSmoother
 from transformers.trainer_utils import get_last_checkpoint
-from transformers.utils import send_example_telemetry
 
 from args import DataTrainingArguments, ModelArguments
 from utils import SavePeftModelCallback, last_index, safe_ids, DataCollatorForSupervisedDataset
@@ -68,21 +67,40 @@ def tokenize(example, tokenizer, max_length=2048):
         system = dummy_message["system"]
 
     system = B_SYS + system + E_SYS
+    conversation_column = "conversations" if "conversations" in example else "conversation"
     # add system before the first content in conversations
-    example["conversations"][0]["value"] = system + example["conversations"][0]["value"]
-    for i, turn in enumerate(example["conversations"]):
-        role = turn["from"]
-        content = turn["value"]
-        content = content.strip()
-        if role == "human":
+    if "conversations" in example:
+        example[conversation_column][0]["value"] = system + example[conversation_column][0]["value"]
+    elif "conversation" in example:
+        example[conversation_column][0]["human"] = system + example[conversation_column][0]["human"]
+
+    if "conversations" in example:
+        for turn in example[conversation_column]:
+            role = turn["from"]
+            content = turn["value"]
+            content = content.strip()
+            if role == "human":
+                content = f"{B_INST} {content} {E_INST} "
+                content_ids = tokenizer.encode(content)
+                labels += [IGNORE_TOKEN_ID] * (len(content_ids))
+            else:
+                content = f"{content} "
+                content_ids = tokenizer.encode(content, add_special_tokens=False) + [tokenizer.eos_token_id]   # add_special_tokens=False remove bos token, and add eos at the end
+                labels += content_ids
+            input_ids += content_ids
+    else:
+        for turn in example[conversation_column]:
+            content = turn["human"].strip()
             content = f"{B_INST} {content} {E_INST} "
             content_ids = tokenizer.encode(content)
             labels += [IGNORE_TOKEN_ID] * (len(content_ids))
-        else:
+            input_ids += content_ids
+
+            content = turn["assistant"].strip()
             content = f"{content} "
-            content_ids = tokenizer.encode(content, add_special_tokens=False) + [tokenizer.eos_token_id]   # add_special_tokens=False remove bos token, and add eos at the end
+            content_ids = tokenizer.encode(content, add_special_tokens=False) + [tokenizer.eos_token_id]  # add_special_tokens=False remove bos token, and add eos at the end
             labels += content_ids
-        input_ids += content_ids
+            input_ids += content_ids
 
     input_ids = input_ids[:max_length]
     labels = labels[:max_length]
@@ -142,10 +160,6 @@ def main():
     else:
         model_args, data_args, training_args = parser.parse_args_into_dataclasses()
 
-    # Sending telemetry. Tracking the example usage helps us better allocate resources to maintain them. The
-    # information sent is the one passed as arguments along with your Python/PyTorch versions.
-    send_example_telemetry("run_clm", model_args, data_args)
-
     # Setup logging
     logging.basicConfig(
         format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
@@ -201,14 +215,14 @@ def main():
     if True:
         data_files = {}
         dataset_args = {}
-        if data_args.train_files is not None:
+        if data_args.train_file is not None:
             data_files["train"] = data_args.train_file
         extension = data_args.train_file.split(".")[-1]
         if extension == "txt":
             extension = "text"
             dataset_args["keep_linebreaks"] = data_args.keep_linebreaks
         raw_datasets = load_dataset(
-            extension,
+            extension if extension != "jsonl" else "json",
             data_files=data_files,
             cache_dir=os.path.join(training_args.output_dir, 'dataset_cache'),
             use_auth_token=True if model_args.use_auth_token else None,
@@ -346,11 +360,11 @@ def main():
                 )  # only LoRA model - LoRA config above has to fit
             # The two files above have a different name depending on how they were saved, but are actually the same.
             if os.path.exists(checkpoint_name):
-                print(f"Restarting from {checkpoint_name}")
+                logger.info(f"Restarting from {checkpoint_name}")
                 adapters_weights = torch.load(checkpoint_name)
                 set_peft_model_state_dict(model, adapters_weights)
             else:
-                print(f"Checkpoint {checkpoint_name} not found")
+                logger.info(f"Checkpoint {checkpoint_name} not found")
             # checkpoint = Fa
         elif last_checkpoint is not None:
             checkpoint = last_checkpoint
