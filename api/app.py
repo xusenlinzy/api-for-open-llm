@@ -52,7 +52,7 @@ if __name__ == "__main__":
         '--embedding_name', help='embedding model name or path', type=str, default=None
     )
     parser.add_argument(
-        '--context_len', help='context length for generation', type=int, default=2048
+        '--context_len', help='context length for generation', type=int, default=None
     )
     parser.add_argument(
         '--load_in_8bit', action='store_true', help='load in 8 bit'
