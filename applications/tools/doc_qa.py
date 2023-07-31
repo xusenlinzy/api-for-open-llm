@@ -43,7 +43,7 @@ def _get_documents(filepath, chunk_size=500, chunk_overlap=0, two_column=False):
                     for page in tqdm(pdfReader.pages):
                         pdftext += page.extract_text()
 
-            texts = Document(page_content=pdftext, metadata={"source": filepath})
+            texts = [Document(page_content=pdftext, metadata={"source": filepath})]
 
         elif file_type == ".docx":
             from langchain.document_loaders import UnstructuredWordDocumentLoader
@@ -74,7 +74,7 @@ def _get_documents(filepath, chunk_size=500, chunk_overlap=0, two_column=False):
         logger.error(f"Error loading file: {filepath}")
         traceback.print_exc()
 
-    return text_splitter.split_documents([texts])
+    return text_splitter.split_documents(texts)
 
 
 def get_documents(filepath, chunk_size=500, chunk_overlap=0, two_column=False):
