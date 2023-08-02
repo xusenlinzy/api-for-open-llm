@@ -142,8 +142,8 @@ pip install -r requirements.txt
 python api/app.py \
     --port 80 \
     --allow-credentials \
-    --model_path THUDM/chatglm-6b \
-    --embedding_name GanymedeNil/text2vec-large-chinese
+    --model_path THUDM/chatglm2-6b \
+    --embedding_name moka-ai/m3e-base
 ```
 
 

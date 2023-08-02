@@ -26,8 +26,10 @@ else:
 class BaseModelAdapter:
     """The base and the default model adapter."""
 
-    def match(self, model_name: str):
-        return True
+    model_names = []
+
+    def match(self, model_name):
+        return any(m in model_name for m in self.model_names) if self.model_names else True
 
     def load_model(self, model_name_or_path: Optional[str] = None, adapter_model: Optional[str] = None, **kwargs):
         """ Load model through transformers. """
@@ -238,8 +240,7 @@ def load_model(
 class ChatglmModelAdapter(BaseModelAdapter):
     """ https://github.com/THUDM/ChatGLM-6B """
 
-    def match(self, model_name):
-        return "chatglm" in model_name
+    model_names = ["chatglm"]
 
     @property
     def model_class(self):
@@ -253,9 +254,7 @@ class ChatglmModelAdapter(BaseModelAdapter):
 class LlamaModelAdapter(BaseModelAdapter):
     """ https://github.com/project-baize/baize-chatbot """
 
-    def match(self, model_name):
-        return "alpaca" in model_name or "baize" in model_name or "openbuddy-llama" in model_name or \
-            "ziya-llama" in model_name or "llama2" in model_name
+    model_names = ["alpaca", "baize", "openbuddy-llama", "ziya-llama", "guanaco", "llama2", "newhope"]
 
     def post_tokenizer(self, tokenizer):
         tokenizer.bos_token = "<s>"
@@ -271,8 +270,7 @@ class LlamaModelAdapter(BaseModelAdapter):
 class MossModelAdapter(BaseModelAdapter):
     """ https://github.com/OpenLMLab/MOSS """
 
-    def match(self, model_name):
-        return "moss" in model_name
+    model_names = ["moss"]
 
     @property
     def default_model_name_or_path(self):
@@ -282,8 +280,7 @@ class MossModelAdapter(BaseModelAdapter):
 class PhoenixModelAdapter(BaseModelAdapter):
     """ https://github.com/FreedomIntelligence/LLMZoo """
 
-    def match(self, model_name):
-        return "phoenix" in model_name
+    model_names = ["phoenix"]
 
     @property
     def model_kwargs(self):
@@ -301,8 +298,7 @@ class PhoenixModelAdapter(BaseModelAdapter):
 class FireflyModelAdapter(BaseModelAdapter):
     """ https://github.com/yangjianxin1/Firefly """
 
-    def match(self, model_name):
-        return "firefly" in model_name
+    model_names = ["firefly"]
 
     @property
     def model_kwargs(self):
@@ -320,8 +316,7 @@ class FireflyModelAdapter(BaseModelAdapter):
 class YuLanChatModelAdapter(BaseModelAdapter):
     """ https://github.com/RUC-GSAI/YuLan-Chat """
 
-    def match(self, model_name):
-        return "yulan" in model_name
+    model_names = ["yulan"]
 
     def post_tokenizer(self, tokenizer):
         tokenizer.bos_token = "<s>"
@@ -352,8 +347,7 @@ class YuLanChatModelAdapter(BaseModelAdapter):
 class TigerBotModelAdapter(BaseModelAdapter):
     """ https://github.com/TigerResearch/TigerBot """
 
-    def match(self, model_name):
-        return "tiger" in model_name
+    model_names = ["tiger"]
 
     @property
     def tokenizer_kwargs(self):
@@ -367,8 +361,7 @@ class TigerBotModelAdapter(BaseModelAdapter):
 class OpenBuddyFalconModelAdapter(BaseModelAdapter):
     """ https://github.com/OpenBuddy/OpenBuddy """
 
-    def match(self, model_name):
-        return "openbuddy-falcon" in model_name
+    model_names = ["openbuddy-falcon"]
 
     @property
     def default_model_name_or_path(self):
@@ -377,8 +370,7 @@ class OpenBuddyFalconModelAdapter(BaseModelAdapter):
 
 class AnimaModelAdapter(LlamaModelAdapter):
 
-    def match(self, model_name):
-        return "anima" in model_name
+    model_names = ["anima"]
 
     def load_lora_model(self, model, adapter_model, model_kwargs):
         return PeftModel.from_pretrained(model, adapter_model)
@@ -387,8 +379,7 @@ class AnimaModelAdapter(LlamaModelAdapter):
 class BaiChuanModelAdapter(BaseModelAdapter):
     """ https://github.com/baichuan-inc/Baichuan-13B """
 
-    def match(self, model_name):
-        return "baichuan" in model_name
+    model_names = ["baichuan"]
 
     def load_lora_model(self, model, adapter_model, model_kwargs):
         return PeftModel.from_pretrained(model, adapter_model)
@@ -398,17 +389,10 @@ class BaiChuanModelAdapter(BaseModelAdapter):
         return "baichuan-inc/Baichuan-13B-Chat"
 
 
-class GuanacoModelAdapter(LlamaModelAdapter):
-
-    def match(self, model_name):
-        return "guanaco" in model_name
-
-
 class InternLMModelAdapter(BaseModelAdapter):
     """ https://github.com/InternLM/InternLM """
 
-    def match(self, model_name):
-        return "internlm" in model_name
+    model_names = ["internlm"]
 
     @property
     def default_model_name_or_path(self):
@@ -418,8 +402,7 @@ class InternLMModelAdapter(BaseModelAdapter):
 class StarCodeModelAdapter(BaseModelAdapter):
     """ https://github.com/bigcode-project/starcoder """
 
-    def match(self, model_name):
-        return "starcode" in model_name or "starchat" in model_name
+    model_names = ["starcode", "starchat"]
 
     @property
     def tokenizer_kwargs(self):
@@ -433,8 +416,7 @@ class StarCodeModelAdapter(BaseModelAdapter):
 class AquilaModelAdapter(BaseModelAdapter):
     """ https://github.com/FlagAI-Open/FlagAI """
 
-    def match(self, model_name):
-        return "aquila" in model_name
+    model_names = ["aquila"]
 
     @property
     def default_model_name_or_path(self):
@@ -451,7 +433,6 @@ register_model_adapter(TigerBotModelAdapter)
 register_model_adapter(OpenBuddyFalconModelAdapter)
 register_model_adapter(AnimaModelAdapter)
 register_model_adapter(BaiChuanModelAdapter)
-register_model_adapter(GuanacoModelAdapter)
 register_model_adapter(InternLMModelAdapter)
 register_model_adapter(AquilaModelAdapter)
 
