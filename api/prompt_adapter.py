@@ -368,6 +368,19 @@ If a question does not make any sense, or is not factually coherent, explain why
         return prompt
 
 
+class NewHopePromptAdapter(BasePromptAdapter):
+    """ https://huggingface.co/SLAM-group/NewHope """
+
+    name = "newhope"
+    system_prompt = "Below is an instruction that describes a task. Write a response that appropriately completes the request.\n\n"
+    user_prompt = "<s>### Instruction:\n{}\n\n### Response:\n"
+    assistant_prompt = "{}\n\n</s>"
+    stop = ["### Instruction", "### Response", "###"]
+
+    def match(self, model_name):
+        return "newhope" in model_name
+
+
 register_prompt_adapter(ChatGLMPromptAdapter)
 register_prompt_adapter(ChatGLM2PromptAdapter)
 register_prompt_adapter(MossPromptAdapter)
@@ -384,6 +397,7 @@ register_prompt_adapter(BaiChuanPromptAdapter)
 register_prompt_adapter(StarChatPromptAdapter)
 register_prompt_adapter(AquilaChatPromptAdapter)
 register_prompt_adapter(Llama2ChatPromptAdapter)
+register_prompt_adapter(NewHopePromptAdapter)
 
 # After all adapters, try the default base adapter.
 register_prompt_adapter(BasePromptAdapter)
