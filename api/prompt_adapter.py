@@ -341,7 +341,7 @@ class Llama2ChatPromptAdapter(BasePromptAdapter):
     """ https://github.com/facebookresearch/llama/blob/main/llama/generation.py """
 
     name = "llama2"
-    system_prompt = "<s><<SYS>>\n{}\n<</SYS>>\n\n"
+    system_prompt = "[INST] <<SYS>>\n{}\n<</SYS>>\n\n"
     user_prompt = "[INST] {} "
     assistant_prompt = "[/INST] {} </s><s>"
     stop = ["[INST]", "[/INST]"]

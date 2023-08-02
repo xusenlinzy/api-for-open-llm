@@ -142,7 +142,7 @@ pip install -r requirements.txt
 python api/app.py \
     --port 80 \
     --allow-credentials \
-    --model_path THUDM/chatglm2-6b \
+    --model_path THUDM/chatglm-6b \
     --embedding_name moka-ai/m3e-base
 ```
 
