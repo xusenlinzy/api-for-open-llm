@@ -46,7 +46,6 @@ def send_email_action(receiver: str, content: str):
         server.sendmail(sender_email, receiver_email, message.as_string())
 
 
-#
 def send_email(receiver: str, content: str = "") -> dict:
     """ 供Function Calling使用的输出处理函数 """
     Contact = {"小王": "1659821119@qq.com"}  # 通讯录
