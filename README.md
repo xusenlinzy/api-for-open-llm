@@ -17,6 +17,8 @@
 
 ## 📢 News
 
++ 【2023.08.03】 支持 [qwen-7b-chat](https://github.com/QwenLM/Qwen-7B) 模型，启动方式见 [qwen-7b-chat](https://github.com/xusenlinzy/api-for-open-llm/blob/master/SCRIPT.md#qwen-7b-chat)
+
 
 + 【2023.07.15】 支持 [starchat](https://huggingface.co/HuggingFaceH4/starchat-beta) 模型，启动方式见 [starchat](https://github.com/xusenlinzy/api-for-open-llm/blob/master/SCRIPT.md#starchat)
 
@@ -69,6 +71,7 @@
 
 | Model                                                                 |   Backbone   | #Params  | Claimed language |                                               checkpoint link                                               |
 |:----------------------------------------------------------------------|:------------:|:--------:|:----------------:|:-----------------------------------------------------------------------------------------------------------:|
+| [qwen-7b-chat](https://github.com/QwenLM/Qwen-7B)                     |     Qwen     |    7B    |      en, zh      |                 [Qwen/Qwen-7B-Chat](https://huggingface.co/baichuan-inc/Qwen/Qwen-7B-Chat)                  |
 | [baichuan-13b-chat](https://github.com/baichuan-inc/Baichuan-13B)     |   Baichuan   |   13B    |      en, zh      |           [baichuan-inc/Baichuan-13B-Chat](https://huggingface.co/baichuan-inc/Baichuan-13B-Chat)           |
 | [InternLM](https://github.com/InternLM/InternLM)                      |   InternLM   |    7B    |      en, zh      |                [internlm/internlm-chat-7b](https://huggingface.co/internlm/internlm-chat-7b)                |
 | [ChatGLM2](https://github.com/THUDM/ChatGLM2-6B)                      |     GLM      |  6/130B  |      en, zh      |                        [THUDM/chatglm2-6b](https://huggingface.co/THUDM/chatglm2-6b)                        |

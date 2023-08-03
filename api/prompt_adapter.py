@@ -381,6 +381,19 @@ class NewHopePromptAdapter(BasePromptAdapter):
         return "newhope" in model_name
 
 
+class QwenPromptAdapter(BasePromptAdapter):
+    """ https://huggingface.co/Qwen/Qwen-7B-Chat """
+
+    name = "chatml"
+    system_prompt = "<|im_start|>system\nYou are a helpful assistant.<|im_end|>\n"
+    user_prompt = "<|im_start|>user\n{}<|im_end|>\n<|im_start|>assistant\n"
+    assistant_prompt = "{}<|im_end|>\n"
+    stop = ["<|im_end|>"]
+
+    def match(self, model_name):
+        return "qwen" in model_name
+
+
 register_prompt_adapter(ChatGLMPromptAdapter)
 register_prompt_adapter(ChatGLM2PromptAdapter)
 register_prompt_adapter(MossPromptAdapter)
@@ -398,6 +411,7 @@ register_prompt_adapter(StarChatPromptAdapter)
 register_prompt_adapter(AquilaChatPromptAdapter)
 register_prompt_adapter(Llama2ChatPromptAdapter)
 register_prompt_adapter(NewHopePromptAdapter)
+register_prompt_adapter(QwenPromptAdapter)
 
 # After all adapters, try the default base adapter.
 register_prompt_adapter(BasePromptAdapter)

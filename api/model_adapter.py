@@ -423,6 +423,16 @@ class AquilaModelAdapter(BaseModelAdapter):
         return "BAAI/AquilaChat-7B"
 
 
+class QwenModelAdapter(BaseModelAdapter):
+    """ https://github.com/QwenLM/Qwen-7B """
+
+    model_names = ["qwen"]
+
+    @property
+    def default_model_name_or_path(self):
+        return "Qwen/Qwen-7B-Chat"
+
+
 register_model_adapter(ChatglmModelAdapter)
 register_model_adapter(LlamaModelAdapter)
 register_model_adapter(MossModelAdapter)
@@ -435,6 +445,7 @@ register_model_adapter(AnimaModelAdapter)
 register_model_adapter(BaiChuanModelAdapter)
 register_model_adapter(InternLMModelAdapter)
 register_model_adapter(AquilaModelAdapter)
+register_model_adapter(QwenModelAdapter)
 
 # After all adapters, try the default base adapter.
 register_model_adapter(BaseModelAdapter)
