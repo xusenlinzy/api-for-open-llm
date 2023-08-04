@@ -35,7 +35,9 @@ from api.protocol import (
     UsageInfo,
     EmbeddingsResponse,
     EmbeddingsRequest,
+    FunctionCallResponse,
 )
+from api.react_prompt import get_qwen_react_prompt
 
 app = FastAPI()
 headers = {"User-Agent": "Chat API Server"}
@@ -103,9 +105,14 @@ def get_gen_params(
     echo: Optional[bool],
     stream: Optional[bool],
     stop: Optional[Union[str, List[str]]] = None,
+    functions: Optional[List[Dict[str, Any]]] = None,
+    function_call: Union[str, Dict[str, str]] = "auto"
 ) -> Dict[str, Any]:
     if not max_tokens:
         max_tokens = 1024
+
+    if functions is not None:
+        messages = get_qwen_react_prompt(messages, functions, function_call)
 
     gen_params = {
         "model": model_name,
@@ -264,6 +271,8 @@ async def create_chat_completion(request: ChatCompletionRequest):
         echo=False,
         stream=request.stream,
         stop=request.stop,
+        functions=request.functions,
+        function_call=request.function_call,
     )
 
     if request.stream:
@@ -279,13 +288,28 @@ async def create_chat_completion(request: ChatCompletionRequest):
         if content["error_code"] != 0:
             return create_error_response(content["error_code"], content["text"])
 
-        choices.append(
-            ChatCompletionResponseChoice(
-                index=i,
-                message=ChatMessage(role="assistant", content=content["text"]),
-                finish_reason=content.get("finish_reason", "stop"),
+        if request.messages[-1]["role"] == "user" and request.functions is not None:
+            react_content = content["text"].strip()
+            name_index, arguments_index = react_content.index("Action:"), react_content.index("Action Input:")
+            function_call = FunctionCallResponse(
+                name=react_content[name_index + 8: arguments_index].strip(),
+                arguments=react_content[arguments_index + 14:]
             )
-        )
+            choices.append(
+                ChatCompletionResponseChoice(
+                    index=i,
+                    message=ChatMessage(role="assistant", function_call=function_call),
+                    finish_reason="function_call",
+                )
+            )
+        else:
+            choices.append(
+                ChatCompletionResponseChoice(
+                    index=i,
+                    message=ChatMessage(role="assistant", content=content["text"]),
+                    finish_reason=content.get("finish_reason", "stop"),
+                )
+            )
 
         task_usage = UsageInfo.parse_obj(content["usage"])
         for usage_key, usage_value in task_usage.dict().items():

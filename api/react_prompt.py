@@ -23,20 +23,23 @@ Begin!
 Question: {query}"""
 
 
-def get_qwen_reat_prompt(functions, messages, return_messages=True):
+def get_qwen_react_prompt(messages, functions, function_call="auto", return_messages=True):
+    if function_call != "auto":
+        functions = [info for info in functions if info["name_for_model"] in [function_call["name_for_model"]]]
+
     tool_descs, tool_names = [], []
     for info in functions:
         tool_descs.append(
             TOOL_DESC.format(
-                name_for_model=info['name_for_model'],
-                name_for_human=info['name_for_human'],
-                description_for_model=info['description_for_model'],
-                parameters=json.dumps(info['parameters'], ensure_ascii=False))
+                name_for_model=info["name_for_model"],
+                name_for_human=info["name_for_human"],
+                description_for_model=info["description_for_model"],
+                parameters=json.dumps(info["parameters"], ensure_ascii=False))
         )
-        tool_names.append(info['name_for_model'])
+        tool_names.append(info["name_for_model"])
 
-    tool_descs = '\n\n'.join(tool_descs)
-    tool_names = ','.join(tool_names)
+    tool_descs = "\n\n".join(tool_descs)
+    tool_names = ",".join(tool_names)
 
     ret = ""
     for message in messages:
@@ -45,7 +48,7 @@ def get_qwen_reat_prompt(functions, messages, return_messages=True):
             ret += REACT_PROMPT.format(tool_descs=tool_descs, tool_names=tool_names, query=content)
         elif role == "assistant":
             ret += f"\n{content.strip()}"
-        elif role == "function_call":
+        elif role == "function":
             ret += f"\nObservation: {content.strip()}"
 
     return [{"role": "user", "content": ret}] if return_messages else ret

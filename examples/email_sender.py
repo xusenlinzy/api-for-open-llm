@@ -1,62 +1,16 @@
 import json
-import smtplib
-from email.header import Header
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-from enum import Enum
 
 import openai
 
-from react_prompt import get_qwen_reat_prompt
+from tools import send_email, send_email_action, SkillFunctions
 
 openai.api_base = "http://192.168.0.53:7891/v1"
 openai.api_key = "xxx"
 
 
-class SkillFunctions(Enum):
-
-    SendEmail = "send_email"
-
-
-def send_email_action(receiver: str, content: str):
-    """ 发送邮件操作 """
-    if not receiver:
-        return
-
-    # 邮件配置
-    smtp_server = "smtp.163.com"
-    smtp_port = 25
-    sender_email = "xxx@163.com"  # 发件人邮箱地址
-    receiver_email = receiver  # 收件人邮箱地址
-    password = 'YRXGBDYXXFVKJBUO'  # SMTP授权密码
-
-    # 构建邮件内容
-    message = MIMEMultipart()
-    message["From"] = Header('AI <%s>' % sender_email)
-    message["To"] = receiver_email
-    message["Subject"] = "我是您的AI助理，您有一封邮件请查看"
-
-    body = content
-    message.attach(MIMEText(body, "plain"))
-
-    # 连接到邮件服务器并发送邮件
-    with smtplib.SMTP(smtp_server, smtp_port) as server:
-        server.starttls()
-        server.login(sender_email, password)
-        server.sendmail(sender_email, receiver_email, message.as_string())
-
-
-def send_email(receiver: str, content: str = "") -> dict:
-    """ 供Function Calling使用的输出处理函数 """
-    Contact = {"小王": "1659821119@qq.com"}  # 通讯录
-    email_info = {
-        "receiver": Contact[receiver],
-        "content": content
-    }
-    return email_info
-
-
-def main():
+def run_conversation():
+    # Step 1: send the conversation and available functions to model
+    messages = [{"role": "user", "content": "给小王发个邮件，告诉他我晚饭不回家吃了"}]
     functions = [
         {
             "name_for_human":
@@ -85,27 +39,34 @@ def main():
             ],
         }
     ]
-    messages = [{"role": "user", "content": "给小王发个邮件，告诉他我晚饭不回家吃了"}]
-    messages = get_qwen_reat_prompt(functions, messages)
     response = openai.ChatCompletion.create(
         model="qwen",
         messages=messages,
         temperature=0,
+        functions=functions,
         stop=["Observation:"]
     )
+    print(response)
 
-    content = response["choices"][0]["message"]["content"].strip()
-    print(content)
-    if "Action Input:" in content:
-        arguments = json.loads(content[content.index("Action Input:") + 14:])
+    response_message = response["choices"][0]["message"]
+    # Step 2: check if model wanted to call a function
+    if response_message.get("function_call"):
+        # Step 3: call the function
+        # Note: the JSON response may not always be valid; be sure to handle errors
+        available_functions = {
+            SkillFunctions.SendEmail.value: send_email_action,
+        }  # only one function in this example
+        function_name = response_message["function_call"]["name"]
+        fuction_to_call = available_functions[function_name]
+        function_args = json.loads(response_message["function_call"]["arguments"])
+
         email_info = send_email(
-            receiver=arguments.get('receiver'),
-            content=arguments.get('content')
+            receiver=function_args.get("receiver"),
+            content=function_args.get("content")
         )
-        print(email_info)
-        send_email_action(**email_info)
-        print('邮件已发送')
+        fuction_to_call(**email_info)
+        print("邮件已发送")
 
 
 if __name__ == '__main__':
-    main()
+    run_conversation()

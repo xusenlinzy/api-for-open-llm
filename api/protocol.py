@@ -10,6 +10,7 @@ class Role(str, Enum):
     USER = "user"
     ASSISTANT = "assistant"
     SYSTEM = "system"
+    FUNCTION = "function"
 
 
 class ErrorResponse(BaseModel):
@@ -67,17 +68,25 @@ class ChatCompletionRequest(BaseModel):
     presence_penalty: Optional[float] = 0.0
     frequency_penalty: Optional[float] = 0.0
     user: Optional[str] = None
+    functions: Optional[List[Dict[str, Any]]] = None
+    function_call: Union[str, Dict[str, str]] = "auto"
+
+
+class FunctionCallResponse(BaseModel):
+    name: str
+    arguments: str
 
 
 class ChatMessage(BaseModel):
     role: str
-    content: str
+    content: str = None
+    function_call: Optional[FunctionCallResponse] = None
 
 
 class ChatCompletionResponseChoice(BaseModel):
     index: int
     message: ChatMessage
-    finish_reason: Optional[Literal["stop", "length"]] = None
+    finish_reason: Optional[Literal["stop", "length", "function_call"]] = None
 
 
 class ChatCompletionResponse(BaseModel):
