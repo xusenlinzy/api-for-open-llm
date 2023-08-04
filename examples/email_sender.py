@@ -10,7 +10,7 @@ openai.api_key = "xxx"
 
 def run_conversation():
     # Step 1: send the conversation and available functions to model
-    messages = [{"role": "user", "content": "给小王发个邮件，告诉他我晚饭不回家吃了"}]
+    messages = [{"role": "user", "content": "给小王发个邮件，告诉他今天晚上一起吃个饭"}]
     functions = [
         {
             "name_for_human":
@@ -29,7 +29,7 @@ def run_conversation():
                     },
                 },
                 {
-                    'content': 'content',
+                    'name': 'content',
                     'description': '邮件内容',
                     'required': True,
                     'schema': {

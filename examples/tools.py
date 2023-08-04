@@ -4,10 +4,18 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from enum import Enum
 
+from scipy import integrate
+
 
 class SkillFunctions(Enum):
 
     SendEmail = "send_email"
+    Quad = "calculate_quad"
+
+
+def calculate_quad(formula_str: str, a: float, b: float) -> float:
+    """ 数值积分 """
+    return integrate.quad(eval('lambda x: ' + formula_str), a, b)[0]
 
 
 def send_email_action(receiver: str, content: str):
