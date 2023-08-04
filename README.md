@@ -18,7 +18,7 @@
 ## 📢 News
 
 
-+ 【2023.08.04】 增加通义千问模型工具调用示例，支持 **`function call`** 特性，调用方式参考 [邮件发送助手](./examples/email_sender.py)
++ 【2023.08.04】 增加通义千问模型工具调用示例，支持 **`function call`** 特性，调用方式参考 [邮件发送助手](./examples/email_sender.py)、[定积分计算器](./examples/quad_calculator.py)
 
 
 + 【2023.08.03】 支持 [qwen-7b-chat](https://github.com/QwenLM/Qwen-7B) 模型，启动方式见 [qwen-7b-chat](https://github.com/xusenlinzy/api-for-open-llm/blob/master/SCRIPT.md#qwen-7b-chat)
