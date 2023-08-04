@@ -16,9 +16,9 @@ def send_email_action(receiver: str, content: str):
     # 邮件配置
     smtp_server = "smtp.163.com"
     smtp_port = 25
-    sender_email = "15797687258@163.com"  # 发件人邮箱地址
+    sender_email = "xxx@163.com"  # 发件人邮箱地址
     receiver_email = receiver  # 收件人邮箱地址
-    password = 'YRXGBDYXXFVKJBUO'  # SMTP授权密码
+    password = '***'  # SMTP授权密码
 
     # 构建邮件内容
     message = MIMEMultipart()
