@@ -48,7 +48,12 @@ def get_qwen_react_prompt(messages, functions, function_call="auto", return_mess
             ret += REACT_PROMPT.format(tool_descs=tool_descs, tool_names=tool_names, query=content)
         elif role == "assistant":
             if message.get("function_call"):
+                thought = message["function_call"]["thought"]
+                function_name = message["function_call"]["name"]
                 arguments = message["function_call"]["arguments"]
+
+                ret += f"\nThought: {thought.strip()}"
+                ret += f"\nAction: {function_name.strip()}"
                 ret += f"\nAction Input: {arguments.strip()}"
         elif role == "function":
             ret += f"\nObservation: {str(content).strip()}"

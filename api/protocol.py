@@ -75,6 +75,7 @@ class ChatCompletionRequest(BaseModel):
 class FunctionCallResponse(BaseModel):
     name: str
     arguments: str
+    thought: str = None
 
 
 class ChatMessage(BaseModel):

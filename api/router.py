@@ -290,10 +290,12 @@ async def create_chat_completion(request: ChatCompletionRequest):
 
         if request.messages[-1]["role"] == "user" and request.functions is not None:
             react_content = content["text"].strip()
+            thought_index = react_content.index("Thought:")
             name_index, arguments_index = react_content.index("Action:"), react_content.index("Action Input:")
             function_call = FunctionCallResponse(
                 name=react_content[name_index + 8: arguments_index].strip(),
-                arguments=react_content[arguments_index + 14:]
+                arguments=react_content[arguments_index + 14:],
+                thought=react_content[thought_index + 9: name_index]
             )
             choices.append(
                 ChatCompletionResponseChoice(
