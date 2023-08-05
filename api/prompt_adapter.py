@@ -147,7 +147,9 @@ class MossPromptAdapter(BasePromptAdapter):
 Capabilities and tools that MOSS can possess.
 """
     user_prompt = "<|Human|>: {}<eoh>\n<|MOSS|>: "
-    stop = ["<|Human|>", "<|MOSS|>"]
+    stop = {
+        "strings": ["<|Human|>", "<|MOSS|>"],
+    }
 
     def match(self, model_name):
         return "moss" in model_name
@@ -170,7 +172,9 @@ class AlpacaPromptAdapter(BasePromptAdapter):
     system_prompt = "Below is an instruction that describes a task. Write a response that appropriately completes the request.\n\n"
     user_prompt = "### Instruction:\n\n{}\n\n### Response:\n\n"
     assistant_prompt = "{}\n\n"
-    stop = ["### Instruction", "### Response"]
+    stop = {
+        "strings": ["### Instruction", "### Response"],
+    }
 
     def match(self, model_name):
         return "alpaca" in model_name or "tiger" in model_name or "anima" in model_name
@@ -197,7 +201,9 @@ class BaizePromptAdapter(BasePromptAdapter):
                     "The AI assistant always declines to engage with topics, questions and instructions related to unethical, controversial, or sensitive issues. Complete the " \
                     "transcript in exactly that format.\n"
     user_prompt = "[|Human|]{}\n[|AI|]"
-    stop = ["[|Human|]", "[|AI|]"]
+    stop = {
+        "strings": ["[|Human|]", "[|AI|]"],
+    }
 
     def match(self, model_name):
         return "baize" in model_name
@@ -220,7 +226,9 @@ class GuanacoPromptAdapter(BasePromptAdapter):
     system_prompt = "A chat between a curious human and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions.\n"
     user_prompt = "### Human: {}\n### Assistant: "
     assistant_prompt = "{}\n"
-    stop = ["### Human", "### Assistant", "##"]
+    stop = {
+        "strings": ["### Human", "### Assistant", "##"],
+    }
 
     def match(self, model_name):
         return "guanaco" in model_name
@@ -232,7 +240,9 @@ class YuLanChatPromptAdapter(BasePromptAdapter):
     system_prompt = "The following is a conversation between a human and an AI assistant namely YuLan, developed by GSAI, Renmin University of China. The AI assistant gives helpful, detailed, and polite answers to the user's questions.\n\n"
     user_prompt = "[|Human|]:{}\n[|AI|]:"
     assistant_prompt = "{}\n"
-    stop = ["[|Human|]", "[|AI|]"]
+    stop = {
+        "strings": ["[|Human|]", "[|AI|]"],
+    }
 
     def match(self, model_name):
         return "yulan" in model_name
@@ -264,7 +274,9 @@ class InternLMPromptAdapter(BasePromptAdapter):
     system_prompt = ""
     user_prompt = "<|User|>:{}<eoh>\n<|Bot|>:"
     assistant_prompt = "{}<eoa>\n"
-    stop = ["<|User|>", "<|Bot|>", "<eoa>"]
+    stop = {
+        "strings": ["<|User|>", "<|Bot|>", "<eoa>"],
+    }
 
     def match(self, model_name):
         return "internlm" in model_name
@@ -277,7 +289,9 @@ class BaiChuanPromptAdapter(BasePromptAdapter):
     system_prompt = ""
     user_prompt = "<reserved_102> {}<reserved_103> "
     assistant_prompt = "{}</s>"
-    stop = ["<reserved_102>", "<reserved_103>"]
+    stop = {
+        "token_ids": [195, 196],
+    }
 
     def match(self, model_name):
         return "baichuan-13b" in model_name
@@ -290,7 +304,9 @@ class StarChatPromptAdapter(BasePromptAdapter):
     system_prompt = "<|system|>\n{}<|end|>\n"
     user_prompt = "<|user|>\n{}<|end|>\n"
     assistant_prompt = "<|assistant|>\n{}<|end|>\n"
-    stop = ["<|user|>", "<|assistant|>", "<|end|>"]
+    stop = {
+        "token_ids": [49152, 49153, 49154, 49155],
+    }
 
     def match(self, model_name):
         return "starchat" in model_name or "starcode" in model_name
@@ -317,7 +333,9 @@ class AquilaChatPromptAdapter(BasePromptAdapter):
     system_prompt = "System: {}###"
     user_prompt = "Human: {}###"
     assistant_prompt = "Assistant: {}###"
-    stop = ["###", "[UNK]", "</s>"]
+    stop = {
+        "strings": ["###", "[UNK]", "</s>"],
+    }
 
     def match(self, model_name):
         return "aquila" in model_name
@@ -344,7 +362,9 @@ class Llama2ChatPromptAdapter(BasePromptAdapter):
     system_prompt = "[INST] <<SYS>>\n{}\n<</SYS>>\n\n"
     user_prompt = "[INST] {} "
     assistant_prompt = "[/INST] {} </s><s>"
-    stop = ["[INST]", "[/INST]"]
+    stop = {
+        "strings": ["[INST]", "[/INST]"],
+    }
 
     def match(self, model_name):
         return "llama2" in model_name
@@ -368,19 +388,6 @@ If a question does not make any sense, or is not factually coherent, explain why
         return prompt
 
 
-class NewHopePromptAdapter(BasePromptAdapter):
-    """ https://huggingface.co/SLAM-group/NewHope """
-
-    name = "newhope"
-    system_prompt = "Below is an instruction that describes a task. Write a response that appropriately completes the request.\n\n"
-    user_prompt = "<s>### Instruction:\n{}\n\n### Response:\n"
-    assistant_prompt = "{}\n\n</s>"
-    stop = ["### Instruction", "### Response", "###"]
-
-    def match(self, model_name):
-        return "newhope" in model_name
-
-
 class QwenPromptAdapter(BasePromptAdapter):
     """ https://huggingface.co/Qwen/Qwen-7B-Chat """
 
@@ -388,7 +395,9 @@ class QwenPromptAdapter(BasePromptAdapter):
     system_prompt = "<|im_start|>system\nYou are a helpful assistant.<|im_end|>\n"
     user_prompt = "<|im_start|>user\n{}<|im_end|>\n<|im_start|>assistant\n"
     assistant_prompt = "{}<|im_end|>\n"
-    stop = ["<|im_end|>"]
+    stop = {
+        "strings": ["<|im_end|>"],
+    }
 
     def match(self, model_name):
         return "qwen" in model_name
@@ -410,7 +419,6 @@ register_prompt_adapter(BaiChuanPromptAdapter)
 register_prompt_adapter(StarChatPromptAdapter)
 register_prompt_adapter(AquilaChatPromptAdapter)
 register_prompt_adapter(Llama2ChatPromptAdapter)
-register_prompt_adapter(NewHopePromptAdapter)
 register_prompt_adapter(QwenPromptAdapter)
 
 # After all adapters, try the default base adapter.

@@ -254,7 +254,7 @@ class ChatglmModelAdapter(BaseModelAdapter):
 class LlamaModelAdapter(BaseModelAdapter):
     """ https://github.com/project-baize/baize-chatbot """
 
-    model_names = ["alpaca", "baize", "openbuddy-llama", "ziya-llama", "guanaco", "llama2", "newhope"]
+    model_names = ["alpaca", "baize", "openbuddy-llama", "ziya-llama", "guanaco", "llama2"]
 
     def post_tokenizer(self, tokenizer):
         tokenizer.bos_token = "<s>"

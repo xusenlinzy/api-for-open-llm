@@ -5,8 +5,9 @@ from typing import Iterable, Optional, List
 import torch
 import torch.nn.functional as F
 from loguru import logger
-from transformers.generation.logits_process import LogitsProcessor
+from transformers import PreTrainedTokenizer
 from transformers.generation.logits_process import (
+    LogitsProcessor,
     LogitsProcessorList,
     RepetitionPenaltyLogitsProcessor,
     TemperatureLogitsWarper,
@@ -32,9 +33,6 @@ class InvalidScoreLogitsProcessor(LogitsProcessor):
         return scores
 
 
-invalid_score_processor = InvalidScoreLogitsProcessor()
-
-
 def process_response(response):
     response = response.strip()
     response = response.replace("[[训练时间]]", "2023年")
@@ -49,6 +47,92 @@ def process_response(response):
         response = re.sub(r"([\u4e00-\u9fff])%s" % item[0], r"\1%s" % item[1], response)
         response = re.sub(r"%s([\u4e00-\u9fff])" % item[0], r"%s\1" % item[1], response)
     return response
+
+
+def prepare_logits_processor(
+    temperature: float, repetition_penalty: float, top_p: float, top_k: int
+) -> LogitsProcessorList:
+    processor_list = LogitsProcessorList()
+    # TemperatureLogitsWarper doesn't accept 0.0, 1.0 makes it a no-op, so we skip two cases.
+    if temperature >= 1e-5 and temperature != 1.0:
+        processor_list.append(TemperatureLogitsWarper(temperature))
+    if repetition_penalty > 1.0:
+        processor_list.append(RepetitionPenaltyLogitsProcessor(repetition_penalty))
+    if 1e-8 <= top_p < 1.0:
+        processor_list.append(TopPLogitsWarper(top_p))
+    if top_k > 0:
+        processor_list.append(TopKLogitsWarper(top_k))
+    return processor_list
+
+
+def is_partial_stop(output: str, stop_str: str):
+    """Check whether the output contains a partial stop str."""
+    for i in range(0, min(len(output), len(stop_str))):
+        if stop_str.startswith(output[-i:]):
+            return True
+    return False
+
+
+def build_baichuan_chat_input(tokenizer, messages: List[dict], context_len: int = 4096):
+    """  https://huggingface.co/baichuan-inc/Baichuan-13B-Chat/blob/main/modeling_baichuan.py """
+    total_input, round_input = [], []
+    for message in messages[::-1]:
+        content_tokens = tokenizer.encode(message["content"])
+        if message["role"] in ["user", "system"]:
+            round_input = [195] + content_tokens + round_input
+            if total_input and len(total_input) + len(round_input) > context_len:
+                break
+            else:
+                total_input = round_input + total_input
+                round_input = []
+        elif message["role"] == "assistant":
+            round_input = [196] + content_tokens + round_input
+        else:
+            raise ValueError(f"message role not supported yet: {message['role']}")
+    total_input = total_input[-context_len:]  # truncate left
+    total_input.append(196)
+    return total_input
+
+
+def build_qwen_chat_input(
+    tokenizer: PreTrainedTokenizer,
+    messages: List[dict],
+    max_window_size: int = 6144,
+):
+    """ https://huggingface.co/Qwen/Qwen-7B-Chat/blob/main/qwen_generation_utils.py """
+    im_start_tokens, im_end_tokens = [tokenizer.im_start_id], [tokenizer.im_end_id]
+    nl_tokens = tokenizer.encode("\n")
+
+    def _tokenize_str(role, content):
+        return tokenizer.encode(
+            role, allowed_special=set()
+        ) + nl_tokens + tokenizer.encode(content, allowed_special=set())
+
+    system_tokens_part = _tokenize_str("system", "You are a helpful assistant.")
+    system_tokens = im_start_tokens + system_tokens_part + im_end_tokens
+
+    context_tokens = []
+    for i, message in enumerate(messages[::-1]):
+        content = message["content"]
+        if context_tokens:
+            context_tokens = nl_tokens + context_tokens
+
+        if message["role"] == "user":
+            content_tokens = _tokenize_str("user", content)
+        elif message["role"] == "system":
+            content_tokens = _tokenize_str("system", content)
+        elif message["role"] == "assistant":
+            content_tokens = _tokenize_str("assistant", content)
+        else:
+            raise ValueError(f"message role not supported yet: {message['role']}")
+
+        if len(im_start_tokens + content_tokens + im_end_tokens + context_tokens) > max_window_size:
+            break
+        else:
+            context_tokens = im_start_tokens + content_tokens + im_end_tokens + context_tokens
+
+    context_tokens = system_tokens + nl_tokens + context_tokens
+    return context_tokens + nl_tokens + im_start_tokens + tokenizer.encode("assistant") + nl_tokens
 
 
 @torch.inference_mode()
@@ -75,7 +159,7 @@ def generate_stream_chatglm(
         "do_sample": True if temperature > 1e-5 else False,
         "top_p": top_p,
         "repetition_penalty": repetition_penalty,
-        "logits_processor": [invalid_score_processor],
+        "logits_processor": [InvalidScoreLogitsProcessor()],
     }
     if temperature > 1e-5:
         gen_kwargs["temperature"] = temperature
@@ -118,56 +202,6 @@ def generate_stream_chatglm(
     torch.cuda.empty_cache()
 
 
-def prepare_logits_processor(
-    temperature: float, repetition_penalty: float, top_p: float, top_k: int
-) -> LogitsProcessorList:
-    processor_list = LogitsProcessorList()
-    # TemperatureLogitsWarper doesn't accept 0.0, 1.0 makes it a no-op, so we skip two cases.
-    if temperature >= 1e-5 and temperature != 1.0:
-        processor_list.append(TemperatureLogitsWarper(temperature))
-    if repetition_penalty > 1.0:
-        processor_list.append(RepetitionPenaltyLogitsProcessor(repetition_penalty))
-    if 1e-8 <= top_p < 1.0:
-        processor_list.append(TopPLogitsWarper(top_p))
-    if top_k > 0:
-        processor_list.append(TopKLogitsWarper(top_k))
-    return processor_list
-
-
-def is_partial_stop(output: str, stop_str: str):
-    """Check whether the output contains a partial stop str."""
-    for i in range(0, min(len(output), len(stop_str))):
-        if stop_str.startswith(output[-i:]):
-            return True
-    return False
-
-
-def build_baichuan_chat_input(model, tokenizer, messages: List[dict], max_new_tokens: int = 0):
-    """  https://huggingface.co/baichuan-inc/Baichuan-13B-Chat/blob/main/modeling_baichuan.py """
-    max_input_tokens = model.config.model_max_length - max_new_tokens
-    max_input_tokens = max(model.config.model_max_length // 2, max_input_tokens)
-    total_input, round_input = [], []
-    for i, message in enumerate(messages[::-1]):
-        content_tokens = tokenizer.encode(message["content"])
-        if message["role"] == "user":
-            round_input = [195] + content_tokens + round_input
-            if total_input and len(total_input) + len(round_input) > max_input_tokens:
-                break
-            else:
-                total_input = round_input + total_input
-                if len(total_input) >= max_input_tokens:
-                    break
-                else:
-                    round_input = []
-        elif message["role"] == "assistant":
-            round_input = [196] + content_tokens + round_input
-        else:
-            raise ValueError(f"message role not supported yet: {message['role']}")
-    total_input = total_input[-max_input_tokens:]  # truncate left
-    total_input.append(196)
-    return torch.LongTensor([total_input])
-
-
 @torch.inference_mode()
 def generate_stream(
     model,
@@ -179,7 +213,6 @@ def generate_stream(
 ):
     # Read parameters
     prompt = params["prompt"]
-    len_prompt = len(prompt)
     temperature = float(params.get("temperature", 1.0))
     repetition_penalty = float(params.get("repetition_penalty", 1.0))
     top_p = float(params.get("top_p", 1.0))
@@ -187,15 +220,20 @@ def generate_stream(
     max_new_tokens = int(params.get("max_new_tokens", 256))
     echo = bool(params.get("echo", True))
     stop_str = params.get("stop", None)
+
     stop_token_ids = params.get("stop_token_ids", None) or []
-    stop_token_ids.append(tokenizer.eos_token_id)
+    if tokenizer.eos_token_id not in stop_token_ids:
+        stop_token_ids.append(tokenizer.eos_token_id)
 
     logits_processor = prepare_logits_processor(
         temperature, repetition_penalty, top_p, top_k
     )
 
     if isinstance(prompt, list) and "BaichuanLayer" in getattr(model, "_no_split_modules", []):
-        input_ids = build_baichuan_chat_input(model, tokenizer, prompt, max_new_tokens)
+        input_ids = build_baichuan_chat_input(tokenizer, prompt, context_len)
+    elif isinstance(prompt, list) and "QWenBlock" in getattr(model, "_no_split_modules", []):
+        input_ids = build_qwen_chat_input(tokenizer, prompt)
+        stop_token_ids.extend([tokenizer.im_end_id, tokenizer.im_start_id])
     else:
         input_ids = tokenizer(prompt).input_ids
         if model.config.is_encoder_decoder:
@@ -302,7 +340,7 @@ def generate_stream(
         if i % stream_interval == 0 or i == max_new_tokens - 1 or stopped:
             if echo:
                 tmp_output_ids = output_ids
-                rfind_start = len_prompt
+                rfind_start = len(prompt) if isinstance(prompt, str) else 0
             else:
                 tmp_output_ids = output_ids[input_echo_len:]
                 rfind_start = 0
@@ -420,10 +458,18 @@ class ModelServer:
         else:
             self.context_len = context_len
 
-        # generate_stream
-        self.has_chat_fct = "chatglm" in self.model_name
-        if "chatglm" in self.model_name:
+        self.construct_prompt = True
+        if "GLMBlock" in getattr(self.model, "_no_split_modules", []):
+            logger.info("Using ChatGLM Model for Chat!")
             self.generate_stream_func = generate_stream_chatglm
+        elif "BaichuanLayer" in getattr(self.model, "_no_split_modules", []):
+            logger.info("Using Baichuan Model for Chat!")
+            self.construct_prompt = False
+            self.generate_stream_func = generate_stream
+        elif "QWenBlock" in getattr(self.model, "_no_split_modules", []):
+            logger.info("Using Qwen Model for Chat!")
+            self.construct_prompt = False
+            self.generate_stream_func = generate_stream
         else:
             self.generate_stream_func = generate_stream
 
@@ -441,9 +487,7 @@ class ModelServer:
         return ret
 
     def generate_prompt(self, messages):
-        if "BaichuanLayer" in getattr(self.model, "_no_split_modules", []):
-            logger.info("Using Baichuan Model for Chat!")
-        return self.prompt_adapter.generate_prompt(messages)
+        return self.prompt_adapter.generate_prompt(messages) if self.construct_prompt else messages
 
     def generate_stream_gate(self, params):
         if isinstance(params["prompt"], list):

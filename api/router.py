@@ -125,7 +125,11 @@ def get_gen_params(
     }
 
     if model_server.stop is not None:
-        gen_params["stop"] = model_server.stop
+        if "token_ids" in model_server.stop:
+            gen_params["stop_token_ids"] = model_server.stop["token_ids"]
+
+        if "strings" in model_server.stop:
+            gen_params["stop"] = model_server.stop["strings"]
 
     if stop is not None:
         if isinstance(stop, str):
