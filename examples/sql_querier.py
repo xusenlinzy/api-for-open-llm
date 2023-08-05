@@ -58,6 +58,7 @@ class SqlQuerier:
         response_message = response["choices"][0]["message"]
         # Step 2: check if model wanted to call a function
         if response_message.get("function_call"):
+            logger.info(f"Function call: {response_message['function_call']}")
             # Step 3: call the function
             # Note: the JSON response may not always be valid; be sure to handle errors
             available_functions = {
@@ -69,6 +70,7 @@ class SqlQuerier:
             logger.info(f"Function args: {function_args}")
 
             function_response = fuction_to_call(self.conn, function_args["query"])
+            logger.info(f"Function response: {function_response}")
 
             # Step 4: send the info on the function call and function response to model
             messages.append(response_message)  # extend conversation with assistant's reply
@@ -86,6 +88,7 @@ class SqlQuerier:
                 functions=functions,
             )  # get a new response from model where it can see the function response
             answer = second_response["choices"][0]["message"]["content"]
+            logger.info(f"Model output: {answer}")
 
         return answer[answer.index("Final Answer:") + 14:] if answer else answer
 

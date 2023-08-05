@@ -21,22 +21,22 @@
 + 【2023.08.04】 增加通义千问模型工具调用示例，支持 **`function call`** 特性，调用方式参考 [邮件发送助手](./examples/email_sender.py)、[定积分计算器](./examples/quad_calculator.py)、[SQL查询](./examples/sql_querier.py)
 
 
-+ 【2023.08.03】 支持 [qwen-7b-chat](https://github.com/QwenLM/Qwen-7B) 模型，启动方式见 [qwen-7b-chat](https://github.com/xusenlinzy/api-for-open-llm/blob/master/SCRIPT.md#qwen-7b-chat)
++ 【2023.08.03】 支持 [qwen-7b-chat](https://github.com/QwenLM/Qwen-7B) 模型，启动方式见 [qwen-7b-chat](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#qwen-7b-chat)
 
 
-+ 【2023.07.15】 支持 [starchat](https://huggingface.co/HuggingFaceH4/starchat-beta) 模型，启动方式见 [starchat](https://github.com/xusenlinzy/api-for-open-llm/blob/master/SCRIPT.md#starchat)
++ 【2023.07.15】 支持 [starchat](https://huggingface.co/HuggingFaceH4/starchat-beta) 模型，启动方式见 [starchat](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#starchat)
 
 
 + 【2023.07.14】 支持在一个 **`API BASE`** 下调用多个模型
-   + ① 根据 [SCRIPT](./SCRIPT.md) 启动多个模型
+   + ① 根据 [SCRIPT](docs/SCRIPT.md) 启动多个模型
    + ② 修改 [chatgpt](./chatgpt.py) 中的 **`MODEL_LIST`**，将启动的模型加入进去
    + ③ **`python chatgpt.py`**
 
 
-+ 【2023.07.12】 支持 [baichuan-13b-chat](https://github.com/baichuan-inc/Baichuan-13B) 模型，启动方式见 [baichuan-13b-chat](https://github.com/xusenlinzy/api-for-open-llm/blob/master/SCRIPT.md#baichuan-13b-chat)
++ 【2023.07.12】 支持 [baichuan-13b-chat](https://github.com/baichuan-inc/Baichuan-13B) 模型，启动方式见 [baichuan-13b-chat](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#baichuan-13b-chat)
 
 
-+ 【2023.07.07】 支持 [InternLM](https://github.com/InternLM/InternLM) 模型，启动方式见 [internlm-chat-7b](https://github.com/xusenlinzy/api-for-open-llm/blob/master/SCRIPT.md#internlm)
++ 【2023.07.07】 支持 [InternLM](https://github.com/InternLM/InternLM) 模型，启动方式见 [internlm-chat-7b](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#internlm)
 
 
 + 【2023.06.26】 支持 [ChatGLM2-6b](https://github.com/THUDM/ChatGLM2-6B) 模型
@@ -125,7 +125,7 @@ docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=chatglm \
 
 + `embedding_name`（可选项）: 嵌入模型的文件所在路径
 
-更多模型的启动命令详见 [SCRIPT.md](./SCRIPT.md)
+更多模型的启动命令详见 [SCRIPT.md](docs/SCRIPT.md)
 
 ### 本地启动
 

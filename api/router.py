@@ -132,6 +132,7 @@ def get_gen_params(
             stop = [stop]
 
         gen_params["stop"] = gen_params["stop"] + stop if "stop" in gen_params else stop
+        gen_params["stop"] = list(set(gen_params["stop"]))
 
     logger.debug(f"==== request ====\n{gen_params}")
     return gen_params
@@ -288,15 +289,19 @@ async def create_chat_completion(request: ChatCompletionRequest):
         if content["error_code"] != 0:
             return create_error_response(content["error_code"], content["text"])
 
-        if request.messages[-1]["role"] == "user" and request.functions is not None:
+        if request.functions is not None and "Thought:" in content["text"].strip():
             react_content = content["text"].strip()
-            thought_index = react_content.index("Thought:")
-            name_index, arguments_index = react_content.index("Action:"), react_content.index("Action Input:")
-            function_call = FunctionCallResponse(
-                name=react_content[name_index + 8: arguments_index].strip(),
-                arguments=react_content[arguments_index + 14:],
-                thought=react_content[thought_index + 9: name_index]
-            )
+            try:
+                thought_index = react_content.index("Thought:")
+                name_index, arguments_index = react_content.index("Action:"), react_content.index("Action Input:")
+                function_call = FunctionCallResponse(
+                    name=react_content[name_index + 8: arguments_index].strip(),
+                    arguments=react_content[arguments_index + 14:],
+                    thought=react_content[thought_index + 9: name_index]
+                )
+            except ValueError:
+                function_call = None
+
             choices.append(
                 ChatCompletionResponseChoice(
                     index=i,
@@ -475,7 +480,7 @@ def main(args1):
     global embed_client
     embed_client = None
     if args.embedding_name:
-        # launch a embedding server
+        # launch an embedding server
         embed_client = SentenceTransformer(args.embedding_name, device=args.device)
 
     uvicorn.run(app, host=args.host, port=args.port, log_level="info")

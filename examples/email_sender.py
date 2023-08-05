@@ -93,6 +93,7 @@ class EmailSender:
         response_message = response["choices"][0]["message"]
         # Step 2: check if model wanted to call a function
         if response_message.get("function_call"):
+            logger.info(f"Function call: {response_message['function_call']}")
             # Step 3: call the function
             # Note: the JSON response may not always be valid; be sure to handle errors
             available_functions = {

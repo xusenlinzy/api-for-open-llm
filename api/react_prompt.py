@@ -56,6 +56,6 @@ def get_qwen_react_prompt(messages, functions, function_call="auto", return_mess
                 ret += f"\nAction: {function_name.strip()}"
                 ret += f"\nAction Input: {arguments.strip()}"
         elif role == "function":
-            ret += f"\nObservation: {str(content).strip()}"
+            ret += f"\nObservation: output of {message['name']} is {str(content).strip()}"
 
     return [{"role": "user", "content": ret}] if return_messages else ret
