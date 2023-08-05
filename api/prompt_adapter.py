@@ -385,10 +385,10 @@ class QwenPromptAdapter(BasePromptAdapter):
     """ https://huggingface.co/Qwen/Qwen-7B-Chat """
 
     name = "chatml"
-    system_prompt = "<|im_start|>system\nYou are a helpful assistant.<|im_end|>\n"
-    user_prompt = "<|im_start|>user\n{}<|im_end|>\n<|im_start|>assistant\n"
-    assistant_prompt = "{}<|im_end|>\n"
-    stop = ["<|im_end|>"]
+    system_prompt = "System: {}###"
+    user_prompt = "Human: {}###"
+    assistant_prompt = "Assistant: {}###"
+    stop = ["###", "[UNK]"]
 
     def match(self, model_name):
         return "qwen" in model_name
