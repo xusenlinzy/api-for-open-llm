@@ -1,9 +1,10 @@
 import gc
 import re
-from typing import Iterable, Optional
+from typing import Iterable, Optional, List
 
 import torch
 import torch.nn.functional as F
+from loguru import logger
 from transformers.generation.logits_process import LogitsProcessor
 from transformers.generation.logits_process import (
     LogitsProcessorList,
@@ -141,6 +142,32 @@ def is_partial_stop(output: str, stop_str: str):
     return False
 
 
+def build_baichuan_chat_input(model, tokenizer, messages: List[dict], max_new_tokens: int = 0):
+    """  https://huggingface.co/baichuan-inc/Baichuan-13B-Chat/blob/main/modeling_baichuan.py """
+    max_input_tokens = model.config.model_max_length - max_new_tokens
+    max_input_tokens = max(model.config.model_max_length // 2, max_input_tokens)
+    total_input, round_input = [], []
+    for i, message in enumerate(messages[::-1]):
+        content_tokens = tokenizer.encode(message["content"])
+        if message["role"] == "user":
+            round_input = [195] + content_tokens + round_input
+            if total_input and len(total_input) + len(round_input) > max_input_tokens:
+                break
+            else:
+                total_input = round_input + total_input
+                if len(total_input) >= max_input_tokens:
+                    break
+                else:
+                    round_input = []
+        elif message["role"] == "assistant":
+            round_input = [196] + content_tokens + round_input
+        else:
+            raise ValueError(f"message role not supported yet: {message['role']}")
+    total_input = total_input[-max_input_tokens:]  # truncate left
+    total_input.append(196)
+    return torch.LongTensor([total_input])
+
+
 @torch.inference_mode()
 def generate_stream(
     model,
@@ -167,14 +194,17 @@ def generate_stream(
         temperature, repetition_penalty, top_p, top_k
     )
 
-    input_ids = tokenizer(prompt).input_ids
+    if isinstance(prompt, list) and "BaichuanLayer" in getattr(model, "_no_split_modules", []):
+        input_ids = build_baichuan_chat_input(model, tokenizer, prompt, max_new_tokens)
+    else:
+        input_ids = tokenizer(prompt).input_ids
+        if model.config.is_encoder_decoder:
+            max_src_len = context_len
+        else:  # truncate
+            max_src_len = context_len - max_new_tokens - 1
 
-    if model.config.is_encoder_decoder:
-        max_src_len = context_len
-    else:  # truncate
-        max_src_len = context_len - max_new_tokens - 1
+        input_ids = input_ids[-max_src_len:]
 
-    input_ids = input_ids[-max_src_len:]
     output_ids = list(input_ids)
     input_echo_len = len(input_ids)
 
@@ -411,6 +441,8 @@ class ModelServer:
         return ret
 
     def generate_prompt(self, messages):
+        if "BaichuanLayer" in getattr(self.model, "_no_split_modules", []):
+            logger.info("Using Baichuan Model for Chat!")
         return self.prompt_adapter.generate_prompt(messages)
 
     def generate_stream_gate(self, params):
