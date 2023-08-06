@@ -90,7 +90,10 @@ class SqlQuerier:
             answer = second_response["choices"][0]["message"]["content"]
             logger.info(f"Model output: {answer}")
 
-        return answer[answer.index("Final Answer:") + 14:] if answer else answer
+            j = answer.rfind("Final Answer:")
+            answer = answer[j + 14:] if answer else answer
+
+        return answer
 
 
 if __name__ == '__main__':

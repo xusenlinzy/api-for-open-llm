@@ -37,7 +37,7 @@ from api.protocol import (
     EmbeddingsRequest,
     FunctionCallResponse,
 )
-from api.react_prompt import get_qwen_react_prompt
+from api.react_prompt import get_qwen_react_prompt, parse_qwen_plugin_call
 
 app = FastAPI()
 headers = {"User-Agent": "Chat API Server"}
@@ -293,26 +293,43 @@ async def create_chat_completion(request: ChatCompletionRequest):
         if content["error_code"] != 0:
             return create_error_response(content["error_code"], content["text"])
 
-        if request.functions is not None and "Thought:" in content["text"].strip():
+        if request.functions is not None:
             react_content = content["text"].strip()
-            try:
-                thought_index = react_content.index("Thought:")
-                name_index, arguments_index = react_content.index("Action:"), react_content.index("Action Input:")
-                function_call = FunctionCallResponse(
-                    name=react_content[name_index + 8: arguments_index].strip(),
-                    arguments=react_content[arguments_index + 14:],
-                    thought=react_content[thought_index + 9: name_index]
-                )
-            except ValueError:
-                function_call = None
+            if "Thought:" in react_content:
+                react_res = parse_qwen_plugin_call(react_content)
+                if react_res is not None:
+                    # if plugin_name contains other str
+                    available_functions = [f["name_for_model"] for f in request.functions]
+                    plugin_name = react_res[1]
+                    if plugin_name not in available_functions:
+                        for fct in available_functions:
+                            if fct in plugin_name:
+                                plugin_name = fct
+                                break
 
-            choices.append(
-                ChatCompletionResponseChoice(
-                    index=i,
-                    message=ChatMessage(role="assistant", function_call=function_call),
-                    finish_reason="function_call",
+                    function_call = FunctionCallResponse(
+                        thought=react_res[0],
+                        name=plugin_name,
+                        arguments=react_res[2],
+                    )
+                else:
+                    function_call = None
+                choices.append(
+                    ChatCompletionResponseChoice(
+                        index=i,
+                        message=ChatMessage(role="assistant", function_call=function_call),
+                        finish_reason="function_call",
+                    )
                 )
-            )
+            else:
+                logger.warning(f"Model {args.model_name.lower()} does not support for function call yet!")
+                choices.append(
+                    ChatCompletionResponseChoice(
+                        index=i,
+                        message=ChatMessage(role="assistant", content=react_content),
+                        finish_reason=content.get("finish_reason", "stop"),
+                    )
+                )
         else:
             choices.append(
                 ChatCompletionResponseChoice(

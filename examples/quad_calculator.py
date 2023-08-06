@@ -11,12 +11,12 @@ def calculate_quad(formula_str: str, a: float, b: float) -> float:
     return integrate.quad(eval('lambda x: ' + formula_str), a, b)[0]
 
 
-def calculate_sqrt(y: float):
+def calculate_sqrt(y: float) -> float:
     """ 计算平方根 """
     return math.sqrt(y)
 
 
-def calculate_cube(y: float):
+def calculate_cube(y: float) -> float:
     """ 计算立方 """
     return y ** 3
 
@@ -26,7 +26,7 @@ class QuadCalculator:
         openai.api_base = openai_api_base
         openai.api_key = openai_api_key
 
-    def run(self, query):
+    def run(self, query: str) -> str:
         # Step 1: send the conversation and available functions to model
         messages = [{"role": "user", "content": query}]
         functions = [
@@ -114,7 +114,8 @@ class QuadCalculator:
             if response["choices"][0]["finish_reason"] == "stop":
                 answer = response["choices"][0]["message"]["content"]
                 logger.info(f"Model output: {answer}")
-                return answer[answer.index("Final Answer:") + 14:] if answer else answer
+                j = answer.rfind("Final Answer:")
+                return answer[j + 14:] if answer else answer
 
             elif response["choices"][0]["finish_reason"] == "function_call":
                 response_message = response["choices"][0]["message"]
