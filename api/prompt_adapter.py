@@ -272,7 +272,7 @@ class InternLMPromptAdapter(BasePromptAdapter):
 
     name = "internlm"
     system_prompt = ""
-    user_prompt = "<|User|>:{}<eoh>\n<|Bot|>:"
+    user_prompt = "<s><|User|>:{}<eoh>\n<|Bot|>:"
     assistant_prompt = "{}<eoa>\n"
     stop = {
         "strings": ["<|User|>", "<|Bot|>", "<eoa>"],
