@@ -102,9 +102,6 @@ class BaseModelAdapter:
             **config_kwargs
         )
 
-        if hasattr(model, "ntk_inv_freq"):
-            logger.info("Apply NTK scaling")
-
         if device == "cpu":
             model = model.float()
 

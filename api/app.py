@@ -9,6 +9,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="OpenAI Compatible RESTful API server."
     )
+    # fastapi related
     parser.add_argument(
         "--host", type=str, default="0.0.0.0", help="host name"
     )
@@ -27,6 +28,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--allowed-headers", type=json.loads, default=["*"], help="allowed headers"
     )
+
+    # model related
     parser.add_argument(
         '--model_name', type=str, help='chatglm, moss, phoenix', default='chatglm'
     )
@@ -67,10 +70,18 @@ if __name__ == "__main__":
         "--stream_interval", type=int, default=2, help='interval for stream output'
     )
     parser.add_argument(
-        '--alpha', type=str, default=None, help="The scaling factor of NTK method, can be a float or 'auto'. "
+        '--prompt_name', type=str, default=None, help="The prompt name for convasation. "
+    )
+
+    # patches related
+    parser.add_argument(
+        '--patch_type', type=str, default=None, choices=["rerope", "ntk"], help="The method to extend context length."
     )
     parser.add_argument(
-        '--prompt_name', type=str, default=None, help="The prompt name for convasation. "
+        '--training_length', type=int, default=4096, help="The training length of NTK or ReRoPE method."
+    )
+    parser.add_argument(
+        '--window_size', type=int, default=512, help="The window size of ReRoPE method."
     )
     args = parser.parse_args()
     sys.path.insert(0, args.model_path)
@@ -83,10 +94,15 @@ if __name__ == "__main__":
             )
         os.environ["CUDA_VISIBLE_DEVICES"] = args.gpus
 
-    if args.alpha is not None:
-        from api.patches import apply_ntk_scaling_patch
-        apply_ntk_scaling_patch(args.alpha)
-
     from api.router import main
+
+    if args.patch_type == "rerope":
+        from api.patches import apply_rerope_patch
+
+        apply_rerope_patch(args.training_length, args.window_size)
+    elif args.patch_type == "ntk":
+        from api.patches import apply_ntk_scaling_patch
+
+        apply_ntk_scaling_patch(args.training_length)
 
     main(args)

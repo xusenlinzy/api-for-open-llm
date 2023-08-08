@@ -54,6 +54,15 @@ docker pull xusenlinzy/llm-api:latest
 + `prompt_name`（可选项）: 使用的对话模板名称，如果不指定，则将根据模型名找到对应的模板
 
 
++ `patch_type`（可选项）: 用来扩展 `llama` 模型上下文长度的长度，支持 [`ntk`](https://kexue.fm/archives/9706) 和 [`rerope`](https://spaces.ac.cn/archives/9708)
+
+
++ `training_length`（可选项）: 用来扩展 `llama` 模型上下文长度的长度，训练长度
+
+
++ `window_size`（可选项）: 用来扩展 `llama` 模型上下文长度的长度，窗口大小，小于训练长度
+
+
 ### ChatGLM
 
 chatglm-6b:
