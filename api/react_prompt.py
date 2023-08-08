@@ -43,10 +43,10 @@ def get_qwen_react_prompt(messages, functions=None, function_call="auto"):
                     new_info["parameters"].append(
                         {
                             "name": name,
-                            "description": p["description"],
+                            "description": p.get("description", ""),
                             "required": name in required,
                             "schema": {
-                                "type": p["type"],
+                                "type": p.get("type", "string"),
                             }
                         }
                     )
