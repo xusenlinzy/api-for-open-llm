@@ -16,97 +16,63 @@ def calculate_sqrt(y: float) -> float:
     return math.sqrt(y)
 
 
-def calculate_cube(y: float) -> float:
-    """ 计算立方 """
-    return y ** 3
-
-
 class QuadCalculator:
     def __init__(self, openai_api_base, openai_api_key="xxx"):
         openai.api_base = openai_api_base
         openai.api_key = openai_api_key
 
+        self.functions = [
+            {
+                "name": "calculate_quad",
+                "description": "calculate_quad是一个可以计算给定区间内函数定积分数值的工具。",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "formula_str": {
+                            "type": "string",
+                            "description": "一个数学函数的表达式，例如x**2",
+                        },
+                        "a": {
+                            "type": "string",
+                            "description": "积分区间的左端点，例如1.0",
+                        },
+                        "b": {
+                            "type": "string",
+                            "description": "积分区间的右端点，例如5.0",
+                        },
+                    },
+                    "required": ["formula_str", "a", "b"],
+                },
+            },
+            {
+                "name": {
+                    "name_for_human":
+                        "平方根计算器",
+                    "name_for_model":
+                        "calculate_sqrt"
+                },
+                "description": "计算一个数值的平方根。",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "y": {
+                            "type": "string",
+                            "description": "被开方数",
+                        },
+                    },
+                    "required": ["y"],
+                },
+            },
+        ]
+
     def run(self, query: str) -> str:
         # Step 1: send the conversation and available functions to model
         messages = [{"role": "user", "content": query}]
-        functions = [
-            {
-                "name_for_human":
-                    "定积分计算器",
-                "name_for_model":
-                    "calculate_quad",
-                "description_for_model":
-                    "定积分计算器是一个可以计算给定区间内函数定积分数值的工具。",
-                "parameters": [
-                    {
-                        'name': 'formula_str',
-                        'description': '一个数学函数的表达式，例如x**2',
-                        'required': True,
-                        'schema': {
-                            'type': 'string'
-                        },
-                    },
-                    {
-                        'name': 'a',
-                        'description': '积分区间的左端点，例如1.0',
-                        'required': True,
-                        'schema': {
-                            'type': 'string'
-                        },
-                    },
-                    {
-                        'name': 'b',
-                        'description': '积分区间的右端点，例如5.0',
-                        'required': True,
-                        'schema': {
-                            'type': 'string'
-                        },
-                    },
-                ],
-            },
-            {
-                "name_for_human":
-                    "平方根计算器",
-                "name_for_model":
-                    "calculate_sqrt",
-                "description_for_model":
-                    "计算一个数值的平方根。",
-                "parameters": [
-                    {
-                        'name': 'y',
-                        'description': '被开方数',
-                        'required': True,
-                        'schema': {
-                            'type': 'string'
-                        },
-                    },
-                ],
-            },
-            {
-                "name_for_human":
-                    "立方计算器",
-                "name_for_model":
-                    "calculate_cube",
-                "description_for_model":
-                    "计算一个数值的立方。",
-                "parameters": [
-                    {
-                        'name': 'y',
-                        'description': '基数',
-                        'required': True,
-                        'schema': {
-                            'type': 'string'
-                        },
-                    },
-                ],
-            }
-        ]
-
         response = openai.ChatCompletion.create(
             model="qwen",
             messages=messages,
             temperature=0,
-            functions=functions,
+            functions=self.functions,
             stop=["Observation:"]
         )
 
@@ -127,7 +93,6 @@ class QuadCalculator:
                     available_functions = {
                         "calculate_quad": calculate_quad,
                         "calculate_sqrt": calculate_sqrt,
-                        "calculate_cube": calculate_cube,
                     }
 
                     function_name = response_message["function_call"]["name"]
@@ -155,7 +120,6 @@ class QuadCalculator:
                         model="qwen",
                         messages=messages,
                         temperature=0,
-                        functions=functions,
                         stop=["Observation:"],
                     )  # get a new response from model where it can see the function response
 

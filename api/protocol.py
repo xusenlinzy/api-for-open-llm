@@ -82,6 +82,7 @@ class ChatMessage(BaseModel):
     role: str
     content: str = None
     function_call: Optional[FunctionCallResponse] = None
+    functions: Optional[List[Dict[str, Any]]] = None
 
 
 class ChatCompletionResponseChoice(BaseModel):

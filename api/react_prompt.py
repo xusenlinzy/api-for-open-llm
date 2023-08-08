@@ -24,7 +24,41 @@ Begin!
 Question: {query}"""
 
 
-def get_qwen_react_prompt(messages, functions, function_call="auto", return_messages=True):
+def get_qwen_react_prompt(messages, functions=None, function_call="auto"):
+    if functions is not None:
+        if "name" in functions[0]:
+            new_function = []
+            for info in functions:
+                new_info = {}
+                if isinstance(info["name"], dict):
+                    new_info.update(info["name"])
+                else:
+                    new_info["name_for_model"] = info["name"]
+                    new_info["name_for_human"] = info["name"]
+
+                required = info["parameters"]["required"]
+                new_info["description_for_model"] = info["description"]
+                new_info["parameters"] = []
+                for name, p in info["parameters"]["properties"].items():
+                    new_info["parameters"].append(
+                        {
+                            "name": name,
+                            "description": p["description"],
+                            "required": name in required,
+                            "schema": {
+                                "type": p["type"],
+                            }
+                        }
+                    )
+
+                new_function.append(new_info)
+            functions = new_function
+    else:
+        for message in messages:
+            if message.get("functions", None):
+                functions = message["functions"]
+                break
+
     if function_call != "auto" and isinstance(function_call, dict):
         functions = [info for info in functions if info["name_for_model"] in [function_call["name_for_model"]]]
 
@@ -61,7 +95,7 @@ def get_qwen_react_prompt(messages, functions, function_call="auto", return_mess
         elif role == "function":
             ret += f"\nObservation: output of {message['name']} is {str(content).strip()}"
 
-    return [{"role": "user", "content": ret}] if return_messages else ret
+    return [{"role": "user", "content": ret}], functions
 
 
 def parse_qwen_plugin_call(text: str) -> Union[Tuple[str, str, str], None]:

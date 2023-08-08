@@ -97,7 +97,7 @@ def check_requests(request) -> Optional[JSONResponse]:
 
 def get_gen_params(
     model_name: str,
-    messages: Union[str, List[Dict[str, str]]],
+    messages: Union[str, List[Dict[str, Any]]],
     *,
     temperature: float,
     top_p: float,
@@ -111,8 +111,15 @@ def get_gen_params(
     if not max_tokens:
         max_tokens = 1024
 
-    if functions is not None:
-        messages = get_qwen_react_prompt(messages, functions, function_call)
+    use_function = False
+    if isinstance(messages, list) and isinstance(messages[0], dict):
+        for message in messages:
+            if message.get("functions", None):
+                use_function = True
+                break
+
+    if functions is not None or use_function:
+        messages, functions = get_qwen_react_prompt(messages, functions, function_call)
 
     gen_params = {
         "model": model_name,
@@ -122,6 +129,7 @@ def get_gen_params(
         "max_new_tokens": max_tokens,
         "echo": echo,
         "stream": stream,
+        "functions": functions,
     }
 
     if model_server.stop is not None:
@@ -293,13 +301,14 @@ async def create_chat_completion(request: ChatCompletionRequest):
         if content["error_code"] != 0:
             return create_error_response(content["error_code"], content["text"])
 
-        if request.functions is not None:
+        functions = gen_params["functions"]
+        if functions is not None:
             react_content = content["text"].strip()
             if "Thought:" in react_content:
                 react_res = parse_qwen_plugin_call(react_content)
                 if react_res is not None:
                     # if plugin_name contains other str
-                    available_functions = [f["name_for_model"] for f in request.functions]
+                    available_functions = [f["name_for_model"] for f in functions]
                     plugin_name = react_res[1]
                     if plugin_name not in available_functions:
                         for fct in available_functions:
@@ -317,12 +326,11 @@ async def create_chat_completion(request: ChatCompletionRequest):
                 choices.append(
                     ChatCompletionResponseChoice(
                         index=i,
-                        message=ChatMessage(role="assistant", function_call=function_call),
+                        message=ChatMessage(role="assistant", function_call=function_call, functions=functions),
                         finish_reason="function_call",
                     )
                 )
             else:
-                logger.warning(f"Model {args.model_name.lower()} does not support for function call yet!")
                 choices.append(
                     ChatCompletionResponseChoice(
                         index=i,
