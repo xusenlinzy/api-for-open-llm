@@ -290,6 +290,7 @@ class BaiChuanPromptAdapter(BasePromptAdapter):
     user_prompt = "<reserved_102> {}<reserved_103> "
     assistant_prompt = "{}</s>"
     stop = {
+        "strings": ["<reserved_102>", "<reserved_103>"],
         "token_ids": [195, 196],
     }
 

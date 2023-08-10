@@ -507,7 +507,6 @@ def main(args1):
     )
 
     global embed_client
-    embed_client = None
     if args.embedding_name:
         # launch an embedding server
         embed_client = SentenceTransformer(args.embedding_name, device=args.device)
