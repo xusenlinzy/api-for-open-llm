@@ -19,13 +19,17 @@ docker build -f docker/Dockerfile.vllm -t llm-api:vllm .
 + `trust-remote-code`: 是否使用外部代码
 
 
-+ `tokenizer-mode`（可选项）: `tokenizer` 的模式
++ `tokenizer-mode`（可选项）: `tokenizer` 的模式，默认为 `auto`
 
 
-+ `embedding_name`（可选项）: 嵌入模型的文件所在路径
++ `tensor_parallel_size`（可选项）: `GPU` 数量，默认为 `1`
+
+
++ `embedding_name`（可选项）: 嵌入模型的文件所在路径，推荐使用 `moka-ai/m3e-base` 或者 `BAAI/bge-large-zh`
 
 
 + `prompt_name`（可选项）: 使用的对话模板名称，如果不指定，则将根据模型名找到对应的模板
+
 
 
 ### Qwen-7b-chat
