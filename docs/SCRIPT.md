@@ -3,7 +3,7 @@
 构建镜像
 
 ```shell
-docker build -t llm-api:pytorch .
+docker build -f docker/Dockerfile -t llm-api:pytorch .
 ```
 
 或者拉取已经构建好的镜像

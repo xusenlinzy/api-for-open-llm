@@ -17,6 +17,8 @@
 
 ## 📢 News
 
++ 【2023.08.10】 支持 [vLLM](https://github.com/vllm-project/vllm) 推理加速 ，使用方式见 [VLLM_SCRIPT](./docs/VLLM_SCRIPT.md)
+
 
 + 【2023.08.04】 增加通义千问模型工具调用示例，支持 **`function call`** 特性，调用方式参考 [邮件发送助手](./examples/email_sender.py)、[定积分计算器](./examples/quad_calculator.py)、[SQL查询](./examples/sql_querier.py)
 
@@ -99,7 +101,7 @@
 构建镜像
 
 ```shell
-docker build -t llm-api:pytorch .
+docker build -f docker/Dockerfile -t llm-api:pytorch .
 ```
 
 启动容器
