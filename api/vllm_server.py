@@ -396,6 +396,7 @@ async def create_completion(raw_request: Request):
             presence_penalty=request.presence_penalty,
             frequency_penalty=request.frequency_penalty,
             temperature=request.temperature,
+            top_p=request.top_p,
             top_k=request.top_k,
             stop=request.stop,
             ignore_eos=request.ignore_eos,
