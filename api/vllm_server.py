@@ -93,13 +93,17 @@ async def get_gen_prompt(request, args):
         return prompt_adapter.generate_prompt(request.messages), request
 
 
-async def check_length(request, prompt, args):
-    if "baichuan-13b" in args.model_name.lower():
-        input_ids = build_baichuan_chat_input(tokenizer, prompt)
-    elif "qwen" in args.model_name.lower():
-        input_ids = build_qwen_chat_input(tokenizer, prompt)
-    else:
+async def get_model_inputs(request, prompt, args):
+    if isinstance(prompt, str):
         input_ids = tokenizer(prompt).input_ids
+    else:
+        if "baichuan-13b" in args.model_name.lower():
+            input_ids = build_baichuan_chat_input(tokenizer, prompt)
+        elif "qwen" in args.model_name.lower():
+            input_ids = build_qwen_chat_input(tokenizer, prompt)
+        else:
+            raise ValueError(f"Model not supported yet: {args.model_name.lower()}")
+
     token_num = len(input_ids)
     if token_num + request.max_tokens > max_model_len:
         return input_ids, create_error_response(
@@ -143,7 +147,7 @@ async def create_chat_completion(raw_request: Request):
 
     prompt, request = await get_gen_prompt(request, args)
     request.max_tokens = request.max_tokens or 512
-    token_ids, error_check_ret = await check_length(request, prompt, args)
+    token_ids, error_check_ret = await get_model_inputs(request, prompt, args)
     if error_check_ret is not None:
         return error_check_ret
 
@@ -169,6 +173,10 @@ async def create_chat_completion(raw_request: Request):
             top_p=request.top_p,
             stop=list(set(stop)),
             max_tokens=request.max_tokens,
+            best_of=request.best_of,
+            top_k=request.top_k,
+            ignore_eos=request.ignore_eos,
+            use_beam_search=request.use_beam_search,
         )
     except ValueError as e:
         return create_error_response(HTTPStatus.BAD_REQUEST, str(e))
@@ -377,7 +385,7 @@ async def create_completion(raw_request: Request):
     else:
         prompt = request.prompt
 
-    token_ids, error_check_ret = await check_length(request, prompt, args)
+    token_ids, error_check_ret = await get_model_inputs(request, prompt, args)
     if error_check_ret is not None:
         return error_check_ret
 
@@ -388,10 +396,12 @@ async def create_completion(raw_request: Request):
             presence_penalty=request.presence_penalty,
             frequency_penalty=request.frequency_penalty,
             temperature=request.temperature,
-            top_p=request.top_p,
+            top_k=request.top_k,
             stop=request.stop,
+            ignore_eos=request.ignore_eos,
             max_tokens=request.max_tokens,
             logprobs=request.logprobs,
+            use_beam_search=request.use_beam_search,
         )
     except ValueError as e:
         return create_error_response(HTTPStatus.BAD_REQUEST, str(e))

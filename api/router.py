@@ -430,6 +430,16 @@ async def create_embeddings(request: EmbeddingsRequest, model_name: str = None):
             decoding = tiktoken.model.encoding_for_model(request.model)
             inputs = [decoding.decode(text) for text in inputs]
 
+    # https://huggingface.co/BAAI/bge-large-zh
+    if embed_client is not None:
+        if "bge" in args.embedding_name.lower():
+            instruction = ""
+            if "zh" in args.embedding_name.lower():
+                instruction = "为这个句子生成表示以用于检索相关文章："
+            elif "en" in args.embedding_name.lower():
+                instruction = "Represent this sentence for searching relevant passages: "
+            inputs = [instruction + q for q in inputs]
+
     data, token_num = [], 0
     batches = [
         inputs[i: min(i + 1024, len(inputs))]

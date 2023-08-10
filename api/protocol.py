@@ -71,6 +71,12 @@ class ChatCompletionRequest(BaseModel):
     functions: Optional[List[Dict[str, Any]]] = None
     function_call: Union[str, Dict[str, str]] = "auto"
 
+    # Additional parameters supported by vLLM
+    best_of: Optional[int] = None
+    top_k: Optional[int] = -1
+    ignore_eos: Optional[bool] = False
+    use_beam_search: Optional[bool] = False
+
 
 class FunctionCallResponse(BaseModel):
     name: str
@@ -103,6 +109,7 @@ class ChatCompletionResponse(BaseModel):
 class DeltaMessage(BaseModel):
     role: Optional[str] = None
     content: Optional[str] = None
+    function_call: Optional[FunctionCallResponse] = None
 
 
 class ChatCompletionResponseStreamChoice(BaseModel):
@@ -148,6 +155,11 @@ class CompletionRequest(BaseModel):
     presence_penalty: Optional[float] = 0.0
     frequency_penalty: Optional[float] = 0.0
     user: Optional[str] = None
+
+    # Additional parameters supported by vLLM
+    top_k: Optional[int] = -1
+    ignore_eos: Optional[bool] = False
+    use_beam_search: Optional[bool] = False
 
 
 class CompletionResponseChoice(BaseModel):
