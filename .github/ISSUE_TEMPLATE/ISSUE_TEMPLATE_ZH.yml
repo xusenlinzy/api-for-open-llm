@@ -24,11 +24,6 @@ body:
         - 效果问题
         - 其他问题
   - type: dropdown
-    id: model-type
-    attributes:
-      label: 基础模型
-      description: 请提供问题涉及的具体模型。
-  - type: dropdown
     id: operating-system
     attributes:
       label: 操作系统
