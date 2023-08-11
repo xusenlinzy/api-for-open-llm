@@ -1,0 +1,66 @@
+name: 中文提问模板
+description: 与本项目相关的问题提问，我们会优先查阅内容相对完整的issue。
+
+body:
+  - type: checkboxes
+    id: mustchecks
+    attributes:
+      label: 提交前必须检查以下项目
+      description: 请在提问前检查以下项目，善用搜索功能查找与自己问题相关的issue。
+      options:
+        - label: 请确保使用的是仓库最新代码（git pull），一些问题已被解决和修复。
+          required: true
+        - label: 我已阅读[项目文档](https://github.com/xusenlinzy/api-for-open-llm/blob/master/README.md)和[FAQ章节](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/FAQ.md)并且已在Issue中对问题进行了搜索，没有找到相似问题和解决方案
+          required: true
+  - type: dropdown
+    id: question-type
+    attributes:
+      label: 问题类型
+      description: 请选择最符合的问题类型
+      options:
+        - 安装环境
+        - 启动命令
+        - 模型推理和部署
+        - 效果问题
+        - 其他问题
+  - type: dropdown
+    id: model-type
+    attributes:
+      label: 基础模型
+      description: 请提供问题涉及的具体模型。
+  - type: dropdown
+    id: operating-system
+    attributes:
+      label: 操作系统
+      description: 请提供操作系统类型
+      options:
+        - Windows
+        - macOS
+        - Linux
+  - type: textarea
+    id: question-detailed
+    attributes:
+      label: 详细描述问题
+      description: 请尽量具体地描述遇到的问题，**代码程序类问题务必给出完整运行命令**，这将有助于快速定位问题所在。
+      value: |
+        ```
+        # 请在此处粘贴运行代码（如没有可删除该代码块）
+        ```
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: 依赖情况（代码类问题务必提供）
+      description: 请提供transformers, peft, torch等常规依赖库的版本：`pip list | grep -E 'transformers|peft|torch'`
+      value: |
+        ```
+        # 请在此处粘贴依赖情况
+        ```
+  - type: textarea
+    id: logs
+    attributes:
+      label: 运行日志或截图
+      description: 请优先提供文本形式的log（过长内容请上传文件），粘贴内容放在markdown代码块。或者提供截图形式的运行记录。
+      value: |
+        ```
+        # 请在此处粘贴运行日志
+        ```
