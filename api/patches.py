@@ -165,4 +165,4 @@ def apply_rerope_patch(training_length: int = 4096, window_size: int = 512):
     global TRAINING_LENGTH, WINDOW_SIZE
     TRAINING_LENGTH, WINDOW_SIZE = training_length, window_size
     LlamaAttention.forward = forward_with_rerope
-    logger.info(f"Apply NTK scaling with TRAINING_LENGTH={TRAINING_LENGTH}")
+    logger.info(f"Apply ReRoPE with TRAINING_LENGTH={TRAINING_LENGTH}")

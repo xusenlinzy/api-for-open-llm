@@ -325,24 +325,6 @@ docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=aquila-chat-7
     --embedding_name moka-ai/m3e-base
 ```
 
-### NewHope
-
-SLAM-group/NewHope:
-
-```shell
-docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=newhope \
-    --ulimit memlock=-1 --ulimit stack=67108864 \
-    -v `pwd`:/workspace \
-    llm-api:pytorch \
-    python api/app.py \
-    --port 80 \
-    --allow-credentials \
-    --model_name newhope \
-    --model_path SLAM-group/NewHope \
-    --device cuda \
-    --embedding_name moka-ai/m3e-base
-```
-
 ### Qwen-7b-chat
 
 除已有的环境之外，推荐安装下面的依赖以提高运行效率和降低显存占用
