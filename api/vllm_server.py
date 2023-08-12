@@ -673,6 +673,6 @@ if __name__ == "__main__":
     embed_client = None
     if args.embedding_name:
         # launch an embedding server
-        embed_client = SentenceTransformer(args.embedding_name, device=args.device)
+        embed_client = SentenceTransformer(args.embedding_name)
 
     uvicorn.run(app, host=args.host, port=args.port, log_level="info", timeout_keep_alive=TIMEOUT_KEEP_ALIVE)
