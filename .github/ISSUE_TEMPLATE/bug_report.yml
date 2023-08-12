@@ -1,0 +1,72 @@
+name: 🐞 Bug
+description: 提交错误报告 | File a bug/issue
+
+body:
+  - type: checkboxes
+    id: mustchecks
+    attributes:
+      label: 提交前必须检查以下项目 | The following items must be checked before submission
+      description: |
+        请在提问前检查以下项目，善用搜索功能查找与自己问题相关的issue。
+        Please check the following items before asking a question, and make good use of the search function to find issues related to your question.
+      options:
+        - label: 请确保使用的是仓库最新代码（git pull），一些问题已被解决和修复。 | Make sure you are using the latest code from the repository (git pull), some issues have already been addressed and fixed.
+          required: true
+        - label: 我已阅读[项目文档](https://github.com/xusenlinzy/api-for-open-llm/blob/master/README.md)和[FAQ章节](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/FAQ.md)并且已在Issue中对问题进行了搜索，没有找到相似问题和解决方案 | I have searched the existing issues / discussions
+          required: true
+  - type: dropdown
+    id: question-type
+    attributes:
+      label: 问题类型 | Type of problem
+      description: 请选择最符合的问题类型 | Please select the type of question that best matches
+      options:
+        - 安装环境 | Installation environment
+        - 启动命令 | Startup command
+        - 模型推理和部署 | Model inference and deployment
+        - 效果问题 | Effectiveness issues
+        - 其他问题 | Other issues
+  - type: dropdown
+    id: operating-system
+    attributes:
+      label: 操作系统 | Operating system
+      description: 请提供操作系统类型 | Please provide the type of operating system
+      options:
+        - Windows
+        - macOS
+        - Linux
+  - type: textarea
+    id: question-detailed
+    attributes:
+      label: 详细描述问题 | Detailed description of the problem
+      description: |
+        请尽量具体地描述遇到的问题，**代码程序类问题务必给出完整运行命令**，这将有助于快速定位问题所在。
+        Please be as specific as possible in describing the problem encountered, **Be sure to give the full run command for code program type problems**, this will help to quickly pinpoint the problem.
+      value: |
+        ```
+        # 请在此处粘贴运行代码（如没有可删除该代码块）
+        # Paste the runtime code here (delete the code block if you don't have it)
+        ```
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies
+      description: |
+        请提供transformers, peft, torch等常规依赖库的版本：`pip list | grep -E 'transformers|peft|torch'`
+        Please provide versions of the usual dependencies such as transformers, peft, torch, etc.: `pip list | grep -E 'transformers|peft|torch' `
+      value: |
+        ```
+        # 请在此处粘贴依赖情况
+        # Please paste the dependencies here
+        ```
+  - type: textarea
+    id: logs
+    attributes:
+      label: 运行日志或截图 | Runtime logs or screenshots
+      description: |
+        请优先提供文本形式的log（过长内容请上传文件），粘贴内容放在markdown代码块。或者提供截图形式的运行记录。
+        Running log or screenshot please prefer to provide the log in text form (please upload the file if it is too long) and paste the content in markdown code block. Or provide the run log in the form of screenshot.
+      value: |
+        ```
+        # 请在此处粘贴运行日志
+        # Please paste the run log here
+        ```
