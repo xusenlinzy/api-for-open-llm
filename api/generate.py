@@ -1,6 +1,6 @@
 import gc
 import re
-from typing import Iterable, Optional, List
+from typing import Iterable, Optional, List, Union
 
 import torch
 import torch.nn.functional as F
@@ -17,6 +17,7 @@ from transformers.generation.logits_process import (
 
 from api.constants import ErrorCode
 from api.prompt_adapter import get_prompt_adapter
+from api.protocol import Role, ChatMessage
 
 server_error_msg = (
     "**NETWORK ERROR DUE TO HIGH TRAFFIC. PLEASE REGENERATE OR REFRESH THIS PAGE.**"
@@ -73,22 +74,22 @@ def is_partial_stop(output: str, stop_str: str):
     return False
 
 
-def build_baichuan_chat_input(tokenizer, messages: List[dict], context_len: int = 4096):
+def build_baichuan_chat_input(tokenizer, messages: List[ChatMessage], context_len: int = 4096):
     """  https://huggingface.co/baichuan-inc/Baichuan-13B-Chat/blob/main/modeling_baichuan.py """
     total_input, round_input = [], []
     for message in messages[::-1]:
-        content_tokens = tokenizer.encode(message["content"])
-        if message["role"] in ["user", "system"]:
+        role, content_tokens = message.role, tokenizer.encode(message.content)
+        if role in [Role.USER, Role.SYSTEM]:
             round_input = [195] + content_tokens + round_input
             if total_input and len(total_input) + len(round_input) > context_len:
                 break
             else:
                 total_input = round_input + total_input
                 round_input = []
-        elif message["role"] == "assistant":
+        elif role == Role.ASSISTANT:
             round_input = [196] + content_tokens + round_input
         else:
-            raise ValueError(f"message role not supported yet: {message['role']}")
+            raise ValueError(f"message role not supported yet: {role}")
     total_input = total_input[-context_len:]  # truncate left
     total_input.append(196)
     return total_input
@@ -96,7 +97,7 @@ def build_baichuan_chat_input(tokenizer, messages: List[dict], context_len: int 
 
 def build_qwen_chat_input(
     tokenizer: PreTrainedTokenizer,
-    messages: List[dict],
+    messages: List[ChatMessage],
     max_window_size: int = 6144,
 ):
     """ https://huggingface.co/Qwen/Qwen-7B-Chat/blob/main/qwen_generation_utils.py """
@@ -113,18 +114,18 @@ def build_qwen_chat_input(
 
     context_tokens = []
     for i, message in enumerate(messages[::-1]):
-        content = message["content"]
+        role, content = message.role, message.content
         if context_tokens:
             context_tokens = nl_tokens + context_tokens
 
-        if message["role"] == "user":
+        if role == Role.USER:
             content_tokens = _tokenize_str("user", content)
-        elif message["role"] == "system":
+        elif role == Role.SYSTEM:
             content_tokens = _tokenize_str("system", content)
-        elif message["role"] == "assistant":
+        elif role == Role.ASSISTANT:
             content_tokens = _tokenize_str("assistant", content)
         else:
-            raise ValueError(f"message role not supported yet: {message['role']}")
+            raise ValueError(f"message role not supported yet: {role}")
 
         if len(im_start_tokens + content_tokens + im_end_tokens + context_tokens) > max_window_size:
             break
@@ -486,7 +487,7 @@ class ModelServer:
         }
         return ret
 
-    def generate_prompt(self, messages):
+    def generate_prompt(self, messages: List[ChatMessage]) -> Union[str, List[ChatMessage]]:
         return self.prompt_adapter.generate_prompt(messages) if self.construct_prompt else messages
 
     def generate_stream_gate(self, params):

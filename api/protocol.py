@@ -56,9 +56,29 @@ class UsageInfo(BaseModel):
     first_tokens: Optional[Any] = None
 
 
+class ChatFunction(BaseModel):
+    name: str
+    description: Optional[str] = None
+    parameters: Optional[Any] = None
+
+
+class FunctionCallResponse(BaseModel):
+    name: Optional[str] = None
+    arguments: Optional[str] = None
+    thought: Optional[str] = None
+
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str = None
+    name: Optional[str] = None
+    functions: Optional[List[ChatFunction]] = None
+    function_call: Optional[FunctionCallResponse] = None
+
+
 class ChatCompletionRequest(BaseModel):
     model: str
-    messages: Union[List[Dict[str, str]], Any]
+    messages: List[ChatMessage]
     temperature: Optional[float] = 0.7
     top_p: Optional[float] = 1.0
     n: Optional[int] = 1
@@ -68,7 +88,7 @@ class ChatCompletionRequest(BaseModel):
     presence_penalty: Optional[float] = 0.0
     frequency_penalty: Optional[float] = 0.0
     user: Optional[str] = None
-    functions: Optional[List[Dict[str, Any]]] = None
+    functions: Optional[List[ChatFunction]] = None
     function_call: Union[str, Dict[str, str]] = "auto"
 
     # Additional parameters supported by vLLM
@@ -76,19 +96,6 @@ class ChatCompletionRequest(BaseModel):
     top_k: Optional[int] = -1
     ignore_eos: Optional[bool] = False
     use_beam_search: Optional[bool] = False
-
-
-class FunctionCallResponse(BaseModel):
-    name: str
-    arguments: str
-    thought: str = None
-
-
-class ChatMessage(BaseModel):
-    role: str
-    content: str = None
-    function_call: Optional[FunctionCallResponse] = None
-    functions: Optional[List[Dict[str, Any]]] = None
 
 
 class ChatCompletionResponseChoice(BaseModel):
@@ -115,7 +122,7 @@ class DeltaMessage(BaseModel):
 class ChatCompletionResponseStreamChoice(BaseModel):
     index: int
     delta: DeltaMessage
-    finish_reason: Optional[Literal["stop", "length"]] = None
+    finish_reason: Optional[Literal["stop", "length", "function_call"]] = None
 
 
 class ChatCompletionStreamResponse(BaseModel):

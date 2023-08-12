@@ -1,7 +1,7 @@
 import sys
 from typing import List, Dict, Optional
 
-from api.protocol import Role
+from api.protocol import Role, ChatMessage
 
 if sys.version_info >= (3, 9):
     from functools import cache
@@ -21,11 +21,11 @@ class BasePromptAdapter:
     def match(self, model_name):
         return True
 
-    def generate_prompt(self, messages: List[Dict[str, str]]) -> str:
+    def generate_prompt(self, messages: List[ChatMessage]) -> str:
         prompt = self.system_prompt
         user_content = []
         for message in messages:
-            role, content = message["role"], message["content"]
+            role, content = message.role, message.content
             if role in [Role.USER, Role.SYSTEM]:
                 user_content.append(content)
             elif role == Role.ASSISTANT:
@@ -33,7 +33,7 @@ class BasePromptAdapter:
                 prompt += self.assistant_prompt.format(content)
                 user_content = []
             else:
-                raise ValueError(f"Unknown role: {message['role']}")
+                raise ValueError(f"Unknown role: {role}")
 
         if user_content:
             prompt += self.user_prompt.format("\n".join(user_content))
@@ -74,12 +74,12 @@ class ChatGLMPromptAdapter(BasePromptAdapter):
     def match(self, model_name):
         return model_name == "chatglm"
 
-    def generate_prompt(self, messages: List[Dict[str, str]]) -> str:
+    def generate_prompt(self, messages: List[ChatMessage]) -> str:
         prompt = self.system_prompt
         user_content = []
         i = 0
         for message in messages:
-            role, content = message["role"], message["content"]
+            role, content = message.role, message.content
             if role in [Role.USER, Role.SYSTEM]:
                 user_content.append(content)
             elif role == Role.ASSISTANT:
@@ -89,7 +89,7 @@ class ChatGLMPromptAdapter(BasePromptAdapter):
                 user_content = []
                 i += 1
             else:
-                raise ValueError(f"Unknown role: {message['role']}")
+                raise ValueError(f"Unknown role: {role}")
 
         if user_content:
             u_content = "\n".join(user_content)
@@ -108,12 +108,12 @@ class ChatGLM2PromptAdapter(BasePromptAdapter):
     def match(self, model_name):
         return model_name == "chatglm2"
 
-    def generate_prompt(self, messages: List[Dict[str, str]]) -> str:
+    def generate_prompt(self, messages: List[ChatMessage]) -> str:
         prompt = self.system_prompt
         user_content = []
         i = 1
         for message in messages:
-            role, content = message["role"], message["content"]
+            role, content = message.role, message.content
             if role in [Role.USER, Role.SYSTEM]:
                 user_content.append(content)
             elif role == Role.ASSISTANT:
@@ -123,7 +123,7 @@ class ChatGLM2PromptAdapter(BasePromptAdapter):
                 user_content = []
                 i += 1
             else:
-                raise ValueError(f"Unknown role: {message['role']}")
+                raise ValueError(f"Unknown role: {role}")
 
         if user_content:
             u_content = "\n".join(user_content)
@@ -312,15 +312,16 @@ class StarChatPromptAdapter(BasePromptAdapter):
     def match(self, model_name):
         return "starchat" in model_name or "starcode" in model_name
 
-    def generate_prompt(self, messages: List[Dict[str, str]]) -> str:
+    def generate_prompt(self, messages: List[ChatMessage]) -> str:
         prompt = "<|system|>\n<|end|>\n"
         for message in messages:
-            if message["role"] == Role.SYSTEM:
-                prompt += self.system_prompt.format(message["content"])
-            if message["role"] == Role.USER:
-                prompt += self.user_prompt.format(message["content"])
+            role, content = message.role, message.content
+            if role == Role.SYSTEM:
+                prompt += self.system_prompt.format(content)
+            if role == Role.USER:
+                prompt += self.user_prompt.format(content)
             else:
-                prompt += self.assistant_prompt.format(message["content"])
+                prompt += self.assistant_prompt.format(content)
 
         prompt += "<|assistant|>\n"
 
@@ -341,15 +342,16 @@ class AquilaChatPromptAdapter(BasePromptAdapter):
     def match(self, model_name):
         return "aquila" in model_name
 
-    def generate_prompt(self, messages: List[Dict[str, str]]) -> str:
+    def generate_prompt(self, messages: List[ChatMessage]) -> str:
         prompt = "A chat between a curious human and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the human's questions."
         for message in messages:
-            if message["role"] == Role.SYSTEM:
-                prompt += self.system_prompt.format(message["content"])
-            if message["role"] == Role.ASSISTANT:
-                prompt += self.user_prompt.format(message["content"])
+            role, content = message.role, message.content
+            if role == Role.SYSTEM:
+                prompt += self.system_prompt.format(content)
+            if role == Role.ASSISTANT:
+                prompt += self.user_prompt.format(content)
             else:
-                prompt += self.assistant_prompt.format(message["content"])
+                prompt += self.assistant_prompt.format(content)
 
         prompt += "Assistant: "
 
@@ -370,19 +372,20 @@ class Llama2ChatPromptAdapter(BasePromptAdapter):
     def match(self, model_name):
         return "llama2" in model_name
 
-    def generate_prompt(self, messages: List[Dict[str, str]]) -> str:
+    def generate_prompt(self, messages: List[ChatMessage]) -> str:
         prompt = """You are a helpful, respectful and honest assistant. Always answer as helpfully as possible, while being safe.  Your answers should not include any harmful, unethical, racist, sexist, toxic, dangerous, or illegal content. Please ensure that your responses are socially unbiased and positive in nature.
 
 If a question does not make any sense, or is not factually coherent, explain why instead of answering something not correct. If you don't know the answer to a question, please don't share false information."""
         prompt = self.system_prompt.format(prompt)
         for i, message in enumerate(messages):
+            role, content = message.role, message.content
             if i == 0:
-                prompt += message["content"]
+                prompt += content
             else:
-                if message["role"] == Role.USER:
-                    prompt += self.user_prompt.format(message["content"])
+                if role == Role.USER:
+                    prompt += self.user_prompt.format(content)
                 else:
-                    prompt += self.assistant_prompt.format(message["content"])
+                    prompt += self.assistant_prompt.format(content)
 
         prompt += "[/INST] "
 

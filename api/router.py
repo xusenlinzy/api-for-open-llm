@@ -35,9 +35,13 @@ from api.protocol import (
     UsageInfo,
     EmbeddingsResponse,
     EmbeddingsRequest,
-    FunctionCallResponse,
 )
-from api.react_prompt import get_qwen_react_prompt, parse_qwen_plugin_call
+from api.react_prompt import (
+    check_function_call,
+    build_function_call_messages,
+    build_chat_message,
+    build_delta_message,
+)
 
 app = FastAPI()
 headers = {"User-Agent": "Chat API Server"}
@@ -47,9 +51,7 @@ model_server: ModelServer = None
 
 
 def create_error_response(code: int, message: str) -> JSONResponse:
-    return JSONResponse(
-        ErrorResponse(message=message, code=code).dict(), status_code=500
-    )
+    return JSONResponse(ErrorResponse(message=message, code=code).dict(), status_code=500)
 
 
 def check_requests(request) -> Optional[JSONResponse]:
@@ -97,7 +99,7 @@ def check_requests(request) -> Optional[JSONResponse]:
 
 def get_gen_params(
     model_name: str,
-    messages: Union[str, List[Dict[str, Any]]],
+    messages: Union[str, List[ChatMessage]],
     *,
     temperature: float,
     top_p: float,
@@ -105,21 +107,10 @@ def get_gen_params(
     echo: Optional[bool],
     stream: Optional[bool],
     stop: Optional[Union[str, List[str]]] = None,
-    functions: Optional[List[Dict[str, Any]]] = None,
-    function_call: Union[str, Dict[str, str]] = "auto"
+    with_function_call: Optional[bool] = False,
 ) -> Dict[str, Any]:
     if not max_tokens:
         max_tokens = 1024
-
-    use_function = False
-    if isinstance(messages, list) and isinstance(messages[0], dict):
-        for message in messages:
-            if message.get("functions", None):
-                use_function = True
-                break
-
-    if functions is not None or use_function:
-        messages, functions = get_qwen_react_prompt(messages, functions, function_call)
 
     gen_params = {
         "model": model_name,
@@ -129,7 +120,7 @@ def get_gen_params(
         "max_new_tokens": max_tokens,
         "echo": echo,
         "stream": stream,
-        "functions": functions,
+        "with_function_call": with_function_call,
     }
 
     if model_server.stop is not None:
@@ -172,6 +163,8 @@ async def chat_completion_stream_generator(
         yield f"data: {chunk.json(exclude_unset=True, ensure_ascii=False)}\n\n"
 
         previous_text = ""
+        with_function_call = gen_params.get("with_function_call", False)
+        found_action_name = False
         for content in model_server.generate_stream_gate(gen_params):
             if content["error_code"] != 0:
                 yield f"data: {json.dumps(content, ensure_ascii=False)}\n\n"
@@ -184,21 +177,45 @@ async def chat_completion_stream_generator(
 
             if len(delta_text) == 0:
                 delta_text = None
-            choice_data = ChatCompletionResponseStreamChoice(
-                index=i,
-                delta=DeltaMessage(content=delta_text),
-                finish_reason=content.get("finish_reason", None),
-            )
-            chunk = ChatCompletionStreamResponse(
-                id=_id, choices=[choice_data], model=model_name
-            )
+
+            messages = []
+            if with_function_call:
+                if found_action_name:
+                    messages.append(build_delta_message(delta_text, "arguments"))
+                    finish_reason = "function_call"
+                else:
+                    if previous_text.rfind("\nFinal Answer:") > 0:
+                        with_function_call = False
+
+                    if previous_text.rfind("\nAction Input:") == -1:
+                        continue
+                    else:
+                        messages.append(build_delta_message(previous_text))
+                        pos = previous_text.rfind("\nAction Input:") + len("\nAction Input:")
+                        messages.append(build_delta_message(previous_text[pos:], "arguments"))
+
+                        found_action_name = True
+                        finish_reason = "function_call"
+            else:
+                messages = [DeltaMessage(content=delta_text)]
+                finish_reason = content.get("finish_reason", "stop")
+
+            chunks = []
+            for m in messages:
+                choice_data = ChatCompletionResponseStreamChoice(
+                    index=i,
+                    delta=m,
+                    finish_reason=finish_reason,
+                )
+                chunks.append(ChatCompletionStreamResponse(id=_id, choices=[choice_data], model=model_name))
 
             if delta_text is None:
                 if content.get("finish_reason", None) is not None:
-                    finish_stream_events.append(chunk)
+                    finish_stream_events.extend(chunks)
                 continue
 
-            yield f"data: {chunk.json(exclude_unset=True, ensure_ascii=False)}\n\n"
+            for chunk in chunks:
+                yield f"data: {chunk.json(exclude_unset=True, ensure_ascii=False)}\n\n"
 
     # There is not "content" field in the last delta message, so exclude_none to exclude field "content".
     for finish_chunk in finish_stream_events:
@@ -275,17 +292,37 @@ async def create_chat_completion(request: ChatCompletionRequest):
     if error_check_ret is not None:
         return error_check_ret
 
+    with_function_call = check_function_call(request.messages, functions=request.functions)
+    if with_function_call and "qwen" not in args.model_name.lower():
+        create_error_response(
+            ErrorCode.VALIDATION_TYPE_ERROR,
+            "Invalid request format: functions only supported by Qwen-7B-Chat",
+        )
+
+    messages = request.messages
+    if with_function_call:
+        if request.functions is None:
+            for message in messages:
+                if message.functions is not None:
+                    request.functions = message.functions
+                    break
+
+        messages = build_function_call_messages(
+            request.messages,
+            request.functions,
+            request.function_call,
+        )
+
     gen_params = get_gen_params(
         request.model,
-        request.messages,
+        messages,
         temperature=request.temperature,
         top_p=request.top_p,
         max_tokens=request.max_tokens,
         echo=False,
         stream=request.stream,
         stop=request.stop,
-        functions=request.functions,
-        function_call=request.function_call,
+        with_function_call=with_function_call,
     )
 
     if request.stream:
@@ -301,51 +338,19 @@ async def create_chat_completion(request: ChatCompletionRequest):
         if content["error_code"] != 0:
             return create_error_response(content["error_code"], content["text"])
 
-        functions = gen_params["functions"]
-        if functions is not None:
-            react_content = content["text"].strip()
-            if "Thought:" in react_content:
-                react_res = parse_qwen_plugin_call(react_content)
-                if react_res is not None:
-                    # if plugin_name contains other str
-                    available_functions = [f["name_for_model"] for f in functions]
-                    plugin_name = react_res[1]
-                    if plugin_name not in available_functions:
-                        for fct in available_functions:
-                            if fct in plugin_name:
-                                plugin_name = fct
-                                break
-
-                    function_call = FunctionCallResponse(
-                        thought=react_res[0],
-                        name=plugin_name,
-                        arguments=react_res[2],
-                    )
-                else:
-                    function_call = None
-                choices.append(
-                    ChatCompletionResponseChoice(
-                        index=i,
-                        message=ChatMessage(role="assistant", function_call=function_call, functions=functions),
-                        finish_reason="function_call",
-                    )
-                )
-            else:
-                choices.append(
-                    ChatCompletionResponseChoice(
-                        index=i,
-                        message=ChatMessage(role="assistant", content=react_content),
-                        finish_reason=content.get("finish_reason", "stop"),
-                    )
-                )
+        finish_reason = "stop"
+        if with_function_call:
+            message, finish_reason = build_chat_message(content["text"], request.functions)
         else:
-            choices.append(
-                ChatCompletionResponseChoice(
-                    index=i,
-                    message=ChatMessage(role="assistant", content=content["text"]),
-                    finish_reason=content.get("finish_reason", "stop"),
-                )
+            message = ChatMessage(role="assistant", content=content["text"])
+
+        choices.append(
+            ChatCompletionResponseChoice(
+                index=i,
+                message=message,
+                finish_reason=finish_reason,
             )
+        )
 
         task_usage = UsageInfo.parse_obj(content["usage"])
         for usage_key, usage_value in task_usage.dict().items():
