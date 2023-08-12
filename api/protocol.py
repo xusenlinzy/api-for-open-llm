@@ -142,7 +142,7 @@ class EmbeddingsResponse(BaseModel):
 
 class CompletionRequest(BaseModel):
     model: str
-    prompt: Union[str, List[str]]
+    prompt: Union[List[int], List[List[int]], str, List[str]]  # a string, array of strings, array of tokens, or array of token arrays
     suffix: Optional[str] = None
     temperature: Optional[float] = 0.7
     n: Optional[int] = 1

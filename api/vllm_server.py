@@ -96,6 +96,8 @@ async def get_gen_prompt(request, args):
 async def get_model_inputs(request, prompt, args):
     if isinstance(prompt, str):
         input_ids = tokenizer(prompt).input_ids
+    elif isinstance(prompt[0], int):
+        input_ids = prompt
     else:
         if "baichuan-13b" in args.model_name.lower():
             input_ids = build_baichuan_chat_input(tokenizer, prompt)
@@ -181,7 +183,12 @@ async def create_chat_completion(raw_request: Request):
     except ValueError as e:
         return create_error_response(HTTPStatus.BAD_REQUEST, str(e))
 
-    result_generator = engine.generate(prompt, sampling_params, request_id, token_ids)
+    result_generator = engine.generate(
+        prompt if isinstance(prompt, str) else None,
+        sampling_params,
+        request_id,
+        token_ids,
+    )
 
     async def abort_request() -> None:
         await engine.abort(request_id)
@@ -332,7 +339,7 @@ async def create_chat_completion(raw_request: Request):
     )
 
     if request.stream:
-        # When user requests streaming but we don't stream, we still need to
+        # When user requests streaming, but we don't stream, we still need to
         # return a streaming response with a single event.
         response_json = response.json(ensure_ascii=False)
 
@@ -374,14 +381,18 @@ async def create_completion(raw_request: Request):
     model_name = request.model
     request.max_tokens = request.max_tokens or 512
     request_id = f"cmpl-{random_uuid()}"
+
     if isinstance(request.prompt, list):
         if len(request.prompt) == 0:
             return create_error_response(HTTPStatus.BAD_REQUEST, "please provide at least one prompt")
-        if len(request.prompt) > 1:
-            return create_error_response(
-                HTTPStatus.BAD_REQUEST,
-                "multiple prompts in a batch is not currently supported")
-        prompt = request.prompt[0]
+        first_element = request.prompt[0]
+        if isinstance(first_element, int):
+            prompt = request.prompt
+        elif isinstance(first_element, (str, list)):
+            # TODO: handles multiple prompt case in list[list[int]]
+            if len(request.prompt) > 1:
+                return create_error_response(HTTPStatus.BAD_REQUEST, "multiple prompts in a batch is not currently supported")
+            prompt = request.prompt[0]
     else:
         prompt = request.prompt
 
@@ -407,7 +418,12 @@ async def create_completion(raw_request: Request):
     except ValueError as e:
         return create_error_response(HTTPStatus.BAD_REQUEST, str(e))
 
-    result_generator = engine.generate(prompt, sampling_params, request_id, token_ids)
+    result_generator = engine.generate(
+        prompt if isinstance(prompt, str) else None,
+        sampling_params,
+        request_id,
+        token_ids,
+    )
 
     # Similar to the OpenAI API, when n != best_of, we do not stream the
     # results. In addition, we do not stream the results when use beam search.
@@ -439,7 +455,7 @@ async def create_completion(raw_request: Request):
     async def completion_stream_generator() -> AsyncGenerator[str, None]:
         previous_texts = [""] * request.n
         previous_num_tokens = [0] * request.n
-        async for res in enumerate(result_generator):
+        async for res in result_generator:
             res: RequestOutput
             for output in res.outputs:
                 i = output.index
@@ -507,7 +523,7 @@ async def create_completion(raw_request: Request):
     )
 
     if request.stream:
-        # When user requests streaming but we don't stream, we still need to
+        # When user requests streaming, but we don't stream, we still need to
         # return a streaming response with a single event.
         response_json = response.json(ensure_ascii=False)
 
@@ -554,14 +570,9 @@ async def create_embeddings(request: EmbeddingsRequest, model_name: str = None):
         for i in range(0, len(inputs), 1024)
     ]
     for num_batch, batch in enumerate(batches):
-        payload = {
-            "model": request.model,
-            "input": batch,
-        }
-
         embedding = {
-            "embedding": embed_client.encode(payload["input"], normalize_embeddings=True).tolist(),
-            "token_num": sum([len(i) for i in payload["input"]]),
+            "embedding": embed_client.encode(batch, normalize_embeddings=True).tolist(),
+            "token_num": sum([len(i) for i in batch]),
         }
 
         data += [
