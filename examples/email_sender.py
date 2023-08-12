@@ -56,12 +56,8 @@ class EmailSender:
         messages = [{"role": "user", "content": query}]
         functions = [
             {
-                "name_for_human":
-                    "邮件助手",
-                "name_for_model":
-                    "send_email",
-                "description_for_model":
-                    "邮件助手是一个可以帮助用户发送邮件的工具。",
+                "name": "send_email",
+                "description": "邮件助手是一个可以帮助用户发送邮件的工具。",
                 "parameters": [
                     {
                         'name': 'receiver',

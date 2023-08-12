@@ -45,6 +45,21 @@ pip install -r requirements.txt
 
 模型启动命令及参数含义见 [vllm_script](./VLLM_SCRIPT.md)
 
+**vllm 环境下 `embedding` 模型启动貌似会出问题**
+
+备用方案：在 `llm-api:pytorch` 环境下单独启动 `embedding` 模型
+
+```shell
+docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=embedding \
+    --ulimit memlock=-1 --ulimit stack=67108864 \
+    -v `pwd`:/workspace \
+    llm-api:pytorch \
+    python api/embedding.py \
+    --port 80 \
+    --allow-credentials \
+    --embedding_name moka-ai/m3e-base
+```
+
 ### 模型挂载
 
 如果使用 `docker` 方式启动模型，且模型权重不在该项目下，需要将模型权重挂载到容器中，添加如下命令

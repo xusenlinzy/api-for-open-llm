@@ -57,9 +57,13 @@ from api.protocol import (
     UsageInfo,
     EmbeddingsResponse,
     EmbeddingsRequest,
-    FunctionCallResponse,
 )
-from api.react_prompt import get_qwen_react_prompt, parse_qwen_plugin_call
+from api.react_prompt import (
+    check_function_call,
+    build_function_call_messages,
+    build_chat_message,
+    build_delta_message,
+)
 
 # require_version("vllm", "To fix: pip install git+https://github.com/vllm-project/vllm.git")
 
@@ -77,20 +81,10 @@ def create_error_response(status_code: HTTPStatus, message: str) -> JSONResponse
 
 
 async def get_gen_prompt(request, args):
-    use_function = False
-    if isinstance(request.messages, list) and isinstance(request.messages[0], dict):
-        for message in request.messages:
-            if message.get("functions", None):
-                use_function = True
-                break
-
-    if request.functions is not None or use_function:
-        request.messages, request.functions = get_qwen_react_prompt(request.messages, request.functions, request.function_call)
-
     if any(m in args.model_name.lower() for m in excluded_models):
-        return request.messages, request
+        return request.messages
     else:
-        return prompt_adapter.generate_prompt(request.messages), request
+        return prompt_adapter.generate_prompt(request.messages)
 
 
 async def get_model_inputs(request, prompt, args):
@@ -147,7 +141,27 @@ async def create_chat_completion(raw_request: Request):
     request = ChatCompletionRequest(**await raw_request.json())
     logger.info(f"Received chat completion request: {request}")
 
-    prompt, request = await get_gen_prompt(request, args)
+    with_function_call = check_function_call(request.messages, functions=request.functions)
+    if with_function_call and "qwen" not in args.model_name.lower():
+        create_error_response(
+            HTTPStatus.BAD_REQUEST,
+            "Invalid request format: functions only supported by Qwen-7B-Chat",
+        )
+
+    if with_function_call:
+        if request.functions is None:
+            for message in request.messages:
+                if message.functions is not None:
+                    request.functions = message.functions
+                    break
+
+        request.messages = build_function_call_messages(
+            request.messages,
+            request.functions,
+            request.function_call,
+        )
+
+    prompt = await get_gen_prompt(request, args)
     request.max_tokens = request.max_tokens or 512
     token_ids, error_check_ret = await get_model_inputs(request, prompt, args)
     if error_check_ret is not None:
@@ -195,12 +209,12 @@ async def create_chat_completion(raw_request: Request):
 
     def create_stream_response_json(
         index: int,
-        text: str,
+        delta: DeltaMessage,
         finish_reason: Optional[str] = None,
     ) -> str:
         choice_data = ChatCompletionResponseStreamChoice(
             index=index,
-            delta=DeltaMessage(content=text),
+            delta=delta,
             finish_reason=finish_reason,
         )
         response = ChatCompletionStreamResponse(
@@ -231,6 +245,8 @@ async def create_chat_completion(raw_request: Request):
 
         previous_texts = [""] * request.n
         previous_num_tokens = [0] * request.n
+        found_action_name = False
+        with_function_call = request.functions is not None
         async for res in result_generator:
             res: RequestOutput
             for output in res.outputs:
@@ -239,18 +255,43 @@ async def create_chat_completion(raw_request: Request):
                 delta_text = output.text[len(previous_texts[i]):]
                 previous_texts[i] = output.text
                 previous_num_tokens[i] = len(output.token_ids)
-                response_json = create_stream_response_json(
-                    index=i,
-                    text=delta_text,
-                )
-                yield f"data: {response_json}\n\n"
+
+                msgs = []
+                if with_function_call:
+                    if found_action_name:
+                        if previous_texts[i].rfind("\nObserv") > 0:
+                            break
+                        msgs.append(build_delta_message(delta_text, "arguments"))
+                        finish_reason = "function_call"
+                    else:
+                        if previous_texts[i].rfind("\nFinal Answer:") > 0:
+                            with_function_call = False
+
+                        if previous_texts[i].rfind("\nAction Input:") == -1:
+                            continue
+                        else:
+                            msgs.append(build_delta_message(previous_texts[i]))
+                            pos = previous_texts[i].rfind("\nAction Input:") + len("\nAction Input:")
+                            msgs.append(build_delta_message(previous_texts[i][pos:], "arguments"))
+
+                            found_action_name = True
+                            finish_reason = "function_call"
+                else:
+                    msgs = [DeltaMessage(content=delta_text)]
+                    finish_reason = output.finish_reason
+
+                for m in msgs:
+                    response_json = create_stream_response_json(index=i, delta=m, finish_reason=finish_reason)
+                    yield f"data: {response_json}\n\n"
+
                 if output.finish_reason is not None:
                     response_json = create_stream_response_json(
                         index=i,
-                        text="",
+                        delta=DeltaMessage(content=""),
                         finish_reason=output.finish_reason,
                     )
                     yield f"data: {response_json}\n\n"
+
         yield "data: [DONE]\n\n"
 
     # Streaming response
@@ -272,56 +313,25 @@ async def create_chat_completion(raw_request: Request):
             await abort_request()
             return create_error_response(HTTPStatus.BAD_REQUEST, "Client disconnected")
         final_res = res
+
     assert final_res is not None
     choices = []
     for output in final_res.outputs:
         output.text = output.text.replace("�", "")  # TODO: fix qwen decode
-        functions = request.functions
-        if functions is not None:
-            react_content = output.text
-            if "Thought:" in react_content:
-                react_res = parse_qwen_plugin_call(react_content)
-                if react_res is not None:
-                    # if plugin_name contains other str
-                    available_functions = [f["name_for_model"] for f in functions]
-                    plugin_name = react_res[1]
-                    if plugin_name not in available_functions:
-                        for fct in available_functions:
-                            if fct in plugin_name:
-                                plugin_name = fct
-                                break
 
-                    function_call = FunctionCallResponse(
-                        thought=react_res[0],
-                        name=plugin_name,
-                        arguments=react_res[2],
-                    )
-                else:
-                    function_call = None
-
-                choices.append(
-                    ChatCompletionResponseChoice(
-                        index=output.index,
-                        message=ChatMessage(role="assistant", function_call=function_call, functions=functions),
-                        finish_reason="function_call",
-                    )
-                )
-            else:
-                choices.append(
-                    ChatCompletionResponseChoice(
-                        index=output.index,
-                        message=ChatMessage(role="assistant", content=react_content),
-                        finish_reason=output.finish_reason,
-                    )
-                )
+        finish_reason = output.finish_reason
+        if with_function_call:
+            message, finish_reason = build_chat_message(output.text, request.functions)
         else:
-            choices.append(
-                ChatCompletionResponseChoice(
-                    index=output.index,
-                    message=ChatMessage(role="assistant", content=output.text),
-                    finish_reason=output.finish_reason,
-                )
+            message = ChatMessage(role="assistant", content=output.text)
+
+        choices.append(
+            ChatCompletionResponseChoice(
+                index=output.index,
+                message=message,
+                finish_reason=finish_reason,
             )
+        )
 
     num_prompt_tokens = len(final_res.prompt_token_ids)
     num_generated_tokens = sum(len(output.token_ids) for output in final_res.outputs)
@@ -663,6 +673,6 @@ if __name__ == "__main__":
     embed_client = None
     if args.embedding_name:
         # launch an embedding server
-        embed_client = SentenceTransformer(args.embedding_name, device=args.device)
+        embed_client = SentenceTransformer(args.embedding_name)
 
     uvicorn.run(app, host=args.host, port=args.port, log_level="info", timeout_keep_alive=TIMEOUT_KEEP_ALIVE)

@@ -26,12 +26,8 @@ class SqlQuerier:
         messages = [{"role": "user", "content": query}]
         functions = [
             {
-                "name_for_human":
-                    "数据库查询工具",
-                "name_for_model":
-                    "ask_database",
-                "description_for_model":
-                    "该工具用来回答音乐相关的问题，输出应该是一个标准化的SQL查询语句。",
+                "name": "ask_database",
+                "description": "该工具用来回答音乐相关的问题，输出应该是一个标准化的SQL查询语句。",
                 "parameters": [
                     {
                         'name': 'query',

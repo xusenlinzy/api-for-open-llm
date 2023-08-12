@@ -23,3 +23,18 @@ chat_completion = openai.ChatCompletion.create(
 
 print("Chat completion results:")
 print(chat_completion)
+
+chat_completion = openai.ChatCompletion.create(
+    model=model,
+    messages=[
+        {
+            "role": "user",
+            "content": "感冒了怎么办"
+        },
+    ],
+    stream=True
+)
+
+print("Chat completion streaming results:")
+for c in chat_completion:
+    print(c.choices[0].delta.get("content", ""))

@@ -25,43 +25,46 @@ class QuadCalculator:
             {
                 "name": "calculate_quad",
                 "description": "calculate_quad是一个可以计算给定区间内函数定积分数值的工具。",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "formula_str": {
-                            "type": "string",
-                            "description": "一个数学函数的表达式，例如x**2",
-                        },
-                        "a": {
-                            "type": "string",
-                            "description": "积分区间的左端点，例如1.0",
-                        },
-                        "b": {
-                            "type": "string",
-                            "description": "积分区间的右端点，例如5.0",
+                "parameters": [
+                    {
+                        'name': 'formula_str',
+                        'description': '一个数学函数的表达式，例如x**2',
+                        'required': True,
+                        'schema': {
+                            'type': 'string'
                         },
                     },
-                    "required": ["formula_str", "a", "b"],
-                },
+                    {
+                        'name': 'a',
+                        'description': '积分区间的左端点，例如1.0',
+                        'required': True,
+                        'schema': {
+                            'type': 'string'
+                        },
+                    },
+                    {
+                        'name': 'b',
+                        'description': '积分区间的右端点，例如5.0',
+                        'required': True,
+                        'schema': {
+                            'type': 'string'
+                        },
+                    },
+                ],
             },
             {
-                "name": {
-                    "name_for_human":
-                        "平方根计算器",
-                    "name_for_model":
-                        "calculate_sqrt"
-                },
+                "name": "calculate_sqrt",
                 "description": "计算一个数值的平方根。",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "y": {
-                            "type": "string",
-                            "description": "被开方数",
+                "parameters": [
+                    {
+                        'name': 'y',
+                        'description': '被开方数',
+                        'required': True,
+                        'schema': {
+                            'type': 'string'
                         },
                     },
-                    "required": ["y"],
-                },
+                ],
             },
         ]
 
@@ -79,9 +82,7 @@ class QuadCalculator:
         while True:
             if response["choices"][0]["finish_reason"] == "stop":
                 answer = response["choices"][0]["message"]["content"]
-                logger.info(f"Model output: {answer}")
-                j = answer.rfind("Final Answer:")
-                return answer[j + 14:] if answer else answer
+                return answer
 
             elif response["choices"][0]["finish_reason"] == "function_call":
                 response_message = response["choices"][0]["message"]

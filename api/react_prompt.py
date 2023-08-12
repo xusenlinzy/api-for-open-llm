@@ -1,8 +1,17 @@
 import json
-from typing import Tuple, Union
+from typing import Tuple, List
 
+from api.protocol import (
+    ChatFunction,
+    Role,
+    ChatMessage,
+    DeltaMessage,
+    FunctionCallResponse,
+)
 
-TOOL_DESC = """{name_for_model}: Call this tool to interact with the {name_for_human} API. What is the {name_for_human} API useful for? {description_for_model} Parameters: {parameters} Format the arguments as a JSON object."""
+OBSERVATION = "Observation"
+
+TOOL_DESC = """{name}: Call this tool to interact with the {name} API. What is the {name} API useful for? {description} Parameters: {parameters} Format the arguments as a JSON object."""
 
 REACT_PROMPT = """Answer the following questions as best you can. You have access to the following tools:
 
@@ -24,85 +33,109 @@ Begin!
 Question: {query}"""
 
 
-def get_qwen_react_prompt(messages, functions=None, function_call="auto"):
-    if functions is not None:
-        if "name" in functions[0]:
-            new_function = []
-            for info in functions:
-                new_info = {}
-                if isinstance(info["name"], dict):
-                    new_info.update(info["name"])
-                else:
-                    new_info["name_for_model"] = info["name"]
-                    new_info["name_for_human"] = info["name"]
+def check_function_call(messages: List[ChatMessage], functions: List[ChatFunction] = None):
+    """ check need function call or not """
+    if functions is not None and len(functions) > 0:
+        return True
+    if messages is not None and len(messages) > 0 and messages[-1].role == Role.FUNCTION:
+        return True
+    return False
 
-                required = info["parameters"]["required"]
-                new_info["description_for_model"] = info["description"]
-                new_info["parameters"] = []
-                for name, p in info["parameters"]["properties"].items():
-                    new_info["parameters"].append(
-                        {
-                            "name": name,
-                            "description": p.get("description", ""),
-                            "required": name in required,
-                            "schema": {
-                                "type": p.get("type", "string"),
-                            }
-                        }
-                    )
 
-                new_function.append(new_info)
-            functions = new_function
-    else:
-        for message in messages:
-            if message.get("functions", None):
-                functions = message["functions"]
-                break
-
+def build_function_call_messages(messages: List[ChatMessage], functions: List[ChatFunction] = None, function_call="auto"):
     if function_call != "auto" and isinstance(function_call, dict):
-        functions = [info for info in functions if info["name_for_model"] in [function_call["name_for_model"]]]
+        functions = [f for f in functions if f.name in [function_call["name"]]]
 
     tool_descs, tool_names = [], []
-    for info in functions:
+    for f in functions:
         tool_descs.append(
             TOOL_DESC.format(
-                name_for_model=info["name_for_model"],
-                name_for_human=info["name_for_human"],
-                description_for_model=info["description_for_model"],
-                parameters=json.dumps(info["parameters"], ensure_ascii=False))
+                name=f.name,
+                description=f.description,
+                parameters=json.dumps(f.parameters, ensure_ascii=False))
         )
-        tool_names.append(info["name_for_model"])
+        tool_names.append(f.name)
 
     tool_descs = "\n\n".join(tool_descs)
-    tool_names = ",".join(tool_names)
+    tool_names = ", ".join(tool_names)
 
-    ret = ""
-    for message in messages:
-        role, content = message["role"], message["content"]
-        if role == "user":
-            ret += REACT_PROMPT.format(tool_descs=tool_descs, tool_names=tool_names, query=content)
-        elif role == "assistant":
-            if message.get("function_call"):
-                thought = message["function_call"]["thought"]
-                function_name = message["function_call"]["name"]
-                arguments = message["function_call"]["arguments"]
+    res = ""
+    for index, message in enumerate(reversed(messages)):
+        role = message.role
+        if role == Role.USER:
+            res = _build_react_prompt(message, tool_descs, tool_names, OBSERVATION) + res
+            break
+        elif role == Role.ASSISTANT:
+            if message.function_call:
+                res = _build_function_call_prompt(message) + res
+        elif role == Role.FUNCTION:
+            res = _build_function_prompt(message, OBSERVATION) + res
 
-                if thought is not None:
-                    ret += f"\nThought: {thought.strip()}"
+    converted = [ChatMessage(role=Role.USER, content=res)]
 
-                ret += f"\nAction: {function_name.strip()}"
-                ret += f"\nAction Input: {arguments.strip()}"
-        elif role == "function":
-            ret += f"\nObservation: output of {message['name']} is {str(content).strip()}"
+    # TODO: filter out the other messages
+    for i, message in enumerate(reversed(messages[:-(index + 1)])):
+        if message.role == Role.USER or (message.role == Role.ASSISTANT and message.function_call is None):
+            converted.append(message)
 
-    return [{"role": "user", "content": ret}], functions
+    return [x for x in reversed(converted)]
 
 
-def parse_qwen_plugin_call(text: str) -> Union[Tuple[str, str, str], None]:
+def _build_react_prompt(message: ChatMessage, tool_descs: str, tool_names: str, OBSERVATION: str) -> str:
+    return REACT_PROMPT.format(
+        tool_descs=tool_descs,
+        tool_names=tool_names,
+        query=message.content,
+        OBSERVATION=OBSERVATION,
+    )
+
+
+def _build_function_prompt(message: ChatMessage, OBSERVATION: str) -> str:
+    return f"\n{OBSERVATION}: output of {message.name} is {str(message.content).strip()}"
+
+
+def _build_function_call_prompt(message: ChatMessage) -> str:
+    function_name = message.function_call.name
+    arguments = message.function_call.arguments
+    res = f"\nThought: {message.function_call.thought.strip()}"
+    res += f"\nAction: {function_name.strip()}"
+    res += f"\nAction Input: {arguments.strip()}"
+    return res
+
+
+def build_chat_message(response: str, functions: List[ChatFunction]) -> Tuple[ChatMessage, str]:
+    parsed = _parse_qwen_plugin_call(response)
+    if parsed is None:
+        return ChatMessage(role="assistant", content=response), "stop"
+    else:
+        thought, name, args, answer = parsed
+        if answer:
+            return ChatMessage(role="assistant", content=answer), "stop"
+        else:
+            function_call = FunctionCallResponse(name=name, arguments=args, thought=thought)
+            return ChatMessage(role="assistant", content=None, function_call=function_call, functions=functions), "function_call"
+
+
+def build_delta_message(text: str, field: str = "name") -> DeltaMessage:
+    if field == "arguments":
+        return DeltaMessage(function_call=FunctionCallResponse(arguments=text))
+    i = text.rfind('\nAction:')
+    j = text.rfind('\nAction Input:')
+    name = text[i + len('\nAction:'): j].strip()
+    return DeltaMessage(function_call=FunctionCallResponse(name=name, arguments=""))
+
+
+def _parse_qwen_plugin_call(text: str):
+    """ parse the generated text """
     t = text.rfind('Thought:')
     i = text.rfind('\nAction:')
     j = text.rfind('\nAction Input:')
     k = text.rfind('\nObservation:')
+    l = text.rfind('\nFinal Answer:')
+
+    if l >= 0:
+        answer = text[l + len('\nFinal Answer:'):].strip()
+        return None, None, None, answer
 
     if 0 <= i < j:  # If the text has `Action` and `Action input`,
         if k < j:  # but does not contain `Observation`,
@@ -113,7 +146,7 @@ def parse_qwen_plugin_call(text: str) -> Union[Tuple[str, str, str], None]:
 
     if 0 <= i < j < k:
         thought = text[t + len("Thought:"): i].strip() if t >= 0 else None
-        plugin_name = text[i + len('\nAction:'): j].strip()
-        plugin_args = text[j + len('\nAction Input:'): k].strip()
-        return thought, plugin_name, plugin_args
+        name = text[i + len('\nAction:'): j].strip()
+        args = text[j + len('\nAction Input:'): k].strip()
+        return thought, name, args, None
     return None
