@@ -1,7 +1,7 @@
 import json
 from typing import Tuple, List
 
-from api.protocol import (
+from api.utils.protocol import (
     ChatFunction,
     Role,
     ChatMessage,

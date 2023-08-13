@@ -16,169 +16,111 @@ docker pull xusenlinzy/llm-api:latest
 
 ## docker 启动模型
 
-### 主要参数
+### 环境变量
 
-+ `model_name`: 模型名称，如 `chatglm`、`phoenix`、`moss`等
-
-
-+ `model_path`: 开源大模型的文件所在路径
++ `MODEL_NAME`: 模型名称，如 `chatglm`、`phoenix`、`moss`等
 
 
-+ `device`: 是否使用 `GPU`，可选值为 `cuda` 和 `cpu`，默认值为 `cuda`
++ `MODEL_PATH`: 开源大模型的文件所在路径
 
 
-+ `adapter_model_path`（可选项）: `lora` 或 `ptuing_v2` 模型文件所在路径
++ `DEVICE`: 是否使用 `GPU`，可选值为 `cuda` 和 `cpu`，默认值为 `cuda`
 
 
-+ `embedding_name`（可选项）: 嵌入模型的文件所在路径
++ `ADAPTER_MODEL_PATH`（可选项）: `lora` 或 `ptuing_v2` 模型文件所在路径
 
 
-+ `context_len`（可选项）: 上下文长度，默认为 `2048`
++ `EMBEDDING_NAME`（可选项）: 嵌入模型的文件所在路径
 
 
-+ `quantize`（可选项）: `chatglm`、`baichuan-13b` 模型的量化等级，可选项为 16、8、4
++ `CONTEXT_LEN`（可选项）: 上下文长度，默认为 `2048`
 
 
-+ `load_in_8bit`（可选项）: 使用模型 `8bit` 量化
++ `QUANTIZE`（可选项）: `chatglm`、`baichuan-13b` 模型的量化等级，可选项为 16、8、4
 
 
-+ `load_in_4bit`（可选项）: 使用模型 `4bit` 量化
++ `LOAD_IN_8BIT`（可选项）: 使用模型 `8bit` 量化
 
 
-+ `use_ptuning_v2`（可选项）: 使用 `ptuning_v2` 加载模型
++ `LOAD_IN_4BIT`（可选项）: 使用模型 `4bit` 量化
 
 
-+ `stream_interval`（可选项）: 流式输出的 `token` 数量
++ `USING_PTUNING_V2`（可选项）: 使用 `ptuning_v2` 加载模型
 
 
-+ `prompt_name`（可选项）: 使用的对话模板名称，如果不指定，则将根据模型名找到对应的模板
++ `STREAM_INTERVERL`（可选项）: 流式输出的 `token` 数量
 
 
-+ `patch_type`（可选项）: 用来扩展 `llama` 模型上下文长度的长度，支持 [`ntk`](https://kexue.fm/archives/9706) 和 [`rerope`](https://spaces.ac.cn/archives/9708)
++ `PROMPT_NAME`（可选项）: 使用的对话模板名称，如果不指定，则将根据模型名找到对应的模板
 
 
-+ `training_length`（可选项）: 用来扩展 `llama` 模型上下文长度的长度，训练长度
++ `PATCH_TYPE`（可选项）: 用来扩展 `llama` 模型上下文长度的长度，支持 [`ntk`](https://kexue.fm/archives/9706) 和 [`rerope`](https://spaces.ac.cn/archives/9708)
 
 
-+ `window_size`（可选项）: 用来扩展 `llama` 模型上下文长度的长度，窗口大小，小于训练长度
++ `TRAINING_LENGTH`（可选项）: 用来扩展 `llama` 模型上下文长度的长度，训练长度
 
+
++ `WINDOW_SIZE`（可选项）: 用来扩展 `llama` 模型上下文长度的长度，窗口大小，小于训练长度
+
+
+模型启动命令统一为
+
+```shell
+docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=llm-api \
+    --ulimit memlock=-1 --ulimit stack=67108864 \
+    -v `pwd`:/workspace \
+    llm-api:pytorch \
+    python api/server.py
+```
+
+**不同模型只需要将 [.env.example](../.env.example) 文件内容复制到 `.env` 文件中，然后修改 `.env` 文件中环境变量**
+
+**修改内容参考下面的模型**
 
 ### ChatGLM
 
 chatglm-6b:
 
 ```shell
-docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=chatglm \
-    --ulimit memlock=-1 --ulimit stack=67108864 \
-    -v `pwd`:/workspace \
-    llm-api:pytorch \
-    python api/app.py \
-    --port 80 \
-    --allow-credentials \
-    --model_name chatglm \
-    --model_path THUDM/chatglm-6b \
-    --device cuda \
-    --embedding_name moka-ai/m3e-base
+MODEL_NAME=chatglm
+MODEL_PATH=THUDM/chatglm-6b # 模型所在路径，若使用docker，则为在容器内的路径
 ```
 
 chatglm2-6b:
 
 ```shell
-docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=chatglm2 \
-    --ulimit memlock=-1 --ulimit stack=67108864 \
-    -v `pwd`:/workspace \
-    llm-api:pytorch \
-    python api/app.py \
-    --port 80 \
-    --allow-credentials \
-    --model_name chatglm2 \
-    --model_path THUDM/chatglm2-6b \
-    --device cuda \
-    --embedding_name moka-ai/m3e-base
+MODEL_NAME=chatglm2
+MODEL_PATH=THUDM/chatglm2-6b
 ```
 
 ptuing-v2:
 
 ```shell
-docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=chatglm \
-    --ulimit memlock=-1 --ulimit stack=67108864 \
-    -v `pwd`:/workspace \
-    llm-api:pytorch \
-    python api/app.py \
-    --port 80 \
-    --allow-credentials \
-    --model_name chatglm \
-    --model_path THUDM/chatglm-6b \
-    --device cuda \
-    --adapter_model_path ptuing_v2_chekpint_dir \
-    --use_ptuning_v2 \
-    --embedding_name moka-ai/m3e-base
+MODEL_NAME=chatglm
+MODEL_PATH=THUDM/chatglm-6b
+ADAPTER_MODEL_PATH=ptuing_v2_chekpint_dir
+USING_PTUNING_V2=true
 ```
 
 ### MOSS
 
 ```shell
-docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=moss \
-    --ulimit memlock=-1 --ulimit stack=67108864 \
-    -v `pwd`:/workspace \
-    llm-api:pytorch \
-    python api/app.py \
-    --port 80 \
-    --allow-credentials \
-    --model_name moss \
-    --model_path fnlp/moss-moon-003-sft-int4 \
-    --device cuda \
-    --embedding_name moka-ai/m3e-base
+MODEL_NAME=moss
+MODEL_PATH=fnlp/moss-moon-003-sft-int4
 ```
 
 ### Phoenix
 
 ```shell
-docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=phoenix \
-    --ulimit memlock=-1 --ulimit stack=67108864 \
-    -v `pwd`:/workspace \
-    llm-api:pytorch \
-    python api/app.py \
-    --port 80 \
-    --allow-credentials \
-    --model_name phoenix \
-    --model_path FreedomIntelligence/phoenix-inst-chat-7b \
-    --device cuda \
-    --embedding_name moka-ai/m3e-base
-```
-
-### Guanaco
-
-```shell
-docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=guanaco \
-    --ulimit memlock=-1 --ulimit stack=67108864 \
-    -v `pwd`:/workspace \
-    llm-api:pytorch \
-    python api/app.py \
-    --port 80 \
-    --allow-credentials \
-    --model_name guanaco \
-    --model_path timdettmers/guanaco-33b-merged \
-    --device cuda \
-    --load_in_4bit \
-    --embedding_name moka-ai/m3e-base
+MODEL_NAME=phoenix
+MODEL_PATH=FreedomIntelligence/phoenix-inst-chat-7b
 ```
 
 ### Tiger
 
 ```shell
-docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=tiger \
-    --ulimit memlock=-1 --ulimit stack=67108864 \
-    -v `pwd`:/workspace \
-    llm-api:pytorch \
-    python api/app.py \
-    --port 80 \
-    --allow-credentials \
-    --model_name tiger \
-    --model_path TigerResearch/tigerbot-7b-sft \
-    --device cuda \
-    --load_in_4bit \
-    --embedding_name moka-ai/m3e-base
+MODEL_NAME=tiger
+MODEL_PATH=TigerResearch/tigerbot-7b-sft
 ```
 
 ### OpenBuddy
@@ -186,33 +128,15 @@ docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=tiger \
 LLaMA
 
 ```shell
-docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=openbuddy-llama \
-    --ulimit memlock=-1 --ulimit stack=67108864 \
-    -v `pwd`:/workspace \
-    llm-api:pytorch \
-    python api/app.py \
-    --port 80 \
-    --allow-credentials \
-    --model_name openbuddy-llama \
-    --model_path OpenBuddy/openbuddy-llama-7b-v1.4-fp16 \
-    --device cuda \
-    --embedding_name moka-ai/m3e-base
+MODEL_NAME=openbuddy-llama
+MODEL_PATH=OpenBuddy/openbuddy-llama-7b-v1.4-fp16
 ```
 
 Falcon
 
 ```shell
-docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=openbuddy-falcon \
-    --ulimit memlock=-1 --ulimit stack=67108864 \
-    -v `pwd`:/workspace \
-    llm-api:pytorch \
-    python api/app.py \
-    --port 80 \
-    --allow-credentials \
-    --model_name openbuddy-falcon \
-    --model_path OpenBuddy/openbuddy-falcon-7b-v5-fp16 \
-    --device cuda \
-    --embedding_name moka-ai/m3e-base
+MODEL_NAME=openbuddy-falcon
+MODEL_PATH=OpenBuddy/openbuddy-falcon-7b-v5-fp16
 ```
 
 ### Baichuan-7b
@@ -220,54 +144,20 @@ docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=openbuddy-fal
 使用半精度加载模型（大约需要14G显存）
 
 ```shell
-docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=baichuan-7b \
-    --ulimit memlock=-1 --ulimit stack=67108864 \
-    -v `pwd`:/workspace \
-    llm-api:pytorch \
-    python api/app.py \
-    --port 80 \
-    --allow-credentials \
-    --model_name baichuan-7b \
-    --model_path baichuan-inc/baichuan-7B \
-    --adapter_model_path YeungNLP/firefly-baichuan-7b-qlora-sft \
-    --device cuda \
-    --embedding_name moka-ai/m3e-base
+MODEL_NAME=baichuan-7b
+MODEL_PATH=baichuan-inc/baichuan-7B
+ADAPTER_MODEL_PATH=YeungNLP/firefly-baichuan-7b-qlora-sft
 ```
-
-如果想要使用全精度加载模型，需要修改
-
-```python
-@property
-def model_kwargs(self):
-    return {"torch_dtype": torch.float32}
-```
-
 
 ### Baichuan-13b-chat
 
 ```shell
-docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=baichuan-13b-chat \
-    --ulimit memlock=-1 --ulimit stack=67108864 \
-    -v `pwd`:/workspace \
-    llm-api:pytorch \
-    python api/app.py \
-    --port 80 \
-    --allow-credentials \
-    --model_name baichuan-13b-chat \
-    --model_path baichuan-inc/Baichuan-13B-Chat \
-    --device cuda \
-    --embedding_name moka-ai/m3e-base
+MODEL_NAME=baichuan-13b-chat
+MODEL_PATH=baichuan-inc/Baichuan-13B-Chat
+DEVICE_MAP=auto
 ```
 
-若模型加载到 `GPU` 太慢，可以通过修改
-
-```python
-@property
-def model_kwargs(self):
-    return {"device_map": "auto"}
-```
-
-可以使用 `quantize` 参数进行量化，例如 `--quantize 8`
+可以使用 `QUANTIZE` 参数进行量化，例如 `QUANTIZE=8`
 
 
 ### InternLM
@@ -275,17 +165,8 @@ def model_kwargs(self):
 internlm-chat-7b:
 
 ```shell
-docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=internlm \
-    --ulimit memlock=-1 --ulimit stack=67108864 \
-    -v `pwd`:/workspace \
-    llm-api:pytorch \
-    python api/app.py \
-    --port 80 \
-    --allow-credentials \
-    --model_name internlm \
-    --model_path internlm/internlm-chat-7b \
-    --device cuda \
-    --embedding_name moka-ai/m3e-base
+MODEL_NAME=internlm
+MODEL_PATH=internlm/internlm-chat-7b
 ```
 
 ### StarChat
@@ -293,18 +174,9 @@ docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=internlm \
 starchat-beta:
 
 ```shell
-docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=starchat \
-    --ulimit memlock=-1 --ulimit stack=67108864 \
-    -v `pwd`:/workspace \
-    llm-api:pytorch \
-    python api/app.py \
-    --port 80 \
-    --allow-credentials \
-    --model_name starchat \
-    --model_path HuggingFaceH4/starchat-beta \
-    --device cuda \
-    --load_in_8bit \
-    --embedding_name moka-ai/m3e-base
+MODEL_NAME=starchat
+MODEL_PATH=HuggingFaceH4/starchat-beta
+LOAD_IN_8BIT=true
 ```
 
 ### AquilaChat-7B
@@ -312,17 +184,8 @@ docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=starchat \
 aquila-chat-7b:
 
 ```shell
-docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=aquila-chat-7b \
-    --ulimit memlock=-1 --ulimit stack=67108864 \
-    -v `pwd`:/workspace \
-    llm-api:pytorch \
-    python api/app.py \
-    --port 80 \
-    --allow-credentials \
-    --model_name aquila-chat-7b \
-    --model_path BAAI/AquilaChat-7B \
-    --device cuda \
-    --embedding_name moka-ai/m3e-base
+MODEL_NAME=aquila-chat-7b
+MODEL_PATH=BAAI/AquilaChat-7B
 ```
 
 ### Qwen-7b-chat
@@ -340,15 +203,7 @@ pip install csrc/rotary
 Qwen/Qwen-7B-Chat:
 
 ```shell
-docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=qwen \
-    --ulimit memlock=-1 --ulimit stack=67108864 \
-    -v `pwd`:/workspace \
-    llm-api:pytorch \
-    python api/app.py \
-    --port 80 \
-    --allow-credentials \
-    --model_name qwen \
-    --model_path Qwen/Qwen-7B-Chat \
-    --device cuda \
-    --embedding_name moka-ai/m3e-base
+MODEL_NAME=qwen
+MODEL_PATH=Qwen/Qwen-7B-Chat
+DEVICE_MAP=auto
 ```

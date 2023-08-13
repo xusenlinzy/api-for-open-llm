@@ -53,11 +53,9 @@ pip install -r requirements.txt
 docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=embedding \
     --ulimit memlock=-1 --ulimit stack=67108864 \
     -v `pwd`:/workspace \
+    -e ONLY_EMBEDDING=true \
     llm-api:pytorch \
-    python api/embedding.py \
-    --port 80 \
-    --allow-credentials \
-    --embedding_name moka-ai/m3e-base
+    python api/server.py
 ```
 
 ### 模型挂载

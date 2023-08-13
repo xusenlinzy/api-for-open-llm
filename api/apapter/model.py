@@ -83,6 +83,8 @@ class BaseModelAdapter:
 
             logger.info("Quantizing model to 4 bit.")
 
+        if kwargs.get("device_map", None) == "auto":
+            config_kwargs["device_map"] = "auto"
         config = AutoConfig.from_pretrained(model_name_or_path, trust_remote_code=True)
 
         use_ptuning_v2 = kwargs.get("use_ptuning_v2", False)

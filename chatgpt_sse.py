@@ -13,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 from sse_starlette.sse import EventSourceResponse
 
-from api.protocol import (
+from api.utils.protocol import (
     ChatCompletionRequest,
     CompletionRequest,
     ModelCard,

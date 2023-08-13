@@ -13,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from loguru import logger
 
-from api.protocol import (
+from api.utils.protocol import (
     ChatCompletionRequest,
     CompletionRequest,
     ModelCard,

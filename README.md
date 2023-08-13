@@ -98,36 +98,7 @@
 
 ### docker启动（**推荐**）
 
-构建镜像
-
-```shell
-docker build -f docker/Dockerfile -t llm-api:pytorch .
-```
-
-启动容器
-
-```shell
-docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=chatglm \
-    --ulimit memlock=-1 --ulimit stack=67108864 \
-    -v `pwd`:/workspace \
-    llm-api:pytorch \
-    python api/app.py \
-    --port 80 \
-    --allow-credentials \
-    --model_name chatglm \
-    --model_path THUDM/chatglm-6b \
-    --embedding_name moka-ai/m3e-base
-```
-
-主要参数含义：
-
-+ `model_name`: 模型名称，如`chatglm`、`phoenix`、`moss`等
-
-+ `model_path`: 开源大模型的文件所在路径
-
-+ `embedding_name`（可选项）: 嵌入模型的文件所在路径
-
-更多模型的启动命令详见 [SCRIPT.md](docs/SCRIPT.md)
+模型的启动命令详见 [SCRIPT.md](docs/SCRIPT.md)
 
 ### 本地启动
 
@@ -136,23 +107,13 @@ docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=chatglm \
 ```shell
 conda create -n pytorch python=3.8
 conda activate pytorch
-conda install pytorch cudatoolkit -c pytorch
+conda install pytorch==1.14 cudatoolkit -c pytorch
 ```
 
 安装依赖包
 
 ```shell
 pip install -r requirements.txt
-```
-
-启动后端
-
-```shell
-python api/app.py \
-    --port 80 \
-    --allow-credentials \
-    --model_path THUDM/chatglm-6b \
-    --embedding_name moka-ai/m3e-base
 ```
 
 

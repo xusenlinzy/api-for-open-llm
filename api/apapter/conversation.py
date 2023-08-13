@@ -1,7 +1,7 @@
 import sys
 from typing import List, Dict, Optional
 
-from api.protocol import Role, ChatMessage
+from api.utils.protocol import Role, ChatMessage
 
 if sys.version_info >= (3, 9):
     from functools import cache

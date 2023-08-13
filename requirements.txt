@@ -2,6 +2,7 @@ openai
 langchain
 bitsandbytes
 fastapi==0.95.1
+python-dotenv==1.0.0
 uvicorn
 tenacity
 sentencepiece
