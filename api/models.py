@@ -1,9 +1,9 @@
 import asyncio
 import os
-
+from loguru import logger
 from sentence_transformers import SentenceTransformer
 
-from api.apapter import load_model, get_prompt_adapter
+from api.apapter import get_prompt_adapter
 from api.config import config
 from api.generation import ModelServer
 
@@ -13,6 +13,9 @@ def get_embedding_model():
 
 
 def get_generate_model():
+    from api.apapter.model import load_model
+
+    logger.info(f"Config: {config.__dict__}")
     if config.GPUS:
         # logger.info(f"load model in GPUs = {args.gpus}")
         if len(config.GPUS.split(",")) < config.NUM_GPUs:
@@ -89,6 +92,6 @@ def get_vllm_engine():
 
 
 EMBEDDED_MODEL = get_embedding_model() if config.EMBEDDING_NAME else None
-GENERATE_MDDEL = get_generate_model()
+GENERATE_MDDEL = get_generate_model() if not config.USE_VLLM else None
 EXCLUDE_MODELS = ["baichuan-13b", "qwen"]
 VLLM_ENGINE = get_vllm_engine() if config.USE_VLLM else None

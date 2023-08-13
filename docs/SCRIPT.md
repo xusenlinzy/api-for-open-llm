@@ -30,7 +30,7 @@ docker pull xusenlinzy/llm-api:latest
 + `ADAPTER_MODEL_PATH`（可选项）: `lora` 或 `ptuing_v2` 模型文件所在路径
 
 
-+ `EMBEDDING_NAME`（可选项）: 嵌入模型的文件所在路径
++ `EMBEDDING_NAME`（可选项）: 嵌入模型的文件所在路径，推荐使用 `moka-ai/m3e-base` 或者 `BAAI/bge-large-zh`
 
 
 + `CONTEXT_LEN`（可选项）: 上下文长度，默认为 `2048`

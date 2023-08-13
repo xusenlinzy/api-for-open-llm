@@ -49,7 +49,7 @@ class Config:
 
     def __init__(self):
         self.HOST = get_env('HOST')
-        self.PORT = get_env('PORT')
+        self.PORT = int(get_env('PORT'))
 
         self.MODEL_NAME = get_env('MODEL_NAME')
         self.MODEL_PATH = get_env('MODEL_PATH')
@@ -68,7 +68,7 @@ class Config:
         self.USING_PTUNING_V2 = get_bool_env('USING_PTUNING_V2')
 
         self.STREAM_INTERVERL = int(get_env('STREAM_INTERVERL'))
-        self.PROMPT_NAME = get_env('PROMPT_NAME')
+        self.PROMPT_NAME = get_env('PROMPT_NAME') if get_env('PROMPT_NAME') else None
         self.PATCH_TYPE = get_env('PATCH_TYPE') if get_env('PATCH_TYPE') else None
         self.TRAINING_LENGTH = int(get_env('TRAINING_LENGTH'))
         self.WINDOW_SIZE = int(get_env('WINDOW_SIZE'))

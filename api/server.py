@@ -23,7 +23,7 @@ app.add_middleware(
 )
 
 
-@app.get("/v1/models")
+@app.get(f"{config.API_PREFIX}/models")
 async def show_available_models():
     model_cards = []
     model_list = [config.MODEL_NAME]
