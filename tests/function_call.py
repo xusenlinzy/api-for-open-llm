@@ -72,7 +72,6 @@ response = openai.ChatCompletion.create(
     temperature=0,
     functions=functions,
     stop=["Observation:"],
-    stream=True,
 )
 print("Function Call results:")
 print(response.choices[0].message.function_call)
