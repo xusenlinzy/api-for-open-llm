@@ -8,7 +8,7 @@ docker build -f docker/Dockerfile.vllm -t llm-api:vllm .
 
 ## docker 启动模型
 
-### 主要参数
+### 环境变量含义
 
 + `MODEL_NAME`: 模型名称，如 `qwen`、`baichuan-13b-chat` 等
 
@@ -47,20 +47,6 @@ docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=vllm-server \
 
 Qwen/Qwen-7B-Chat:
 
-```shell
-docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=qwen \
-    --ulimit memlock=-1 --ulimit stack=67108864 \
-    -v `pwd`:/workspace \
-    llm-api:vllm \
-    python api/vllm_server.py \
-    --port 80 \
-    --allow-credentials \
-    --model_name qwen \
-    --model Qwen/Qwen-7B-Chat \
-    --trust-remote-code \
-    --tokenizer-mode slow \
-    --dtype half
-```
 
 ```shell
 MODEL_NAME=qwen
