@@ -66,7 +66,7 @@ docker pull xusenlinzy/llm-api:latest
 模型启动命令统一为
 
 ```shell
-docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=llm-api \
+docker run -it -d --gpus all --ipc=host --net=host -p 7891:8000 --name=llm-api \
     --ulimit memlock=-1 --ulimit stack=67108864 \
     -v `pwd`:/workspace \
     llm-api:pytorch \
