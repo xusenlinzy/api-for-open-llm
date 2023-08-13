@@ -85,3 +85,10 @@ class Config:
 
 
 config = Config()
+print(f"Config: {config.__dict__}")
+if config.GPUS:
+    if len(config.GPUS.split(",")) < config.NUM_GPUs:
+        raise ValueError(
+            f"Larger --num_gpus ({config.NUM_GPUs}) than --gpus {config.GPUS}!"
+        )
+    os.environ["CUDA_VISIBLE_DEVICES"] = config.GPUS

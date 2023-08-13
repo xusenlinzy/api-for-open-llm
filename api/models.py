@@ -1,6 +1,5 @@
 import asyncio
-import os
-from loguru import logger
+
 from sentence_transformers import SentenceTransformer
 
 from api.apapter import get_prompt_adapter
@@ -14,15 +13,6 @@ def get_embedding_model():
 
 def get_generate_model():
     from api.apapter.model import load_model
-
-    logger.info(f"Config: {config.__dict__}")
-    if config.GPUS:
-        # logger.info(f"load model in GPUs = {args.gpus}")
-        if len(config.GPUS.split(",")) < config.NUM_GPUs:
-            raise ValueError(
-                f"Larger --num_gpus ({config.NUM_GPUs}) than --gpus {config.GPUS}!"
-            )
-        os.environ["CUDA_VISIBLE_DEVICES"] = config.GPUS
 
     if config.PATCH_TYPE == "rerope":
         from api.utils.patches import apply_rerope_patch
