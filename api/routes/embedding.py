@@ -12,8 +12,8 @@ from api.utils.protocol import (
 embedding_router = APIRouter()
 
 
-@embedding_router.post("/v1/embeddings")
-@embedding_router.post("/v1/engines/{model_name}/embeddings")
+@embedding_router.post("/embeddings")
+@embedding_router.post("/engines/{model_name}/embeddings")
 async def create_embeddings(request: EmbeddingsRequest, model_name: str = None):
     """Creates embeddings for the text"""
     if request.model is None:

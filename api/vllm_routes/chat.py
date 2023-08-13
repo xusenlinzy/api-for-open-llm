@@ -27,6 +27,7 @@ from api.utils.protocol import (
     ChatMessage,
     DeltaMessage,
     UsageInfo,
+    Role,
 )
 from api.vllm_routes.utils import create_error_response, get_gen_prompt, get_model_inputs
 
@@ -139,7 +140,7 @@ async def create_chat_completion(raw_request: Request):
         for i in range(request.n):
             choice_data = ChatCompletionResponseStreamChoice(
                 index=i,
-                delta=DeltaMessage(role="assistant"),
+                delta=DeltaMessage(role=Role.ASSISTANT),
                 finish_reason=None,
             )
             chunk = ChatCompletionStreamResponse(
@@ -230,7 +231,7 @@ async def create_chat_completion(raw_request: Request):
         if with_function_call:
             message, finish_reason = build_chat_message(output.text, request.functions)
         else:
-            message = ChatMessage(role="assistant", content=output.text)
+            message = ChatMessage(role=Role.ASSISTANT, content=output.text)
 
         choices.append(
             ChatCompletionResponseChoice(

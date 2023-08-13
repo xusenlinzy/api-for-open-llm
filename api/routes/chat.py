@@ -13,8 +13,9 @@ from api.apapter.react import (
     build_delta_message,
 )
 from api.config import config
-from api.utils.constants import ErrorCode
 from api.models import GENERATE_MDDEL
+from api.routes.utils import check_requests, create_error_response
+from api.utils.constants import ErrorCode
 from api.utils.protocol import (
     ChatCompletionRequest,
     ChatCompletionResponse,
@@ -24,8 +25,8 @@ from api.utils.protocol import (
     ChatCompletionResponseChoice,
     DeltaMessage,
     UsageInfo,
+    Role,
 )
-from api.routes.utils import check_requests, create_error_response
 
 chat_router = APIRouter(prefix="/chat")
 
@@ -87,7 +88,7 @@ async def create_chat_completion(request: ChatCompletionRequest):
         if with_function_call:
             message, finish_reason = build_chat_message(content["text"], request.functions)
         else:
-            message = ChatMessage(role="assistant", content=content["text"])
+            message = ChatMessage(role=Role.ASSISTANT, content=content["text"])
 
         choices.append(
             ChatCompletionResponseChoice(
@@ -163,7 +164,7 @@ async def chat_completion_stream_generator(
         # First chunk with role
         choice_data = ChatCompletionResponseStreamChoice(
             index=i,
-            delta=DeltaMessage(role="assistant"),
+            delta=DeltaMessage(role=Role.ASSISTANT),
             finish_reason=None,
         )
         chunk = ChatCompletionStreamResponse(
