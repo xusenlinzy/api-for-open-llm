@@ -9,4 +9,4 @@ RUN pip install --no-cache-dir -r /workspace/requirements.txt -i https://mirror.
 RUN pip install bitsandbytes --upgrade -i https://mirror.baidu.com/pypi/simple && \
     pip install torch -U -i https://mirror.baidu.com/pypi/simple && \
     pip install git+https://github.com/vllm-project/vllm.git && \
-    pip uninstall transformer-engine
+    pip uninstall transformer-engine -y
