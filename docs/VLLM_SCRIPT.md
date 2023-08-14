@@ -28,6 +28,8 @@ docker build -f docker/Dockerfile.vllm -t llm-api:vllm .
 + `PROMPT_NAME`（可选项）: 使用的对话模板名称，如果不指定，则将根据模型名找到对应的模板
 
 
++ `EMBEDDING_NAME`（可选项）: 嵌入模型的文件所在路径，推荐使用 `moka-ai/m3e-base` 或者 `BAAI/bge-large-zh`
+
 模型启动命令统一为
 
 ```shell

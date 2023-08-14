@@ -47,15 +47,10 @@ pip install -r requirements.txt
 
 **vllm 环境下 `embedding` 模型启动貌似会出问题**
 
-备用方案：在 `llm-api:pytorch` 环境下单独启动 `embedding` 模型
+解决方案：
 
 ```shell
-docker run -it -d --gpus all --ipc=host --net=host -p 80:80 --name=embedding \
-    --ulimit memlock=-1 --ulimit stack=67108864 \
-    -v `pwd`:/workspace \
-    -e ONLY_EMBEDDING=true \
-    llm-api:pytorch \
-    python api/server.py
+pip uninstall transformer-engine
 ```
 
 ### 模型挂载

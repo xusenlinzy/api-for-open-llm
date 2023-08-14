@@ -32,7 +32,6 @@ DEFAULTS = {
     'TOKENIZE_MODE': "auto",
     'TENSOR_PARALLEL_SIZE': 1,
     'DTYPE': "half",
-    'ONLY_EMBEDDING': "False",
 }
 
 
@@ -80,8 +79,6 @@ class Config:
         self.TOKENIZE_MODE = get_env('TOKENIZE_MODE')
         self.TENSOR_PARALLEL_SIZE = int(get_env('TENSOR_PARALLEL_SIZE'))
         self.DTYPE = get_env('DTYPE')
-
-        self.ONLY_EMBEDDING = get_bool_env('ONLY_EMBEDDING')
 
 
 config = Config()
