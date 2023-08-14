@@ -32,6 +32,7 @@ DEFAULTS = {
     'TOKENIZE_MODE': "auto",
     'TENSOR_PARALLEL_SIZE': 1,
     'DTYPE': "half",
+    'EMBEDDING_SIZE': '',
 }
 
 
@@ -79,6 +80,8 @@ class Config:
         self.TOKENIZE_MODE = get_env('TOKENIZE_MODE')
         self.TENSOR_PARALLEL_SIZE = int(get_env('TENSOR_PARALLEL_SIZE'))
         self.DTYPE = get_env('DTYPE')
+
+        self.EMBEDDING_SIZE = int(get_env('EMBEDDING_SIZE')) if get_env('EMBEDDING_SIZE') else None
 
 
 config = Config()

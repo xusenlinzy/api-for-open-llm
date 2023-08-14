@@ -6,6 +6,17 @@
 docker build -f docker/Dockerfile.vllm -t llm-api:vllm .
 ```
 
+## 本地环境
+
+**`vLLM` 环境需要将 `torch` 版本升级到 `2.0.0` 以上，再安装 `vllm`**
+
+```shell
+pip install -r requirements.txt
+pip install torch -U
+pip install git+https://github.com/vllm-project/vllm.git
+pip uninstall transformer-engine -y
+```
+
 ## docker 启动模型
 
 ### 环境变量含义

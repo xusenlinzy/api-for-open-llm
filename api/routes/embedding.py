@@ -1,3 +1,4 @@
+import numpy as np
 import tiktoken
 from fastapi import APIRouter
 
@@ -46,10 +47,13 @@ async def create_embeddings(request: EmbeddingsRequest, model_name: str = None):
         for i in range(0, len(inputs), 1024)
     ]
     for num_batch, batch in enumerate(batches):
-        embedding = {
-            "embedding": EMBEDDED_MODEL.encode(batch, normalize_embeddings=True).tolist(),
-            "token_num": sum([len(i) for i in batch]),
-        }
+        token_num = sum([len(i) for i in batch])
+        vecs = EMBEDDED_MODEL.encode(batch, normalize_embeddings=True)
+
+        bs, dim = vecs.shape
+        if config.EMBEDDING_SIZE is not None and config.EMBEDDING_SIZE > dim:
+            zeros = np.zeros((bs, config.EMBEDDING_SIZE - dim))
+            vecs = np.c_[vecs, zeros].tolist()
 
         data += [
             {
@@ -57,9 +61,9 @@ async def create_embeddings(request: EmbeddingsRequest, model_name: str = None):
                 "embedding": emb,
                 "index": num_batch * 1024 + i,
             }
-            for i, emb in enumerate(embedding["embedding"])
+            for i, emb in enumerate(vecs)
         ]
-        token_num += embedding["token_num"]
+        token_num += token_num
 
     return EmbeddingsResponse(
         data=data,
