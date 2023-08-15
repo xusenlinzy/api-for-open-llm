@@ -1,27 +1,44 @@
 from typing import List
 
+from transformers import PreTrainedTokenizer
+
+from api.generation.utils import parse_messages
 from api.utils.protocol import Role, ChatMessage
 
 
-def build_baichuan_chat_input(tokenizer, messages: List[ChatMessage], context_len: int = 4096):
-    """  https://huggingface.co/baichuan-inc/Baichuan-13B-Chat/blob/main/modeling_baichuan.py """
-    total_input, round_input = [], []
-    for message in messages[::-1]:
-        role, content_tokens = message.role, tokenizer.encode(message.content)
-        if role in [Role.USER, Role.SYSTEM]:
-            round_input = [195] + content_tokens + round_input
-            if total_input and len(total_input) + len(round_input) > context_len:
-                break
+def build_baichuan_chat_input(
+    tokenizer: PreTrainedTokenizer,
+    messages: List[ChatMessage],
+    context_len: int = 4096,
+    max_new_tokens: int = 256
+) -> List[int]:
+    """  https://huggingface.co/baichuan-inc/Baichuan-13B-Chat/blob/main/generation_utils.py """
+    max_input_tokens = context_len - max_new_tokens
+    system, rounds = parse_messages(messages)
+    system_tokens = tokenizer.encode(system)
+    max_history_tokens = max_input_tokens - len(system_tokens)
+
+    history_tokens = []
+    for round in rounds[::-1]:
+        round_tokens = []
+        for message in round:
+            if message.role == Role.USER:
+                round_tokens.append(195)
             else:
-                total_input = round_input + total_input
-                round_input = []
-        elif role == Role.ASSISTANT:
-            round_input = [196] + content_tokens + round_input
-        else:
-            raise ValueError(f"message role not supported yet: {role}")
-    total_input = total_input[-context_len:]  # truncate left
-    total_input.append(196)
-    return total_input
+                round_tokens.append(196)
+            round_tokens.extend(tokenizer.encode(message.content))
+
+        if len(history_tokens) == 0 or len(history_tokens) + len(round_tokens) <= max_history_tokens:
+            history_tokens = round_tokens + history_tokens  # concat left
+            if len(history_tokens) < max_history_tokens:
+                continue
+        break
+
+    input_tokens = system_tokens + history_tokens
+    if messages[-1].role != Role.ASSISTANT:
+        input_tokens.append(196)
+
+    return input_tokens[-max_input_tokens:]  # truncate left
 
 
 def check_is_baichuan(model):

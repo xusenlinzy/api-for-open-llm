@@ -27,21 +27,17 @@ async def get_model_inputs(request, prompt, model_name):
         input_ids = prompt
     else:
         if "baichuan-13b" in model_name:
-            input_ids = build_baichuan_chat_input(VLLM_ENGINE.encode_tokenizer, prompt)
+            input_ids = build_baichuan_chat_input(
+                VLLM_ENGINE.encode_tokenizer,
+                prompt,
+                max_new_tokens=request.max_tokens,
+            )
         elif "qwen" in model_name:
-            input_ids = build_qwen_chat_input(VLLM_ENGINE.encode_tokenizer, prompt)
+            input_ids = build_qwen_chat_input(
+                VLLM_ENGINE.encode_tokenizer,
+                prompt,
+                max_new_tokens=request.max_tokens,
+            )
         else:
             raise ValueError(f"Model not supported yet: {model_name}")
-
-    token_num = len(input_ids)
-    if token_num + request.max_tokens > VLLM_ENGINE.max_model_len:
-        return input_ids, create_error_response(
-            HTTPStatus.BAD_REQUEST,
-            f"This model's maximum context length is {VLLM_ENGINE.max_model_len} tokens. "
-            f"However, you requested {request.max_tokens + token_num} tokens "
-            f"({token_num} in the messages, "
-            f"{request.max_tokens} in the completion). "
-            f"Please reduce the length of the messages or completion.",
-        )
-    else:
-        return input_ids, None
+    return input_ids, None

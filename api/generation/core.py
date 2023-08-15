@@ -4,48 +4,18 @@ from typing import Iterable, Optional, List, Union
 import torch
 import torch.nn.functional as F
 from loguru import logger
-from transformers.generation.logits_process import (
-    LogitsProcessorList,
-    RepetitionPenaltyLogitsProcessor,
-    TemperatureLogitsWarper,
-    TopKLogitsWarper,
-    TopPLogitsWarper,
-)
 
 from api.apapter import get_prompt_adapter
 from api.generation.baichuan import build_baichuan_chat_input, check_is_baichuan
 from api.generation.chatglm import generate_stream_chatglm, check_is_chatglm
 from api.generation.qwen import build_qwen_chat_input, check_is_qwen
+from api.generation.utils import prepare_logits_processor, is_partial_stop, get_context_length
 from api.utils.constants import ErrorCode
 from api.utils.protocol import ChatMessage
 
 server_error_msg = (
     "**NETWORK ERROR DUE TO HIGH TRAFFIC. PLEASE REGENERATE OR REFRESH THIS PAGE.**"
 )
-
-
-def prepare_logits_processor(
-    temperature: float, repetition_penalty: float, top_p: float, top_k: int
-) -> LogitsProcessorList:
-    processor_list = LogitsProcessorList()
-    # TemperatureLogitsWarper doesn't accept 0.0, 1.0 makes it a no-op, so we skip two cases.
-    if temperature >= 1e-5 and temperature != 1.0:
-        processor_list.append(TemperatureLogitsWarper(temperature))
-    if repetition_penalty > 1.0:
-        processor_list.append(RepetitionPenaltyLogitsProcessor(repetition_penalty))
-    if 1e-8 <= top_p < 1.0:
-        processor_list.append(TopPLogitsWarper(top_p))
-    if top_k > 0:
-        processor_list.append(TopKLogitsWarper(top_k))
-    return processor_list
-
-
-def is_partial_stop(output: str, stop_str: str):
-    """Check whether the output contains a partial stop str."""
-    for i in range(0, min(len(output), len(stop_str))):
-        if stop_str.startswith(output[-i:]):
-            return True
-    return False
 
 
 @torch.inference_mode()
@@ -76,9 +46,9 @@ def generate_stream(
     )
 
     if isinstance(prompt, list) and check_is_baichuan(model):
-        input_ids = build_baichuan_chat_input(tokenizer, prompt, context_len)
+        input_ids = build_baichuan_chat_input(tokenizer, prompt, context_len, max_new_tokens)
     elif isinstance(prompt, list) and check_is_qwen(model):
-        input_ids = build_qwen_chat_input(tokenizer, prompt)
+        input_ids = build_qwen_chat_input(tokenizer, prompt, context_len, max_new_tokens)
         stop_token_ids.extend([tokenizer.im_end_id, tokenizer.im_start_id])
     else:
         input_ids = tokenizer(prompt).input_ids
@@ -262,25 +232,6 @@ def generate_stream(
     torch.cuda.empty_cache()
 
 
-SEQUENCE_LENGTH_KEYS = [
-    "max_sequence_length",
-    "seq_length",
-    "max_position_embeddings",
-    "max_seq_len",
-    "model_max_length",
-]
-
-
-def get_context_length(config):
-    """Get the context length of a model from a huggingface model config."""
-    for key in SEQUENCE_LENGTH_KEYS:
-        if hasattr(config, key):
-            val = getattr(config, key)
-            if val is not None:
-                return val
-    return 2048
-
-
 class ModelServer:
     def __init__(
         self,
@@ -312,7 +263,7 @@ class ModelServer:
             logger.info("Using Qwen Model for Chat!")
             self.construct_prompt = False
             self.generate_stream_func = generate_stream
-            self.context_len = 8192
+            self.context_len = 8192 if self.context_len is None else self.context_len
         else:
             self.generate_stream_func = generate_stream
 
