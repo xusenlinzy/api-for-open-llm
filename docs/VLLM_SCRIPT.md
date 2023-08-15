@@ -46,7 +46,7 @@ pip uninstall transformer-engine -y
 
 1. docker run 命令
 
-**不同模型只需要将 [.env.example](../.env.example) 文件内容复制到 `.env` 文件中，然后修改 `.env` 文件中环境变量**
+**不同模型只需要将 [.env.vllm.example](../.env.vllm.example) 文件内容复制到 `.env` 文件中，然后修改 `.env` 文件中环境变量**
 
 ```shell
 docker run -it -d --gpus all --ipc=host -p 7891:8000 --name=vllm-server \
