@@ -47,6 +47,14 @@ def get_generate_model():
     )
 
 
+def get_context_len(model_config):
+    if "qwen" in config.MODEL_NAME.lower():
+        max_model_len = config.CONTEXT_LEN or 8192
+    else:
+        max_model_len = config.CONTEXT_LEN or model_config.get_max_model_len()
+    return max_model_len
+
+
 def get_vllm_engine():
     try:
         from vllm.engine.arg_utils import AsyncEngineArgs
@@ -76,7 +84,7 @@ def get_vllm_engine():
     )
 
     engine_model_config = asyncio.run(engine.get_model_config())
-    engine.max_model_len = engine_model_config.get_max_model_len()
+    engine.max_model_len = get_context_len(engine_model_config)
 
     return engine
 

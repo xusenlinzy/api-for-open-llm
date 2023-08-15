@@ -13,10 +13,10 @@ from transformers.generation.logits_process import (
 )
 
 from api.apapter import get_prompt_adapter
-from api.utils.constants import ErrorCode
 from api.generation.baichuan import build_baichuan_chat_input, check_is_baichuan
 from api.generation.chatglm import generate_stream_chatglm, check_is_chatglm
 from api.generation.qwen import build_qwen_chat_input, check_is_qwen
+from api.utils.constants import ErrorCode
 from api.utils.protocol import ChatMessage
 
 server_error_msg = (
@@ -298,11 +298,7 @@ class ModelServer:
         self.model_name = model_name.lower()
         self.prompt_name = prompt_name.lower() if prompt_name is not None else None
         self.stream_interval = stream_interval
-
-        if context_len is None:
-            self.context_len = get_context_length(self.model.config)
-        else:
-            self.context_len = context_len
+        self.context_len = context_len
 
         self.construct_prompt = True
         if check_is_chatglm(self.model):
@@ -316,10 +312,13 @@ class ModelServer:
             logger.info("Using Qwen Model for Chat!")
             self.construct_prompt = False
             self.generate_stream_func = generate_stream
+            self.context_len = 8192
         else:
             self.generate_stream_func = generate_stream
 
         self.prompt_adapter = get_prompt_adapter(self.model_name, prompt_name=self.prompt_name)
+        if self.context_len is None:
+            self.context_len = get_context_length(self.model.config)
 
     def count_token(self, params):
         prompt = params["prompt"]
