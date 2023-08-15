@@ -2,7 +2,7 @@ from typing import List
 
 from transformers import PreTrainedTokenizer
 
-from api.generation.baichuan import parse_messages
+from api.generation.utils import parse_messages
 from api.utils.protocol import Role, ChatMessage
 
 

@@ -41,20 +41,28 @@ pip uninstall transformer-engine -y
 
 + `EMBEDDING_NAME`（可选项）: 嵌入模型的文件所在路径，推荐使用 `moka-ai/m3e-base` 或者 `BAAI/bge-large-zh`
 
-模型启动命令统一为
+
+### 启动方式
+
+1. docker run 命令
+
+**不同模型只需要将 [.env.example](../.env.example) 文件内容复制到 `.env` 文件中，然后修改 `.env` 文件中环境变量**
 
 ```shell
-docker run -it -d --gpus all --ipc=host --net=host -p 7891:8000 --name=vllm-server \
+docker run -it -d --gpus all --ipc=host -p 7891:8000 --name=vllm-server \
     --ulimit memlock=-1 --ulimit stack=67108864 \
     -v `pwd`:/workspace \
     llm-api:vllm \
     python api/vllm_server.py
 ```
 
-**不同模型只需要将 [.env.vllm.example](../.env.vllm.example) 文件内容复制到 `.env` 文件中，然后修改 `.env` 文件中环境变量**
+2. docker-compose 命令
 
-**修改内容参考下面的模型**
+```shell
+docker-compose -f docker-compose.vllm.yml up -d
+```
 
+**环境变量修改内容参考下面的模型**
 
 ### Qwen-7b-chat
 

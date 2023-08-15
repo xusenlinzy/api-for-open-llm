@@ -1,0 +1,37 @@
+version: '3.10'
+
+services:
+  vllmapiserver:
+    image: llm-api:vllm
+    command: python api/vllm_server.py
+    ulimits:
+      stack: 67108864
+      memlock: -1
+    environment:
+      - PORT=8000
+      - MODEL_NAME=qwen
+      - MODEL_PATH=checkpoints/qwen-7b-chat
+      - EMBEDDING_NAME=checkpoints/m3e-base
+    volumes:
+      - $PWD:/workspace
+      # model path need to be specified if not in pwd
+#      - /data/checkpoints:/workspace/checkpoints
+    env_file:
+      - .env.vllm.example
+    ports:
+      - "7891:8000"
+    restart: always
+    networks:
+      - vllmapinet
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ['0']
+              capabilities: [gpu]
+
+networks:
+  vllmapinet:
+    driver: bridge
+    name: vllmapinet
