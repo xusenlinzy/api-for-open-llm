@@ -8,7 +8,7 @@ from api.generation import ModelServer
 
 
 def get_embedding_model():
-    return SentenceTransformer(config.EMBEDDING_NAME)
+    return SentenceTransformer(config.EMBEDDING_NAME, device=config.EMBEDDING_DEVICE)
 
 
 def get_generate_model():

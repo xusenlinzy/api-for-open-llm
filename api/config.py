@@ -33,6 +33,7 @@ DEFAULTS = {
     'TENSOR_PARALLEL_SIZE': 1,
     'DTYPE': "half",
     'EMBEDDING_SIZE': '',
+    'EMBEDDING_DEVICE': 'cuda',
 }
 
 
@@ -82,6 +83,7 @@ class Config:
         self.DTYPE = get_env('DTYPE')
 
         self.EMBEDDING_SIZE = int(get_env('EMBEDDING_SIZE')) if get_env('EMBEDDING_SIZE') else None
+        self.EMBEDDING_DEVICE = get_env('EMBEDDING_DEVICE')
 
 
 config = Config()
