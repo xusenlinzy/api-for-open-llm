@@ -53,8 +53,9 @@ async def create_embeddings(request: EmbeddingsRequest, model_name: str = None):
         bs, dim = vecs.shape
         if config.EMBEDDING_SIZE is not None and config.EMBEDDING_SIZE > dim:
             zeros = np.zeros((bs, config.EMBEDDING_SIZE - dim))
-            vecs = np.c_[vecs, zeros].tolist()
+            vecs = np.c_[vecs, zeros]
 
+        vecs = vecs.tolist()
         data += [
             {
                 "object": "embedding",
