@@ -1,12 +1,21 @@
-## docker 镜像
+## 环境配置
 
-构建镜像
+使用 `docker` 或者本地环境二者之一
+
+### docker
 
 ```shell
 docker build -f docker/Dockerfile -t llm-api:pytorch .
 ```
 
-## docker 启动模型
+### 本地环境
+
+```shell
+pip install torch==1.14
+pip install -r requirements.txt
+```
+
+## 启动模型
 
 ### 环境变量含义
 
@@ -57,7 +66,9 @@ docker build -f docker/Dockerfile -t llm-api:pytorch .
 
 ### 启动方式
 
-1. docker run 命令
+选择下面两种方式之一启动模型接口服务
+
+1. docker run
 
 **不同模型只需要将 [.env.example](../.env.example) 文件内容复制到 `.env` 文件中，然后修改 `.env` 文件中环境变量**
 
@@ -69,13 +80,13 @@ docker run -it -d --gpus all --ipc=host -p 7891:8000 --name=llm-api \
     python api/server.py
 ```
 
-2. docker-compose 命令
+2. docker-compose
 
 ```shell
 docker-compose up -d
 ```
 
-**环境变量修改内容参考下面的模型**
+**其中环境变量修改内容参考下面的模型**
 
 ### ChatGLM
 

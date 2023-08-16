@@ -1,12 +1,14 @@
-## docker 镜像
+## 环境配置
 
-构建镜像
+使用 `docker` 或者本地环境二者之一
+
+### docker
 
 ```shell
 docker build -f docker/Dockerfile.vllm -t llm-api:vllm .
 ```
 
-## 本地环境
+### 本地环境
 
 **`vLLM` 环境需要将 `torch` 版本升级到 `2.0.0` 以上，再安装 `vllm`**
 
@@ -17,7 +19,7 @@ pip install git+https://github.com/vllm-project/vllm.git
 pip uninstall transformer-engine -y
 ```
 
-## docker 启动模型
+## 启动模型
 
 ### 环境变量含义
 
@@ -44,7 +46,9 @@ pip uninstall transformer-engine -y
 
 ### 启动方式
 
-1. docker run 命令
+选择下面两种方式之一启动模型接口服务
+
+1. docker run
 
 **不同模型只需要将 [.env.vllm.example](../.env.vllm.example) 文件内容复制到 `.env` 文件中，然后修改 `.env` 文件中环境变量**
 
@@ -56,13 +60,13 @@ docker run -it -d --gpus all --ipc=host -p 7891:8000 --name=vllm-server \
     python api/vllm_server.py
 ```
 
-2. docker-compose 命令
+2. docker-compose
 
 ```shell
 docker-compose -f docker-compose.vllm.yml up -d
 ```
 
-**环境变量修改内容参考下面的模型**
+**其中环境变量修改内容参考下面的模型**
 
 ### Qwen-7b-chat
 
