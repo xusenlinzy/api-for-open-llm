@@ -1,0 +1,38 @@
+version: '3.10'
+
+services:
+  apiserver:
+    image: llm-api:pytorch
+    command: python api/server.py
+    ulimits:
+      stack: 67108864
+      memlock: -1
+    environment:
+      - PORT=8000
+      - MODEL_NAME=qwen
+      - MODEL_PATH=checkpoints/qwen-7b-chat
+      - EMBEDDING_NAME=checkpoints/m3e-base
+      - DEVICE_MAP=auto
+    volumes:
+      - $PWD:/workspace
+      # model path need to be specified if not in pwd
+#      - /data/checkpoints:/workspace/checkpoints
+    env_file:
+      - .env.example
+    ports:
+      - "7891:8000"
+    restart: always
+    networks:
+      - apinet
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ['0']
+              capabilities: [gpu]
+
+networks:
+  apinet:
+    driver: bridge
+    name: apinet

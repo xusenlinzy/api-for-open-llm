@@ -31,7 +31,7 @@
 
 + 【2023.07.14】 支持在一个 **`API BASE`** 下调用多个模型
    + ① 根据 [SCRIPT](docs/SCRIPT.md) 启动多个模型
-   + ② 修改 [chatgpt](./chatgpt.py) 中的 **`MODEL_LIST`**，将启动的模型加入进去
+   + ② 修改 [chatgpt](tools/chatgpt.py) 中的 **`MODEL_LIST`**，将启动的模型加入进去
    + ③ **`python chatgpt.py`**
 
 
