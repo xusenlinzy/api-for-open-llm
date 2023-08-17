@@ -78,6 +78,13 @@ def get_vllm_engine():
         tokenizer_mode=engine_args.tokenizer_mode,
         trust_remote_code=True,
     )
+
+    # fix llama config
+    model_type = getattr(engine.engine.model_config.hf_config, "model_type", "")
+    if model_type == "llama":
+        engine.engine.model_config.hf_config.eos_token_id = engine.encode_tokenizer.eos_token_id
+        engine.engine.model_config.hf_config.pad_token_id = engine.encode_tokenizer.pad_token_id
+
     engine.prompt_adapter = get_prompt_adapter(
         config.MODEL_NAME.lower(),
         prompt_name=config.PROMPT_NAME.lower() if config.PROMPT_NAME else None
