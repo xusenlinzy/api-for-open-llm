@@ -99,25 +99,7 @@
 
 ## 🐳 环境配置
 
-### docker启动（**推荐**）
-
 模型的启动命令详见 [SCRIPT.md](docs/SCRIPT.md)
-
-### 本地启动
-
-安装 `pytorch` 环境
-
-```shell
-conda create -n pytorch python=3.8
-conda activate pytorch
-conda install pytorch==1.14 cudatoolkit -c pytorch
-```
-
-安装依赖包
-
-```shell
-pip install -r requirements.txt
-```
 
 
 ## 🤖 使用方式

@@ -11,7 +11,7 @@ docker build -f docker/Dockerfile -t llm-api:pytorch .
 ### 本地环境
 
 ```shell
-pip install torch==1.14
+pip install torch==1.13.1
 pip install -r requirements.txt
 ```
 
