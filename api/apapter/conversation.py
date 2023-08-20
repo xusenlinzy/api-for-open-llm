@@ -318,7 +318,7 @@ class StarChatPromptAdapter(BasePromptAdapter):
             role, content = message.role, message.content
             if role == Role.SYSTEM:
                 prompt += self.system_prompt.format(content)
-            if role == Role.USER:
+            elif role == Role.USER:
                 prompt += self.user_prompt.format(content)
             else:
                 prompt += self.assistant_prompt.format(content)
@@ -348,7 +348,7 @@ class AquilaChatPromptAdapter(BasePromptAdapter):
             role, content = message.role, message.content
             if role == Role.SYSTEM:
                 prompt += self.system_prompt.format(content)
-            if role == Role.ASSISTANT:
+            elif role == Role.ASSISTANT:
                 prompt += self.user_prompt.format(content)
             else:
                 prompt += self.assistant_prompt.format(content)
@@ -380,7 +380,7 @@ If a question does not make any sense, or is not factually coherent, explain why
         for i, message in enumerate(messages):
             role, content = message.role, message.content
             if i == 0:
-                prompt += content
+                prompt += content + " "
             else:
                 if role == Role.USER:
                     prompt += self.user_prompt.format(content)
@@ -407,6 +407,18 @@ class QwenPromptAdapter(BasePromptAdapter):
         return "qwen" in model_name
 
 
+class OctopackPromptAdapter(BasePromptAdapter):
+    """ https://huggingface.co/codeparrot/starcoder-self-instruct """
+
+    name = "octopack"
+    system_prompt = ""
+    user_prompt = "Question:{}\n\nAnswer:"
+    assistant_prompt = "{}\n\n"
+
+    def match(self, model_name):
+        return "starcoder-self-instruct" in model_name
+
+
 register_prompt_adapter(ChatGLMPromptAdapter)
 register_prompt_adapter(ChatGLM2PromptAdapter)
 register_prompt_adapter(MossPromptAdapter)
@@ -424,6 +436,7 @@ register_prompt_adapter(StarChatPromptAdapter)
 register_prompt_adapter(AquilaChatPromptAdapter)
 register_prompt_adapter(Llama2ChatPromptAdapter)
 register_prompt_adapter(QwenPromptAdapter)
+register_prompt_adapter(OctopackPromptAdapter)
 
 # After all adapters, try the default base adapter.
 register_prompt_adapter(BasePromptAdapter)
