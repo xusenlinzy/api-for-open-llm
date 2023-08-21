@@ -163,7 +163,7 @@ def generate_stream(
 
             output = tokenizer.decode(
                 tmp_output_ids,
-                skip_special_tokens=True,
+                skip_special_tokens=False if check_is_qwen(model) else True,  # fix for qwen react
                 spaces_between_special_tokens=False,
                 clean_up_tokenization_spaces=True,
             )
