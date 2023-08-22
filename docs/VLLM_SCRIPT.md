@@ -23,6 +23,7 @@ pip uninstall transformer-engine -y
 
 ### 环境变量含义
 
+
 + `MODEL_NAME`: 模型名称，如 `qwen`、`baichuan-13b-chat` 等
 
 
@@ -42,6 +43,15 @@ pip uninstall transformer-engine -y
 
 
 + `EMBEDDING_NAME`（可选项）: 嵌入模型的文件所在路径，推荐使用 `moka-ai/m3e-base` 或者 `BAAI/bge-large-zh`
+
+
++ `GPU_MEMORY_UTILIZATION`（可选项）: `GPU` 占用率
+
+
++ `MAX_NUM_BATCHED_TOKENS`（可选项）: 每个批处理的最大 `token` 数量
+
+
++ `MAX_NUM_SEQS`（可选项）: 批量大小
 
 
 ### 启动方式

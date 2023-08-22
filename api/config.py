@@ -1,5 +1,5 @@
 import os
-
+from loguru import logger
 import dotenv
 
 dotenv.load_dotenv()
@@ -11,29 +11,39 @@ DEFAULTS = {
     'MODEL_NAME': '',
     'MODEL_PATH': '',
     'ADAPTER_MODEL_PATH': '',
+
     'DEVICE': 'cuda',
     'DEVICE_MAP': "",
     'GPUS': '',
     'NUM_GPUs': 1,
-    'QUANTIZE': 16,
+
     'EMBEDDING_NAME': '',
-    'CONTEXT_LEN': '',
+    'EMBEDDING_SIZE': '',
+    'EMBEDDING_DEVICE': 'cuda',
+
+    'QUANTIZE': 16,
     'LOAD_IN_8BIT': 'False',
     'LOAD_IN_4BIT': 'False',
     'USING_PTUNING_V2': 'False',
+
+    'CONTEXT_LEN': '',
     'STREAM_INTERVERL': 2,
     'PROMPT_NAME': '',
+
     'PATCH_TYPE': '',
     'TRAINING_LENGTH': 4096,
     'WINDOW_SIZE': 512,
+
     'API_PREFIX': '/v1',
+
     'USE_VLLM': 'False',
     'TRUST_REMOTE_CODE': "False",
     'TOKENIZE_MODE': "auto",
     'TENSOR_PARALLEL_SIZE': 1,
     'DTYPE': "half",
-    'EMBEDDING_SIZE': '',
-    'EMBEDDING_DEVICE': 'cuda',
+    "GPU_MEMORY_UTILIZATION": 0.9,
+    "MAX_NUM_BATCHED_TOKENS": 5120,
+    "MAX_NUM_SEQS": 256,
 }
 
 
@@ -61,15 +71,19 @@ class Config:
         self.GPUS = get_env('GPUS')
         self.NUM_GPUs = int(get_env('NUM_GPUs'))
 
-        self.QUANTIZE = int(get_env('QUANTIZE'))
         self.EMBEDDING_NAME = get_env('EMBEDDING_NAME') if get_env('EMBEDDING_NAME') else None
-        self.CONTEXT_LEN = int(get_env('CONTEXT_LEN')) if get_env('CONTEXT_LEN') else None
+        self.EMBEDDING_SIZE = int(get_env('EMBEDDING_SIZE')) if get_env('EMBEDDING_SIZE') else None
+        self.EMBEDDING_DEVICE = get_env('EMBEDDING_DEVICE')
+
+        self.QUANTIZE = int(get_env('QUANTIZE'))
         self.LOAD_IN_8BIT = get_bool_env('LOAD_IN_8BIT')
         self.LOAD_IN_4BIT = get_bool_env('LOAD_IN_4BIT')
         self.USING_PTUNING_V2 = get_bool_env('USING_PTUNING_V2')
 
+        self.CONTEXT_LEN = int(get_env('CONTEXT_LEN')) if get_env('CONTEXT_LEN') else None
         self.STREAM_INTERVERL = int(get_env('STREAM_INTERVERL'))
         self.PROMPT_NAME = get_env('PROMPT_NAME') if get_env('PROMPT_NAME') else None
+
         self.PATCH_TYPE = get_env('PATCH_TYPE') if get_env('PATCH_TYPE') else None
         self.TRAINING_LENGTH = int(get_env('TRAINING_LENGTH'))
         self.WINDOW_SIZE = int(get_env('WINDOW_SIZE'))
@@ -81,13 +95,13 @@ class Config:
         self.TOKENIZE_MODE = get_env('TOKENIZE_MODE')
         self.TENSOR_PARALLEL_SIZE = int(get_env('TENSOR_PARALLEL_SIZE'))
         self.DTYPE = get_env('DTYPE')
-
-        self.EMBEDDING_SIZE = int(get_env('EMBEDDING_SIZE')) if get_env('EMBEDDING_SIZE') else None
-        self.EMBEDDING_DEVICE = get_env('EMBEDDING_DEVICE')
+        self.GPU_MEMORY_UTILIZATION = float(get_env('GPU_MEMORY_UTILIZATION'))
+        self.MAX_NUM_BATCHED_TOKENS = int(get_env('MAX_NUM_BATCHED_TOKENS'))
+        self.MAX_NUM_SEQS = int(get_env('MAX_NUM_SEQS'))
 
 
 config = Config()
-print(f"Config: {config.__dict__}")
+logger.debug(f"Config: {config.__dict__}")
 if config.GPUS:
     if len(config.GPUS.split(",")) < config.NUM_GPUs:
         raise ValueError(

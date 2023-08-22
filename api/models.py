@@ -69,6 +69,9 @@ def get_vllm_engine():
         trust_remote_code=config.TRUST_REMOTE_CODE,
         dtype=config.DTYPE,
         tensor_parallel_size=config.TENSOR_PARALLEL_SIZE,
+        gpu_memory_utilization=config.GPU_MEMORY_UTILIZATION,
+        max_num_batched_tokens=config.MAX_NUM_BATCHED_TOKENS,
+        max_num_seqs=config.MAX_NUM_SEQS,
     )
     engine = AsyncLLMEngine.from_engine_args(engine_args)
 
@@ -91,6 +94,7 @@ def get_vllm_engine():
     )
 
     engine_model_config = asyncio.run(engine.get_model_config())
+    engine.engine.scheduler_config.max_model_len = get_context_len(engine_model_config)
     engine.max_model_len = get_context_len(engine_model_config)
 
     return engine
