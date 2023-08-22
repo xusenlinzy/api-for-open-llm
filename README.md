@@ -23,7 +23,7 @@
 + 【2023.08.10】 支持 [vLLM](https://github.com/vllm-project/vllm) 推理加速 ，使用方式见 [VLLM_SCRIPT](./docs/VLLM_SCRIPT.md)
 
 
-+ 【2023.08.04】 增加通义千问模型工具调用示例，支持 **`function call`** 特性，调用方式参考 [邮件发送助手](./examples/email_sender.py)、[定积分计算器](./examples/quad_calculator.py)、[SQL查询](./examples/sql_querier.py)
++ 【2023.08.04】 增加通义千问模型工具调用示例，支持 **`function call`** 特性，调用方式参考 [邮件发送助手](./examples/qwen-7b-chat/email_sender.py)、[定积分计算器](./examples/qwen-7b-chat/quad_calculator.py)、[SQL查询](./examples/qwen-7b-chat/sql_querier.py)
 
 
 + 【2023.08.03】 支持 [qwen-7b-chat](https://github.com/QwenLM/Qwen-7B) 模型，启动方式见 [qwen-7b-chat](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#qwen-7b-chat)
