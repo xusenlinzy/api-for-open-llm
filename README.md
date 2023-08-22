@@ -20,7 +20,7 @@
 
 ## 📢 News
 
-+ 【2023.08.10】 支持 [xverse-13b-chat](https://github.com/xverse-ai/XVERSE-13B) 模型 ，使用方式见 [xverse-13b-chat](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#xverse-13b-chat)
++ 【2023.08.22】 支持 [xverse-13b-chat](https://github.com/xverse-ai/XVERSE-13B) 模型 ，使用方式见 [xverse-13b-chat](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#xverse-13b-chat)
 
 
 + 【2023.08.10】 支持 [vLLM](https://github.com/vllm-project/vllm) 推理加速 ，使用方式见 [VLLM_SCRIPT](./docs/VLLM_SCRIPT.md)
