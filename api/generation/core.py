@@ -10,6 +10,7 @@ from api.generation.baichuan import build_baichuan_chat_input, check_is_baichuan
 from api.generation.chatglm import generate_stream_chatglm, check_is_chatglm
 from api.generation.qwen import build_qwen_chat_input, check_is_qwen
 from api.generation.utils import prepare_logits_processor, is_partial_stop, get_context_length
+from api.generation.xverse import build_xverse_chat_input, check_is_xverse
 from api.utils.constants import ErrorCode
 from api.utils.protocol import ChatMessage
 
@@ -50,6 +51,8 @@ def generate_stream(
     elif isinstance(prompt, list) and check_is_qwen(model):
         input_ids = build_qwen_chat_input(tokenizer, prompt, context_len, max_new_tokens)
         stop_token_ids.extend([tokenizer.im_end_id, tokenizer.im_start_id])
+    elif isinstance(prompt, list) and check_is_xverse(model):
+        input_ids = build_xverse_chat_input(tokenizer, prompt, context_len, max_new_tokens)
     else:
         input_ids = tokenizer(prompt).input_ids
         if model.config.is_encoder_decoder:
@@ -252,20 +255,20 @@ class ModelServer:
         self.context_len = context_len
 
         self.construct_prompt = True
+        self.generate_stream_func = generate_stream
         if check_is_chatglm(self.model):
             logger.info("Using ChatGLM Model for Chat!")
             self.generate_stream_func = generate_stream_chatglm
         elif check_is_baichuan(self.model):
             logger.info("Using Baichuan Model for Chat!")
             self.construct_prompt = False
-            self.generate_stream_func = generate_stream
         elif check_is_qwen(self.model):
             logger.info("Using Qwen Model for Chat!")
             self.construct_prompt = False
-            self.generate_stream_func = generate_stream
             self.context_len = 8192 if self.context_len is None else self.context_len
-        else:
-            self.generate_stream_func = generate_stream
+        elif check_is_xverse(self.model):
+            logger.info("Using Xverse Model for Chat!")
+            self.construct_prompt = False
 
         self.prompt_adapter = get_prompt_adapter(self.model_name, prompt_name=self.prompt_name)
         if self.context_len is None:

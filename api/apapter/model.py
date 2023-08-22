@@ -432,6 +432,16 @@ class QwenModelAdapter(BaseModelAdapter):
         return "Qwen/Qwen-7B-Chat"
 
 
+class XverseModelAdapter(BaseModelAdapter):
+    """ https://github.com/xverse-ai/XVERSE-13B """
+
+    model_names = ["xverse"]
+
+    @property
+    def default_model_name_or_path(self):
+        return "xverse/XVERSE-13B-Chat"
+
+
 register_model_adapter(ChatglmModelAdapter)
 register_model_adapter(LlamaModelAdapter)
 register_model_adapter(MossModelAdapter)
@@ -445,6 +455,7 @@ register_model_adapter(BaiChuanModelAdapter)
 register_model_adapter(InternLMModelAdapter)
 register_model_adapter(AquilaModelAdapter)
 register_model_adapter(QwenModelAdapter)
+register_model_adapter(XverseModelAdapter)
 
 # After all adapters, try the default base adapter.
 register_model_adapter(BaseModelAdapter)

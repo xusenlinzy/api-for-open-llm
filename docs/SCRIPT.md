@@ -218,3 +218,14 @@ MODEL_NAME=qwen
 MODEL_PATH=Qwen/Qwen-7B-Chat
 DEVICE_MAP=auto
 ```
+
+
+### XVERSE-13B-Chat
+
+xverse/XVERSE-13B-Chat:
+
+```shell
+MODEL_NAME=xverse
+MODEL_PATH=xverse/XVERSE-13B-Chat
+DEVICE_MAP=auto
+```
