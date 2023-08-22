@@ -9,7 +9,7 @@ sentencepiece
 tiktoken
 loguru
 transformers>=4.31.0
-git+https://github.com/huggingface/peft.git
+peft>=0.4.0
 accelerate>=0.20.3
 triton
 sentence-transformers
