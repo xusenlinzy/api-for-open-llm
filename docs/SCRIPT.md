@@ -229,3 +229,14 @@ MODEL_NAME=xverse
 MODEL_PATH=xverse/XVERSE-13B-Chat
 DEVICE_MAP=auto
 ```
+
+### SQLCODER
+
+defog/sqlcoder:
+
+```shell
+MODEL_NAME=starcode
+MODEL_PATH=defog/sqlcoder
+DEVICE_MAP=auto
+# LOAD_IN_8BIT=true
+```

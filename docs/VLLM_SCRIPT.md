@@ -106,3 +106,13 @@ MODEL_NAME=baichuan-13b-chat
 MODEL_PATH=baichuan-inc/Baichuan-13B-Chat
 TENSOR_PARALLEL_SIZE=2
 ```
+
+### SQLCODER
+
+defog/sqlcoder:
+
+```shell
+MODEL_NAME=starcode
+MODEL_PATH=defog/sqlcoder
+TENSOR_PARALLEL_SIZE=2
+```

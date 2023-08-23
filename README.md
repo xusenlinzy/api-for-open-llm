@@ -20,7 +20,10 @@
 
 ## 📢 News
 
-+ 【2023.08.22】 支持 [xverse-13b-chat](https://github.com/xverse-ai/XVERSE-13B) 模型 ，使用方式见 [xverse-13b-chat](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#xverse-13b-chat)
++ 【2023.08.23】 支持 [sqlcoder](https://huggingface.co/defog/sqlcoder) 模型 ，启动方式见 [sqlcoder](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#sqlcoder)，使用方式见 [inference](./examples/sqlcoder/inference.py)
+
+
++ 【2023.08.22】 支持 [xverse-13b-chat](https://github.com/xverse-ai/XVERSE-13B) 模型 ，启动方式见 [xverse-13b-chat](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#xverse-13b-chat)
 
 
 + 【2023.08.10】 支持 [vLLM](https://github.com/vllm-project/vllm) 推理加速 ，使用方式见 [VLLM_SCRIPT](./docs/VLLM_SCRIPT.md)
@@ -83,6 +86,7 @@
 
 | Model                                                                 |   Backbone   | #Params  | Claimed language |                                               checkpoint link                                               |
 |:----------------------------------------------------------------------|:------------:|:--------:|:----------------:|:-----------------------------------------------------------------------------------------------------------:|
+| [xverse-13b-chat](https://github.com/xverse-ai/XVERSE-13B)            |    Xverse    |   13B    |      multi       |                   [xverse/XVERSE-13B-Chat](https://huggingface.co/xverse/XVERSE-13B-Chat)                   |
 | [qwen-7b-chat](https://github.com/QwenLM/Qwen-7B)                     |     Qwen     |    7B    |      en, zh      |                 [Qwen/Qwen-7B-Chat](https://huggingface.co/baichuan-inc/Qwen/Qwen-7B-Chat)                  |
 | [baichuan-13b-chat](https://github.com/baichuan-inc/Baichuan-13B)     |   Baichuan   |   13B    |      en, zh      |           [baichuan-inc/Baichuan-13B-Chat](https://huggingface.co/baichuan-inc/Baichuan-13B-Chat)           |
 | [InternLM](https://github.com/InternLM/InternLM)                      |   InternLM   |    7B    |      en, zh      |                [internlm/internlm-chat-7b](https://huggingface.co/internlm/internlm-chat-7b)                |
