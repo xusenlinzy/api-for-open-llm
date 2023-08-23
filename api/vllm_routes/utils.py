@@ -5,6 +5,7 @@ from fastapi.responses import JSONResponse
 from api.generation import build_qwen_chat_input, build_baichuan_chat_input
 from api.models import EXCLUDE_MODELS, VLLM_ENGINE
 from api.utils.protocol import ErrorResponse
+from api.config import config
 
 
 def create_error_response(status_code: HTTPStatus, message: str) -> JSONResponse:
@@ -14,7 +15,7 @@ def create_error_response(status_code: HTTPStatus, message: str) -> JSONResponse
 
 
 async def get_gen_prompt(request, model_name):
-    if any(m in model_name for m in EXCLUDE_MODELS):
+    if any(m in model_name for m in EXCLUDE_MODELS) and config.PROMPT_NAME is None:
         return request.messages
     else:
         return VLLM_ENGINE.prompt_adapter.generate_prompt(request.messages)

@@ -261,14 +261,14 @@ class ModelServer:
             self.generate_stream_func = generate_stream_chatglm
         elif check_is_baichuan(self.model):
             logger.info("Using Baichuan Model for Chat!")
-            self.construct_prompt = False
+            self.construct_prompt = False if self.prompt_name is None else True
         elif check_is_qwen(self.model):
             logger.info("Using Qwen Model for Chat!")
-            self.construct_prompt = False
+            self.construct_prompt = False if self.prompt_name is None else True
             self.context_len = 8192 if self.context_len is None else self.context_len
         elif check_is_xverse(self.model):
             logger.info("Using Xverse Model for Chat!")
-            self.construct_prompt = False
+            self.construct_prompt = False if self.prompt_name is None else True
 
         self.prompt_adapter = get_prompt_adapter(self.model_name, prompt_name=self.prompt_name)
         if self.context_len is None:

@@ -287,8 +287,8 @@ class BaiChuanPromptAdapter(BasePromptAdapter):
 
     name = "baichuan"
     system_prompt = ""
-    user_prompt = "<reserved_102> {}<reserved_103> "
-    assistant_prompt = "{}</s>"
+    user_prompt = "<reserved_102>{}<reserved_103>"
+    assistant_prompt = "{}"
     stop = {
         "strings": ["<reserved_102>", "<reserved_103>"],
         "token_ids": [195, 196],
@@ -419,6 +419,18 @@ class OctopackPromptAdapter(BasePromptAdapter):
         return "starcoder-self-instruct" in model_name
 
 
+class XversePromptAdapter(BasePromptAdapter):
+    """ https://huggingface.co/xverse/XVERSE-13B-Chat """
+
+    name = "xverse"
+    system_prompt = ""
+    user_prompt = "Human: {}\n\nAssistant: "
+    assistant_prompt = "{}<|endoftext|>"
+
+    def match(self, model_name):
+        return "xverse" in model_name
+
+
 register_prompt_adapter(ChatGLMPromptAdapter)
 register_prompt_adapter(ChatGLM2PromptAdapter)
 register_prompt_adapter(MossPromptAdapter)
@@ -437,6 +449,7 @@ register_prompt_adapter(AquilaChatPromptAdapter)
 register_prompt_adapter(Llama2ChatPromptAdapter)
 register_prompt_adapter(QwenPromptAdapter)
 register_prompt_adapter(OctopackPromptAdapter)
+register_prompt_adapter(XversePromptAdapter)
 
 # After all adapters, try the default base adapter.
 register_prompt_adapter(BasePromptAdapter)
