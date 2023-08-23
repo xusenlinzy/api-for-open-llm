@@ -1,6 +1,5 @@
 import logging
 import os
-import re
 import shutil
 
 import gradio as gr
@@ -40,6 +39,23 @@ nltk.data.path = [NLTK_DATA_PATH] + nltk.data.path
 
 openai.api_key = "xxx"
 doc_adapter = DocQAPromptAdapter()
+
+SQL_PROMPT = """### Instructions:
+Your task is to convert a question into a SQL query, given a database schema.
+Adhere to these rules:
+- **Deliberately go through the question and database schema word by word** to appropriately answer the question
+- **Use Table Aliases** to prevent ambiguity. For example, `SELECT table1.col1, table2.col1 FROM table1 JOIN table2 ON table1.id = table2.id`.
+- When creating a ratio, always cast the numerator as float
+
+### Input:
+Generate a SQL query that answers the question `{question}`.
+This query will run on a database whose schema is represented in this string:
+{database_schema}
+
+### Response:
+Based on your instructions, here is the SQL query I have generated to answer the question `{question}`:
+```sql
+"""
 
 
 def add_llm(model_name, api_base, models):
@@ -134,9 +150,7 @@ def get_table_names(select_database, databases):
 
 
 def get_sql_result(x, con):
-    q = r"sql\n(.+?);\n"
-    sql = re.findall(q, x, re.DOTALL)[0] + ";"
-    df = pd.read_sql(sql, con=con).iloc[:50, :]
+    df = pd.read_sql(x.split("```sql")[-1].split("```")[0].split(";")[0].strip() + ";", con=con).iloc[:50, :]
     return df
 
 
@@ -144,6 +158,11 @@ def get_sql_result(x, con):
 def chat_completions_create(params):
     """ chat接口 """
     return openai.ChatCompletion.create(**params)
+
+
+@on_exception(expo, openai.error.RateLimitError, max_tries=5)
+def completions_create(params):
+    return openai.Completion.create(**params)
 
 
 def predict(
@@ -182,12 +201,7 @@ def predict(
         for t in select_table:
             table_schema += pd.read_sql(f"show create table {t};", con=con)["Create Table"][0] + "\n\n"
         table_schema = table_schema.replace("DEFAULT NULL", "")
-        messages.append(
-            {
-                "role": "system",
-                "content": f"你现在是一名SQL助手，能够根据用户的问题生成准确的SQL查询。已知SQL的建表语句为：{table_schema}根据上述数据库信息，回答相关问题。"
-            },
-        )
+        messages = SQL_PROMPT.format(question=text, database_schema=table_schema)
     else:
         if not single_turn:
             for h in history[-memory_k:]:
@@ -204,32 +218,45 @@ def predict(
                     ]
                 )
 
-    messages.append(
-        {
-            "role": "user",
-            "content": doc_adapter(text) if is_kgqa else text
-        }
-    )
+        messages.append(
+            {
+                "role": "user",
+                "content": doc_adapter(text) if is_kgqa else text
+            }
+        )
 
-    params = dict(
-        stream=True,
-        messages=messages,
-        model=model_name,
-        top_p=top_p,
-        temperature=temperature,
-        max_tokens=max_tokens
-    )
+    if is_dbqa:
+        params = dict(
+            stream=True,
+            prompt=messages,
+            model=model_name,
+            temperature=temperature,
+            stop=["```"],
+        )
+        res = completions_create(params)
+    else:
+        params = dict(
+            stream=True,
+            messages=messages,
+            model=model_name,
+            top_p=top_p,
+            temperature=temperature,
+            max_tokens=max_tokens
+        )
+        res = chat_completions_create(params)
 
-    res = chat_completions_create(params)
     x = ""
     for openai_object in res:
-        delta = openai_object.choices[0]["delta"]
-        if "content" in delta:
-            x += delta["content"]
+        if is_dbqa:
+            x += openai_object.choices[0].text
+        else:
+            delta = openai_object.choices[0]["delta"]
+            if "content" in delta:
+                x += delta["content"]
 
         a, b = [[y[0], convert_to_markdown(y[1])] for y in history] + [
-            [text, convert_to_markdown(x)]
-        ], history + [[text, x]]
+            [text, convert_to_markdown(f"```sql\n{x}```")]
+        ], history + [[text, f"```sql\n{x}```"]]
 
         yield a, b, "Generating...", None
 
@@ -338,18 +365,17 @@ with gr.Blocks(css=customCSS, theme=small_and_beautiful_theme) as demo:
                             label="模型名称",
                         )
                         api_base = gr.Textbox(
-                            placeholder="https://0.0.0.0:80/v1",
+                            placeholder="http://0.0.0.0:80/v1",
                             label="模型接口地址",
                         )
                         add_model = gr.Button(
                             value="\U0001F31F 添加模型",
                         )
                         with gr.Accordion(open=False, label="所有模型配置"):
-                            # models = gr.Json()
                             models = gr.Json(
                                 value={
                                     "chatglm": "http://192.168.0.59:80/v1",
-                                    "moss": "http://192.168.0.58:80/v1"
+                                    "sqlcoder": "http://192.168.0.53:7891/v1",
                                 }
                             )
                         single_turn = gr.Checkbox(label="使用单轮对话", value=False)
@@ -409,13 +435,12 @@ with gr.Blocks(css=customCSS, theme=small_and_beautiful_theme) as demo:
                         add_database = gr.Button("🐬 添加数据库")
 
                         with gr.Accordion(open=False, label="所有数据库配置"):
-                            # databases = gr.Json()
                             databases = gr.Json(
                                 value={
-                                    "complaint_database": {
-                                        "user": "dnect_test",
-                                        "password": "Dnect158",
-                                        "host": "192.168.0.158",
+                                    "test2": {
+                                        "user": "root",
+                                        "password": "Dnect_123",
+                                        "host": "192.168.0.121",
                                         "port": 3306
                                     }
                                 }
