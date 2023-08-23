@@ -255,8 +255,8 @@ def predict(
                 x += delta["content"]
 
         a, b = [[y[0], convert_to_markdown(y[1])] for y in history] + [
-            [text, convert_to_markdown(f"```sql\n{x}```")]
-        ], history + [[text, f"```sql\n{x}```"]]
+            [text, convert_to_markdown(f"```sql\n{x}```" if is_dbqa else x)]
+        ], history + [[text, f"```sql\n{x}```" if is_dbqa else x]]
 
         yield a, b, "Generating...", None
 
