@@ -138,6 +138,7 @@ class EmbeddingsRequest(BaseModel):
     engine: Optional[str] = None
     input: Union[str, List[Any]]
     user: Optional[str] = None
+    encoding_format: Optional[str] = None
 
 
 class EmbeddingsResponse(BaseModel):

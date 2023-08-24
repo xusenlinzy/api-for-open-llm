@@ -1,3 +1,5 @@
+import base64
+
 import numpy as np
 import tiktoken
 from fastapi import APIRouter
@@ -55,7 +57,11 @@ async def create_embeddings(request: EmbeddingsRequest, model_name: str = None):
             zeros = np.zeros((bs, config.EMBEDDING_SIZE - dim))
             vecs = np.c_[vecs, zeros]
 
-        vecs = vecs.tolist()
+        if request.encoding_format == "base64":
+            vecs = [base64.b64encode(v.tobytes()).decode("utf-8") for v in vecs]
+        else:
+            vecs = vecs.tolist()
+
         data += [
             {
                 "object": "embedding",
