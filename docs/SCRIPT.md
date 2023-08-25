@@ -240,3 +240,12 @@ MODEL_PATH=defog/sqlcoder
 DEVICE_MAP=auto
 # LOAD_IN_8BIT=true
 ```
+
+### CODE-LLAMA-INSTRUCT
+
+TheBloke/CodeLlama-7B-Instruct-fp16
+
+```shell
+MODEL_NAME=code-llama
+MODEL_PATH=TheBloke/CodeLlama-7B-Instruct-fp16
+```
