@@ -1,7 +1,6 @@
-""" Adapted from https://github.com/QwenLM/Qwen-7B/blob/main/examples/react_demo.py """
+""" Adapted from https://github.com/InternLM/lagent/blob/main/lagent/agents/react.py """
 
 import json
-import os
 
 from langchain.llms import OpenAI
 
@@ -12,29 +11,28 @@ llm = OpenAI(
     openai_api_key="xxx",
 )
 
-
-# 将一个插件的关键信息拼接成一段文本的模版。
 TOOL_DESC = """{name_for_model}: Call this tool to interact with the {name_for_human} API. What is the {name_for_human} API useful for? {description_for_model} Parameters: {parameters}"""
 
-# ReAct prompting 的 instruction 模版，将包含插件的详细信息。
-PROMPT_REACT = """Answer the following questions as best you can. You have access to the following tools:
-
+PROMPT_REACT = """你是一个可以调用外部工具的助手，可以使用的工具包括：
 {tools_text}
+如果使用工具请遵循以下格式回复：
+```
+Thought: 思考你当前步骤需要解决什么问题，是否需要使用工具
+Action: 工具名称，你的工具必须从 [{tools_name_text}] 选择
+ActionInput: 工具输入参数
+```
+工具返回按照以下格式回复：
+```
+Response: 调用工具后的结果
+```
+如果你已经知道了答案，或者你不需要工具，请遵循以下格式回复
+```
+Thought: 给出最终答案的思考过程
+FinalAnswer: 最终答案
+```
+开始!
 
-Use the following format:
-
-Question: the input question you must answer
-Thought: you should always think about what to do
-Action: the action to take, should be one of [{tools_name_text}]
-Action Input: the input to the action
-Observation: the result of the action
-... (this Thought/Action/Action Input/Observation can be repeated zero or more times)
-Thought: I now know the final answer
-Final Answer: the final answer to the original input question
-
-Begin!
-
-Question: {query}"""
+问题: {query}"""
 
 
 def llm_with_plugin(prompt: str, history, list_of_plugin_info=()):
@@ -57,13 +55,13 @@ def llm_with_plugin(prompt: str, history, list_of_plugin_info=()):
 
     text = ""
     while True:
-        output = text_completion(planning_prompt + text, stop_words=["Observation:", "Observation:\n"])
+        output = llm(planning_prompt + text, stop=["Response:"])
         action, action_input, output = parse_latest_plugin_call(output)
         if action:  # 需要调用插件
             # action、action_input 分别为需要调用的插件代号、输入参数
             # observation是插件返回的结果，为字符串
             observation = call_plugin(action, action_input)
-            output += f"\nObservation: {observation}\nThought:"
+            output += f"\nResponse: {observation}\nThought:"
             text += output
         else:  # 生成结束，并且不再需要调用插件
             text += output
@@ -97,9 +95,7 @@ def build_input_text(chat_history, list_of_plugin_info) -> str:
     # 候选插件的代号
     tools_name_text = ", ".join([plugin_info["name_for_model"] for plugin_info in list_of_plugin_info])
 
-    im_start = "<|im_start|>"
-    im_end = "<|im_end|>"
-    prompt = f"{im_start}system\nYou are a helpful assistant.{im_end}"
+    prompt = ""
     for i, (query, response) in enumerate(chat_history):
         if list_of_plugin_info:  # 如果有候选插件
             # 倒数第一轮或倒数第二轮对话填入详细的插件信息，但具体什么位置填可以自行判断
@@ -109,74 +105,65 @@ def build_input_text(chat_history, list_of_plugin_info) -> str:
                     tools_name_text=tools_name_text,
                     query=query,
                 )
-        query = query.lstrip("\n").rstrip()  # 重要！若不 strip 会与训练时数据的构造方式产生差异。
-        response = response.lstrip("\n").rstrip()  # 重要！若不 strip 会与训练时数据的构造方式产生差异。
+        query = query.lstrip("\n").rstrip()
+        response = response.lstrip("\n").rstrip()
         # 使用续写模式（text completion）时，需要用如下格式区分用户和AI：
-        prompt += f"\n{im_start}user\n{query}{im_end}"
-        prompt += f"\n{im_start}assistant\n{response}{im_end}"
+        prompt += f"\n<s><|User|>:{query}<eoh>"
+        prompt += f"\n<|Bot|>:{response}<eoa>"
 
-    assert prompt.endswith(f"\n{im_start}assistant\n{im_end}")
-    prompt = prompt[: -len(f"{im_end}")]
+    assert prompt.endswith("\n<|Bot|>:<eoa>")
+    prompt = prompt[1: -len("<eoa>")]
     return prompt
 
 
 def text_completion(input_text: str, stop_words) -> str:  # 作为一个文本续写模型来使用
-    im_end = "<|im_end|>"
-    if im_end not in stop_words:
-        stop_words = stop_words + [im_end]
     return llm(input_text, stop=stop_words)  # 续写 input_text 的结果，不包含 input_text 的内容
 
 
 def parse_latest_plugin_call(text):
     plugin_name, plugin_args = "", ""
     i = text.rfind("\nAction:")
-    j = text.rfind("\nAction Input:")
-    k = text.rfind("\nObservation:")
+    j = text.rfind("\nActionInput:")
+    k = text.rfind("\nResponse:")
+
     if 0 <= i < j:  # If the text has `Action` and `Action input`,
         if k < j:  # but does not contain `Observation`,
             # then it is likely that `Observation` is ommited by the LLM,
             # because the output text may have discarded the stop word.
-            text = text.rstrip() + "\nObservation:"  # Add it back.
-        k = text.rfind("\nObservation:")
+            text = text.rstrip() + "\nResponse:"  # Add it back.
+        k = text.rfind("\nResponse:")
         plugin_name = text[i + len("\nAction:"): j].strip()
-        plugin_args = text[j + len("\nAction Input:"): k].strip()
+        plugin_args = text[j + len("\nActionInput:"): k].strip()
         text = text[:k]
     return plugin_name, plugin_args, text
 
 
 def call_plugin(plugin_name: str, plugin_args: str) -> str:
     """ 请开发者自行完善这部分内容。这里的参考实现仅是 demo 用途，非生产用途 """
-    if plugin_name == "google_search":
-        # 使用 SerpAPI 需要在这里填入您的 SERPAPI_API_KEY！
-        os.environ["SERPAPI_API_KEY"] = os.getenv("SERPAPI_API_KEY", default="")
-        from langchain import SerpAPIWrapper
-
-        return SerpAPIWrapper().run(json.loads(plugin_args)["search_query"])
-    elif plugin_name == "image_gen":
+    if plugin_name == "image_gen":
         import urllib.parse
 
         prompt = json.loads(plugin_args)["prompt"]
         prompt = urllib.parse.quote(prompt)
         return json.dumps({"image_url": f"https://image.pollinations.ai/prompt/{prompt}"}, ensure_ascii=False)
+    elif plugin_name == "calculate_quad":
+        from scipy import integrate
+
+        def calculate_quad(formula_str: str, a: float, b: float) -> float:
+            """ 计算数值积分 """
+            return integrate.quad(eval('lambda x: ' + formula_str.split("=")[-1]), a, b)[0]
+
+        plugin_args = json.loads(plugin_args)
+        for k in ["a", "b"]:
+            if k in plugin_args:
+                plugin_args[k] = float(plugin_args[k])
+        return calculate_quad(**plugin_args)
     else:
         raise NotImplementedError
 
 
 def test():
     tools = [
-        {
-            "name_for_human": "谷歌搜索",
-            "name_for_model": "google_search",
-            "description_for_model": "谷歌搜索是一个通用搜索引擎，可用于访问互联网、查询百科知识、了解时事新闻等。",
-            "parameters": [
-                {
-                    "name": "search_query",
-                    "description": "搜索关键词或短语",
-                    "required": True,
-                    "schema": {"type": "string"},
-                }
-            ],
-        },
         {
             "name_for_human": "文生图",
             "name_for_model": "image_gen",
@@ -190,55 +177,70 @@ def test():
                 }
             ],
         },
+        {
+            "name_for_human": "积分计算器",
+            "name_for_model": "calculate_quad",
+            "description_for_model": "积分计算器是一个可以计算给定区间内函数定积分数值的工具。",
+            "parameters": [
+                {
+                    "name": 'formula_str',
+                    "description": '一个数学函数的表达式，例如x**2+x',
+                    "required": True,
+                    "schema": {"type": "string"},
+                },
+                {
+                    "name": "a",
+                    "description": "积分区间的左端点，例如1.0",
+                    "required": True,
+                    "schema": {"type": "string"},
+                },
+                {
+                    "name": "b",
+                    "description": "积分区间的右端点，例如5.0",
+                    "required": True,
+                    "schema": {"type": "string"},
+                },
+            ],
+        },
     ]
     history = []
-    for query in ["你好", "谁是周杰伦", "他老婆是谁", "给我画个可爱的小猫吧，最好是黑猫"]:
+    for query in ["你好", "给我画个可爱的小猫吧，最好是黑猫", "函数f(x)=x**2在区间[0,5]上的定积分是多少？"]:
         print(f"User's Query:\n{query}\n")
         response, history = llm_with_plugin(prompt=query, history=history, list_of_plugin_info=tools)
-        print(f"Qwen's Response:\n{response}\n")
+        print(f"InternLM's Response:\n{response}\n")
 
 
 if __name__ == "__main__":
     test()
 
-"""如果执行成功，在终端下应当能看到如下输出：
+"""
 User's Query:
 你好
 
-Qwen's Response:
-Thought: 提供的工具对回答该问题帮助较小，我将不使用工具直接作答。
-Final Answer: 你好！很高兴见到你。有什么我可以帮忙的吗？
-
-User's Query:
-谁是周杰伦
-
-Qwen's Response:
-Thought: 我应该使用Google搜索查找相关信息。
-Action: google_search
-Action Input: {"search_query": "周杰伦"}
-Observation: Jay Chou is a Taiwanese singer, songwriter, record producer, rapper, actor, television personality, and businessman.
-Thought: I now know the final answer.
-Final Answer: 周杰伦（Jay Chou）是一位来自台湾的歌手、词曲创作人、音乐制作人、说唱歌手、演员、电视节目主持人和企业家。他以其独特的音乐风格和才华在华语乐坛享有很高的声誉。
-
-User's Query:
-他老婆是谁
-
-Qwen's Response:
-Thought: 我应该使用Google搜索查找相关信息。
-Action: google_search
-Action Input: {"search_query": "周杰伦 老婆"}
-Observation: Hannah Quinlivan
-Thought: I now know the final answer.
-Final Answer: 周杰伦的老婆是Hannah Quinlivan，她是一位澳大利亚籍的模特和演员。两人于2015年结婚，并育有一子。
+InternLM's Response:
+Thought: 这是一个问候语，不需要调用任何工具。
+FinalAnswer: 您好！有什么我可以帮助您的吗？
 
 User's Query:
 给我画个可爱的小猫吧，最好是黑猫
 
-Qwen's Response:
-Thought: 我应该使用文生图API来生成一张可爱的小猫图片。
+InternLM's Response:
+Thought: 这是一道基于语言的图像生成任务，需要使用文生图 API。
 Action: image_gen
-Action Input: {"prompt": "cute black cat"}
-Observation: {"image_url": "https://image.pollinations.ai/prompt/cute%20black%20cat"}
-Thought: I now know the final answer.
-Final Answer: 生成的可爱小猫图片的URL为https://image.pollinations.ai/prompt/cute%20black%20cat。你可以点击这个链接查看图片。
+ActionInput: {"prompt": "一只黑猫"}
+Response: {"image_url": "https://image.pollinations.ai/prompt/%E4%B8%80%E5%8F%AA%E9%BB%91%E7%8C%AB"}
+Thought: Base on the result of the code, the answer is:
+FinalAnswer: 根据您的要求，我使用文生图 API 为您生成了一只黑猫。以下是它的图片链接：https://image.pollinations.ai/prompt/%E4%B8%80%E5%8F%AA%E9%BB%91%E7%8C%AB
+
+
+User's Query:
+函数f(x)=x**2在区间[0,5]上的定积分是多少？
+
+InternLM's Response:
+Thought: 这是一道基于积分的数学问题，需要使用积分计算器来计算。
+Action: calculate_quad
+ActionInput: {"formula_str": "f(x)=x**2", "a": "0", "b": "5"}
+Response: 41.66666666666666
+Thought: Base on the result of the code, the answer is:
+FinalAnswer: 函数f(x)=x**2在区间[0,5]上的定积分是41.66666666666666。
 """
