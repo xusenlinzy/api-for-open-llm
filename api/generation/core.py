@@ -77,7 +77,6 @@ def generate_stream(
 
     past_key_values = None
     sent_interrupt = False
-    first_tokens = None
     for i in range(max_new_tokens):
         if i == 0:  # prefill
             if model.config.is_encoder_decoder:
@@ -130,23 +129,13 @@ def generate_stream(
             last_token_logits = last_token_logits.float().to("cpu")
 
         if temperature < 1e-5 or top_p < 1e-8:  # greedy
-            if i == 0:
-                first_token_probs = torch.softmax(last_token_logits, dim=-1)
-                first_token_probs, first_token_indices = torch.topk(first_token_probs, k=10, largest=True, sorted=True)
-                topk_tokens = [tokenizer.decode(int(i)) for i in first_token_indices]
-
-                first_tokens = {}
-                for t, p in zip(topk_tokens, first_token_probs.tolist()):
-                    if t in first_tokens and p < first_tokens[t]:
-                        continue
-                    first_tokens[t] = p
-
             _, indices = torch.topk(last_token_logits, 2)
             tokens = [int(index) for index in indices.tolist()]
         else:
             probs = torch.softmax(last_token_logits, dim=-1)
             indices = torch.multinomial(probs, num_samples=2)
             tokens = [int(token) for token in indices.tolist()]
+
         token = tokens[0]
         output_ids.append(token)
 
@@ -202,7 +191,6 @@ def generate_stream(
                         "prompt_tokens": input_echo_len,
                         "completion_tokens": i,
                         "total_tokens": input_echo_len + i,
-                        "first_tokens": first_tokens
                     },
                     "finish_reason": None,
                 }
@@ -224,7 +212,6 @@ def generate_stream(
             "prompt_tokens": input_echo_len,
             "completion_tokens": i,
             "total_tokens": input_echo_len + i,
-            "first_tokens": first_tokens
         },
         "finish_reason": finish_reason,
     }

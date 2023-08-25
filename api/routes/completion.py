@@ -8,6 +8,7 @@ from fastapi.responses import StreamingResponse
 from loguru import logger
 
 from api.models import GENERATE_MDDEL
+from api.routes.utils import check_requests, create_error_response
 from api.utils.protocol import (
     ChatMessage,
     CompletionRequest,
@@ -16,7 +17,6 @@ from api.utils.protocol import (
     UsageInfo,
 )
 from api.utils.protocol import CompletionResponse, CompletionResponseChoice
-from api.routes.utils import check_requests, create_error_response
 
 completion_router = APIRouter()
 
@@ -67,9 +67,7 @@ async def create_completion(request: CompletionRequest):
 
             task_usage = UsageInfo.parse_obj(content["usage"])
             for usage_key, usage_value in task_usage.dict().items():
-                if usage_key != "first_tokens":
-                    setattr(usage, usage_key, getattr(usage, usage_key) + usage_value)
-            usage.first_tokens = content["usage"].get("first_tokens", None)
+                setattr(usage, usage_key, getattr(usage, usage_key) + usage_value)
 
         logger.info(f"consume time  = {(time.time() - start_time)}s, response = {str(choices)}")
         return CompletionResponse(
