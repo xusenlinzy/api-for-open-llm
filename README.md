@@ -20,6 +20,9 @@
 
 ## 📢 News
 
++ 【2023.08.26】 支持 [code-llama](https://github.com/facebookresearch/codellama) 模型 ，启动方式见 [code-llama](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#code-llama)，使用示例见 [examples](./examples/code-llama)
+
+
 + 【2023.08.23】 支持 [sqlcoder](https://huggingface.co/defog/sqlcoder) 模型 ，启动方式见 [sqlcoder](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#sqlcoder)，使用方式见 [inference](./examples/sqlcoder/inference.py)
 
 

@@ -168,6 +168,10 @@ class CompletionRequest(BaseModel):
     ignore_eos: Optional[bool] = False
     use_beam_search: Optional[bool] = False
 
+    # Additional parameters support for code llama infilling
+    infilling: Optional[bool] = False
+    suffix_first: Optional[bool] = False
+
 
 class CompletionResponseChoice(BaseModel):
     index: int

@@ -370,7 +370,7 @@ class Llama2ChatPromptAdapter(BasePromptAdapter):
     }
 
     def match(self, model_name):
-        return "llama2" in model_name
+        return "llama2" in model_name or "code-llama" in model_name
 
     def generate_prompt(self, messages: List[ChatMessage]) -> str:
         prompt = """You are a helpful, respectful and honest assistant. Always answer as helpfully as possible, while being safe.  Your answers should not include any harmful, unethical, racist, sexist, toxic, dangerous, or illegal content. Please ensure that your responses are socially unbiased and positive in nature.

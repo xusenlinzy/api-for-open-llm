@@ -17,6 +17,8 @@ from transformers import (
 )
 from transformers.utils.versions import require_version
 
+from api.apapter.tokenizer import CodeLlamaTokenizer
+
 if sys.version_info >= (3, 9):
     from functools import cache
 else:
@@ -441,6 +443,20 @@ class XverseModelAdapter(BaseModelAdapter):
         return "xverse/XVERSE-13B-Chat"
 
 
+class CodeLlamaModelAdapter(LlamaModelAdapter):
+    """ https://github.com/project-baize/baize-chatbot """
+
+    model_names = ["code-llama"]
+
+    @property
+    def tokenizer_class(self):
+        return CodeLlamaTokenizer
+
+    @property
+    def model_kwargs(self):
+        return {"low_cpu_mem_usage": True}
+
+
 register_model_adapter(ChatglmModelAdapter)
 register_model_adapter(LlamaModelAdapter)
 register_model_adapter(MossModelAdapter)
@@ -455,6 +471,7 @@ register_model_adapter(InternLMModelAdapter)
 register_model_adapter(AquilaModelAdapter)
 register_model_adapter(QwenModelAdapter)
 register_model_adapter(XverseModelAdapter)
+register_model_adapter(CodeLlamaModelAdapter)
 
 # After all adapters, try the default base adapter.
 register_model_adapter(BaseModelAdapter)

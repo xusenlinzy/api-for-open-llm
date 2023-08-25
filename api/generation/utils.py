@@ -54,7 +54,7 @@ def is_partial_stop(output: str, stop_str: str):
 
 # Models don't use the same configuration key for determining the maximum
 # sequence length.  Store them here so we can sanely check them.
-# NOTE: The ordering here is important.  Some models have two of these and we
+# NOTE: The ordering here is important.  Some models have two of these, and we
 # have a preference for which value gets used.
 SEQUENCE_LENGTH_KEYS = [
     "max_sequence_length",

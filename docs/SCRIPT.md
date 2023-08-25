@@ -241,7 +241,7 @@ DEVICE_MAP=auto
 # LOAD_IN_8BIT=true
 ```
 
-### CODE-LLAMA-INSTRUCT
+### CODE-LLAMA
 
 TheBloke/CodeLlama-7B-Instruct-fp16
 

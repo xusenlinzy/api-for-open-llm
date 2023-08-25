@@ -45,6 +45,8 @@ async def create_completion(request: CompletionRequest):
                 echo=request.echo,
                 stream=request.stream,
                 stop=request.stop,
+                infilling=request.infilling,
+                suffix_first=request.suffix_first,
             )
             for i in range(request.n):
                 content = GENERATE_MDDEL.generate_gate(gen_params)
@@ -86,6 +88,8 @@ def get_gen_params(
     stream: Optional[bool],
     stop: Optional[Union[str, List[str]]] = None,
     with_function_call: Optional[bool] = False,
+    infilling: Optional[bool] = False,
+    suffix_first: Optional[bool] = False,
 ) -> Dict[str, Any]:
     if not max_tokens:
         max_tokens = 1024
@@ -99,6 +103,8 @@ def get_gen_params(
         "echo": echo,
         "stream": stream,
         "with_function_call": with_function_call,
+        "infilling": infilling,
+        "suffix_first": suffix_first,
     }
 
     if GENERATE_MDDEL.stop is not None:
@@ -136,6 +142,8 @@ async def generate_completion_stream_generator(request: CompletionRequest):
                 echo=request.echo,
                 stream=request.stream,
                 stop=request.stop,
+                infilling=request.infilling,
+                suffix_first=request.suffix_first,
             )
 
             for content in GENERATE_MDDEL.generate_stream_gate(payload):
