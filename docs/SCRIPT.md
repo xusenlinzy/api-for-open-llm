@@ -55,10 +55,10 @@ pip install -r requirements.txt
 + `PROMPT_NAME`（可选项）: 使用的对话模板名称，如果不指定，则将根据模型名找到对应的模板
 
 
-+ `PATCH_TYPE`（可选项）: 用来扩展 `llama` 模型上下文长度的长度，支持 `attention` 和 `ntk`
++ `PATCH_TYPE`（可选项）: 用来扩展 `llama` 模型上下文长度，支持 `attention` 和 `ntk`
 
 
-+ `ALPHA`（可选项）: 用来扩展 `llama` 模型上下文长度的长度，默认为 `auto`
++ `ALPHA`（可选项）: 用来扩展 `llama` 模型上下文长度，默认为 `auto`
 
 
 
