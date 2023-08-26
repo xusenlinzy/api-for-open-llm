@@ -454,12 +454,8 @@ class CodeLlamaModelAdapter(LlamaModelAdapter):
             return CodeLlamaTokenizer
         except ImportError:
             logger.error(
-                "transformers is not installed correctly. Please use the following command to install Xformers\npip install git+https://github.com/huggingface/transformers.git."
+                "transformers is not installed correctly. Please use the following command to install transformers\npip install git+https://github.com/huggingface/transformers.git."
             )
-
-    @property
-    def model_kwargs(self):
-        return {"low_cpu_mem_usage": True}
 
 
 register_model_adapter(ChatglmModelAdapter)

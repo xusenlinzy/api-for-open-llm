@@ -79,6 +79,7 @@ async def create_completion(raw_request: Request):
 
     created_time = int(time.time())
     try:
+        request.stop = request.stop or []
         if isinstance(request.stop, str):
             request.stop = [request.stop]
         if request.infilling:

@@ -1,4 +1,4 @@
-""" https://github.com/facebookresearch/codellama/blob/main/example_completion.py """
+""" https://github.com/facebookresearch/codellama/blob/main/example_infilling.py """
 
 from langchain.llms import OpenAI
 

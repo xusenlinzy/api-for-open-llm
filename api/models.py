@@ -88,7 +88,7 @@ def get_vllm_engine():
             engine.engine.tokenizer = CodeLlamaTokenizer.from_pretrained(engine_args.tokenizer)
         except ImportError:
             logger.error(
-                "transformers is not installed correctly. Please use the following command to install Xformers\npip install git+https://github.com/huggingface/transformers.git."
+                "transformers is not installed correctly. Please use the following command to install transformers\npip install git+https://github.com/huggingface/transformers.git."
             )
     else:
         engine.engine.tokenizer = get_tokenizer(
