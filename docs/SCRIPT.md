@@ -55,13 +55,11 @@ pip install -r requirements.txt
 + `PROMPT_NAME`（可选项）: 使用的对话模板名称，如果不指定，则将根据模型名找到对应的模板
 
 
-+ `PATCH_TYPE`（可选项）: 用来扩展 `llama` 模型上下文长度的长度，支持 [`ntk`](https://kexue.fm/archives/9706) 和 [`rerope`](https://spaces.ac.cn/archives/9708)
++ `PATCH_TYPE`（可选项）: 用来扩展 `llama` 模型上下文长度的长度，支持 `attention` 和 `ntk`
 
 
-+ `TRAINING_LENGTH`（可选项）: 用来扩展 `llama` 模型上下文长度的长度，训练长度
++ `ALPHA`（可选项）: 用来扩展 `llama` 模型上下文长度的长度，默认为 `auto`
 
-
-+ `WINDOW_SIZE`（可选项）: 用来扩展 `llama` 模型上下文长度的长度，窗口大小，小于训练长度
 
 
 ### 启动方式

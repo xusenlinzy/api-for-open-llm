@@ -14,17 +14,17 @@ from api.utils.protocol import ChatMessage, Role
 
 def parse_messages(messages: List[ChatMessage], split_role=Role.USER) -> Tuple[str, List[List[ChatMessage]]]:
     system, rounds = "", []
-    round = []
+    r = []
     for i, message in enumerate(messages):
         if message.role == Role.SYSTEM:
             system = message.content
             continue
-        if message.role == split_role and round:
-            rounds.append(round)
-            round = []
-        round.append(message)
-    if round:
-        rounds.append(round)
+        if message.role == split_role and r:
+            rounds.append(r)
+            r = []
+        r.append(message)
+    if r:
+        rounds.append(r)
     return system, rounds
 
 

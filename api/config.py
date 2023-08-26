@@ -1,6 +1,7 @@
 import os
-from loguru import logger
+
 import dotenv
+from loguru import logger
 
 dotenv.load_dotenv()
 
@@ -31,8 +32,7 @@ DEFAULTS = {
     'PROMPT_NAME': '',
 
     'PATCH_TYPE': '',
-    'TRAINING_LENGTH': 4096,
-    'WINDOW_SIZE': 512,
+    'ALPHA': 'auto',
 
     'API_PREFIX': '/v1',
 
@@ -85,8 +85,7 @@ class Config:
         self.PROMPT_NAME = get_env('PROMPT_NAME') if get_env('PROMPT_NAME') else None
 
         self.PATCH_TYPE = get_env('PATCH_TYPE') if get_env('PATCH_TYPE') else None
-        self.TRAINING_LENGTH = int(get_env('TRAINING_LENGTH'))
-        self.WINDOW_SIZE = int(get_env('WINDOW_SIZE'))
+        self.ALPHA = get_env('ALPHA')
 
         self.API_PREFIX = get_env('API_PREFIX')
 

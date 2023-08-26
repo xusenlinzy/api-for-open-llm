@@ -19,9 +19,9 @@ def build_baichuan_chat_input(
     max_history_tokens = max_input_tokens - len(system_tokens)
 
     history_tokens = []
-    for round in rounds[::-1]:
+    for r in rounds[::-1]:
         round_tokens = []
-        for message in round:
+        for message in r:
             if message.role == Role.USER:
                 round_tokens.append(195)
             else:

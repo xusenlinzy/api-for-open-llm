@@ -24,9 +24,9 @@ def build_xverse_chat_input(
     max_history_tokens = max_input_tokens - len(system_tokens)
 
     history_tokens = []
-    for i, round in enumerate(rounds[::-1]):
+    for i, r in enumerate(rounds[::-1]):
         round_tokens = []
-        for message in round:
+        for message in r:
             if message.role == Role.USER:
                 content = f"{message.content}\n\n"
                 if i == 0:

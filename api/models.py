@@ -4,24 +4,26 @@ from sentence_transformers import SentenceTransformer
 
 from api.apapter import get_prompt_adapter
 from api.config import config
-from api.generation import ModelServer
 
 
-def get_embedding_model():
+def get_embedding_model() -> SentenceTransformer:
+    """ get embedding model from sentence-transformers. """
     return SentenceTransformer(config.EMBEDDING_NAME, device=config.EMBEDDING_DEVICE)
 
 
 def get_generate_model():
+    """ get generate model for chat or completion. """
+    from api.generation import ModelServer
     from api.apapter.model import load_model
 
-    if config.PATCH_TYPE == "rerope":
-        from api.utils.patches import apply_rerope_patch
+    if config.PATCH_TYPE == "attention":
+        from api.utils.patches import apply_attention_patch
 
-        apply_rerope_patch(config.TRAINING_LENGTH, config.WINDOW_SIZE)
-    elif config.PATCH_TYPE == "ntk":
+        apply_attention_patch(use_memory_efficient_attention=True)
+    if config.PATCH_TYPE == "ntk":
         from api.utils.patches import apply_ntk_scaling_patch
 
-        apply_ntk_scaling_patch(config.TRAINING_LENGTH)
+        apply_ntk_scaling_patch(config.ALPHA)
 
     model, tokenizer = load_model(
         config.MODEL_NAME,
@@ -47,7 +49,8 @@ def get_generate_model():
     )
 
 
-def get_context_len(model_config):
+def get_context_len(model_config) -> int:
+    """ fix for model max length. """
     if "qwen" in config.MODEL_NAME.lower():
         max_model_len = config.CONTEXT_LEN or 8192
     else:
@@ -56,6 +59,7 @@ def get_context_len(model_config):
 
 
 def get_vllm_engine():
+    """ get vllm generate engine for chat or completion. """
     try:
         from vllm.engine.arg_utils import AsyncEngineArgs
         from vllm.engine.async_llm_engine import AsyncLLMEngine
@@ -88,6 +92,7 @@ def get_vllm_engine():
         engine.engine.model_config.hf_config.eos_token_id = engine.encode_tokenizer.eos_token_id
         engine.engine.model_config.hf_config.pad_token_id = engine.encode_tokenizer.pad_token_id
 
+    # prompt adapter for constructing model inputs
     engine.prompt_adapter = get_prompt_adapter(
         config.MODEL_NAME.lower(),
         prompt_name=config.PROMPT_NAME.lower() if config.PROMPT_NAME else None
@@ -103,4 +108,4 @@ def get_vllm_engine():
 EMBEDDED_MODEL = get_embedding_model() if config.EMBEDDING_NAME else None  # model for embedding
 GENERATE_MDDEL = get_generate_model() if not config.USE_VLLM else None  # model for transformers generate
 VLLM_ENGINE = get_vllm_engine() if config.USE_VLLM else None   # model for vllm generate
-EXCLUDE_MODELS = ["baichuan-13b", "qwen"]
+EXCLUDE_MODELS = ["baichuan-13b", "qwen"]  # model names for special processing

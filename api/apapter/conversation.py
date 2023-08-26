@@ -18,10 +18,18 @@ class BasePromptAdapter:
     assistant_prompt: str = "{}\n"
     stop = None
 
-    def match(self, model_name):
+    def match(self, model_name) -> bool:
         return True
 
     def generate_prompt(self, messages: List[ChatMessage]) -> str:
+        """Covert messages into a prompt string.
+
+        Args:
+            messages (List[ChatMessage]): The conversation message in previous runs.
+
+        Returns:
+            string: formated prompt.
+        """
         prompt = self.system_prompt
         user_content = []
         for message in messages:
@@ -71,7 +79,7 @@ class ChatGLMPromptAdapter(BasePromptAdapter):
     user_prompt = "问：{}\n答："
     assistant_prompt = "{}\n"
 
-    def match(self, model_name):
+    def match(self, model_name) -> bool:
         return model_name == "chatglm"
 
     def generate_prompt(self, messages: List[ChatMessage]) -> str:
@@ -105,7 +113,7 @@ class ChatGLM2PromptAdapter(BasePromptAdapter):
     user_prompt = "问：{}\n\n答："
     assistant_prompt = "{}\n\n"
 
-    def match(self, model_name):
+    def match(self, model_name) -> bool:
         return model_name == "chatglm2"
 
     def generate_prompt(self, messages: List[ChatMessage]) -> str:
@@ -151,7 +159,7 @@ Capabilities and tools that MOSS can possess.
         "strings": ["<|Human|>", "<|MOSS|>"],
     }
 
-    def match(self, model_name):
+    def match(self, model_name) -> bool:
         return "moss" in model_name
 
 
@@ -162,7 +170,7 @@ class PhoenixPromptAdapter(BasePromptAdapter):
     user_prompt = "Human: <s>{}</s>Assistant: <s>"
     assistant_prompt = "{}</s>"
 
-    def match(self, model_name):
+    def match(self, model_name) -> bool:
         return "phoenix" in model_name
 
 
@@ -176,7 +184,7 @@ class AlpacaPromptAdapter(BasePromptAdapter):
         "strings": ["### Instruction", "### Response"],
     }
 
-    def match(self, model_name):
+    def match(self, model_name) -> bool:
         return "alpaca" in model_name or "tiger" in model_name or "anima" in model_name
 
 
@@ -187,7 +195,7 @@ class FireflyPromptAdapter(BasePromptAdapter):
     user_prompt = "<s>{}</s>"
     assistant_prompt = "{}</s>"
 
-    def match(self, model_name):
+    def match(self, model_name) -> bool:
         return "firefly" in model_name or "baichuan-7b" in model_name
 
 
@@ -205,7 +213,7 @@ class BaizePromptAdapter(BasePromptAdapter):
         "strings": ["[|Human|]", "[|AI|]"],
     }
 
-    def match(self, model_name):
+    def match(self, model_name) -> bool:
         return "baize" in model_name
 
 
@@ -216,7 +224,7 @@ class BellePromptAdapter(BasePromptAdapter):
     user_prompt = "Human: {}\n\nAssistant: "
     assistant_prompt = "{}\n\n"
 
-    def match(self, model_name):
+    def match(self, model_name) -> bool:
         return "belle" in model_name
 
 
@@ -230,7 +238,7 @@ class GuanacoPromptAdapter(BasePromptAdapter):
         "strings": ["### Human", "### Assistant", "##"],
     }
 
-    def match(self, model_name):
+    def match(self, model_name) -> bool:
         return "guanaco" in model_name
 
 
@@ -244,7 +252,7 @@ class YuLanChatPromptAdapter(BasePromptAdapter):
         "strings": ["[|Human|]", "[|AI|]"],
     }
 
-    def match(self, model_name):
+    def match(self, model_name) -> bool:
         return "yulan" in model_name
 
 
@@ -264,7 +272,7 @@ Buddy strictly refuses to discuss harmful, political, NSFW, illegal, abusive, of
     user_prompt = "User: {}\nAssistant: "
     assistant_prompt = "{}\n\n"
 
-    def match(self, model_name):
+    def match(self, model_name) -> bool:
         return "openbuddy" in model_name
 
 
@@ -278,7 +286,7 @@ class InternLMPromptAdapter(BasePromptAdapter):
         "strings": ["<|User|>", "<|Bot|>", "<eoa>"],
     }
 
-    def match(self, model_name):
+    def match(self, model_name) -> bool:
         return "internlm" in model_name
 
 
@@ -294,7 +302,7 @@ class BaiChuanPromptAdapter(BasePromptAdapter):
         "token_ids": [195, 196],
     }
 
-    def match(self, model_name):
+    def match(self, model_name) -> bool:
         return "baichuan-13b" in model_name
 
 
@@ -309,7 +317,7 @@ class StarChatPromptAdapter(BasePromptAdapter):
         "token_ids": [49152, 49153, 49154, 49155],
     }
 
-    def match(self, model_name):
+    def match(self, model_name) -> bool:
         return "starchat" in model_name or "starcode" in model_name
 
     def generate_prompt(self, messages: List[ChatMessage]) -> str:
@@ -339,7 +347,7 @@ class AquilaChatPromptAdapter(BasePromptAdapter):
         "strings": ["###", "[UNK]", "</s>"],
     }
 
-    def match(self, model_name):
+    def match(self, model_name) -> bool:
         return "aquila" in model_name
 
     def generate_prompt(self, messages: List[ChatMessage]) -> str:
@@ -369,7 +377,7 @@ class Llama2ChatPromptAdapter(BasePromptAdapter):
         "strings": ["[INST]", "[/INST]"],
     }
 
-    def match(self, model_name):
+    def match(self, model_name) -> bool:
         return "llama2" in model_name or "code-llama" in model_name
 
     def generate_prompt(self, messages: List[ChatMessage]) -> str:
@@ -403,7 +411,7 @@ class QwenPromptAdapter(BasePromptAdapter):
         "strings": ["<|im_end|>"],
     }
 
-    def match(self, model_name):
+    def match(self, model_name) -> bool:
         return "qwen" in model_name
 
 
@@ -415,7 +423,7 @@ class OctopackPromptAdapter(BasePromptAdapter):
     user_prompt = "Question:{}\n\nAnswer:"
     assistant_prompt = "{}\n\n"
 
-    def match(self, model_name):
+    def match(self, model_name) -> bool:
         return "starcoder-self-instruct" in model_name
 
 
@@ -427,7 +435,7 @@ class XversePromptAdapter(BasePromptAdapter):
     user_prompt = "Human: {}\n\nAssistant: "
     assistant_prompt = "{}<|endoftext|>"
 
-    def match(self, model_name):
+    def match(self, model_name) -> bool:
         return "xverse" in model_name
 
 
