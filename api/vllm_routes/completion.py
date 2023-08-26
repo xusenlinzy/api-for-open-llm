@@ -79,6 +79,11 @@ async def create_completion(raw_request: Request):
 
     created_time = int(time.time())
     try:
+        if isinstance(request.stop, str):
+            request.stop = [request.stop]
+        if request.infilling:
+            request.stop.append(VLLM_ENGINE.engine.tokenizer.eot_token.replace("▁", ""))
+
         sampling_params = SamplingParams(
             n=request.n,
             presence_penalty=request.presence_penalty,

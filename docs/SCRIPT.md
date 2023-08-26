@@ -241,9 +241,13 @@ DEVICE_MAP=auto
 
 ### CODE-LLAMA
 
-TheBloke/CodeLlama-7B-Instruct-fp16
+```shell
+pip install git+https://github.com/huggingface/transformers.git
+```
+
+codellama/CodeLlama-7b-Instruct-hf
 
 ```shell
 MODEL_NAME=code-llama
-MODEL_PATH=TheBloke/CodeLlama-7B-Instruct-fp16
+MODEL_PATH=codellama/CodeLlama-7b-Instruct-hf
 ```

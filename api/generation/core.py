@@ -58,9 +58,8 @@ def generate_stream(
         input_ids = build_xverse_chat_input(tokenizer, prompt, context_len, max_new_tokens)
     else:
         if infilling:
-            prefix, suffix = prompt.split("<FILL>")[0], prompt.split("<FILL>")[1]
-            input_ids = tokenizer.infilling_prompt_tokens(prefix, suffix, suffix_first=suffix_first)
-            stop_token_ids.append(tokenizer.eot_token_id)
+            input_ids = tokenizer(prompt, suffix_first=suffix_first).input_ids
+            stop_token_ids.append(tokenizer.eot_id)
         else:
             input_ids = tokenizer(prompt).input_ids
 
@@ -162,15 +161,12 @@ def generate_stream(
                 tmp_output_ids = output_ids[input_echo_len:]
                 rfind_start = 0
 
-            if infilling:
-                output = tokenizer.decode_infilling(tmp_output_ids)
-            else:
-                output = tokenizer.decode(
-                    tmp_output_ids,
-                    skip_special_tokens=False if check_is_qwen(model) else True,  # fix for qwen react
-                    spaces_between_special_tokens=False,
-                    clean_up_tokenization_spaces=True,
-                )
+            output = tokenizer.decode(
+                tmp_output_ids,
+                skip_special_tokens=False if check_is_qwen(model) else True,  # fix for qwen react
+                spaces_between_special_tokens=False,
+                clean_up_tokenization_spaces=True,
+            )
 
             partially_stopped = False
             if stop_str:

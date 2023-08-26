@@ -8,6 +8,7 @@ import torch
 from loguru import logger
 from peft import PeftModel
 from tqdm import tqdm
+
 from transformers import (
     AutoModel,
     AutoConfig,
@@ -16,8 +17,6 @@ from transformers import (
     BitsAndBytesConfig,
 )
 from transformers.utils.versions import require_version
-
-from api.apapter.tokenizer import CodeLlamaTokenizer
 
 if sys.version_info >= (3, 9):
     from functools import cache
@@ -450,7 +449,13 @@ class CodeLlamaModelAdapter(LlamaModelAdapter):
 
     @property
     def tokenizer_class(self):
-        return CodeLlamaTokenizer
+        try:
+            from transformers import CodeLlamaTokenizer
+            return CodeLlamaTokenizer
+        except ImportError:
+            logger.error(
+                "transformers is not installed correctly. Please use the following command to install Xformers\npip install git+https://github.com/huggingface/transformers.git."
+            )
 
     @property
     def model_kwargs(self):

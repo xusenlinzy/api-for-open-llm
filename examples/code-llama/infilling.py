@@ -7,23 +7,26 @@ llm = OpenAI(
     openai_api_base="http://192.168.0.53:7891/v1",
     openai_api_key="xxx",
     model_kwargs={"infilling": True},
+    max_tokens=128,
 )
+
+INFILL_TOKEN = "<FILL_ME>"
 
 
 def test():
     prompts = [
         '''def remove_non_ascii(s: str) -> str:
-    """ <FILL>
+    """ <FILL_ME>
     return result
 ''',
         """# Installation instructions:
     ```bash
-<FILL>
+<FILL_ME>
     ```
 This downloads the LLaMA inference code and installs the repository as a local pip package.
 """,
         """class InterfaceManagerFactory(AbstractManagerFactory):
-    def __init__(<FILL>
+    def __init__(<FILL_ME>
 def main():
     factory = InterfaceManagerFactory(start=datetime.now())
     managers = []
@@ -32,7 +35,7 @@ def main():
 """,
         """/-- A quasi-prefunctoid is 1-connected iff all its etalisations are 1-connected. -/
 theorem connected_iff_etalisation [C D : precategoroid] (P : quasi_prefunctoid C D) :
-  π₁ P = 0 ↔ <FILL> = 0 :=
+  π₁ P = 0 ↔ <FILL_ME> = 0 :=
 begin
   split,
   { intros h f,
@@ -54,7 +57,7 @@ end
         print("\n================= Prompt text =================\n")
         print(prompt)
         print("\n================= Filled text =================\n")
-        print(prompt.replace("<FILL>", result))
+        print(prompt.replace("<FILL_ME>", result))
 
 
 if __name__ == "__main__":

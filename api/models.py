@@ -1,5 +1,6 @@
 import asyncio
 
+from loguru import logger
 from sentence_transformers import SentenceTransformer
 
 from api.apapter import get_prompt_adapter
@@ -80,17 +81,21 @@ def get_vllm_engine():
     engine = AsyncLLMEngine.from_engine_args(engine_args)
 
     # A separate tokenizer to map token IDs to strings.
-    engine.encode_tokenizer = get_tokenizer(
-        engine_args.tokenizer,
-        tokenizer_mode=engine_args.tokenizer_mode,
-        trust_remote_code=True,
-    )
+    if "code-llama" in config.MODEL_NAME.lower():
+        try:
+            from transformers import CodeLlamaTokenizer
 
-    # fix llama config
-    model_type = getattr(engine.engine.model_config.hf_config, "model_type", "")
-    if model_type == "llama":
-        engine.engine.model_config.hf_config.eos_token_id = engine.encode_tokenizer.eos_token_id
-        engine.engine.model_config.hf_config.pad_token_id = engine.encode_tokenizer.pad_token_id
+            engine.engine.tokenizer = CodeLlamaTokenizer.from_pretrained(engine_args.tokenizer)
+        except ImportError:
+            logger.error(
+                "transformers is not installed correctly. Please use the following command to install Xformers\npip install git+https://github.com/huggingface/transformers.git."
+            )
+    else:
+        engine.engine.tokenizer = get_tokenizer(
+            engine_args.tokenizer,
+            tokenizer_mode=engine_args.tokenizer_mode,
+            trust_remote_code=True,
+        )
 
     # prompt adapter for constructing model inputs
     engine.prompt_adapter = get_prompt_adapter(
