@@ -28,6 +28,9 @@ def generate_stream(
     context_len: int,
     stream_interval: int = 2,
 ):
+    if hasattr(model, "device"):
+        device = model.device
+
     # Read parameters
     prompt = params["prompt"]
     temperature = float(params.get("temperature", 1.0))
