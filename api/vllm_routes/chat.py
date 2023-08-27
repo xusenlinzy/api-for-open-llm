@@ -5,7 +5,7 @@ from typing import AsyncGenerator, Optional
 from fastapi import APIRouter
 from fastapi import BackgroundTasks, Request
 from fastapi.responses import StreamingResponse
-from vllm.logger import init_logger
+from loguru import logger
 from vllm.outputs import RequestOutput
 from vllm.sampling_params import SamplingParams
 from vllm.utils import random_uuid
@@ -31,7 +31,6 @@ from api.utils.protocol import (
 )
 from api.vllm_routes.utils import create_error_response, get_gen_prompt, get_model_inputs
 
-logger = init_logger(__name__)
 chat_router = APIRouter(prefix="/chat")
 
 
@@ -46,7 +45,7 @@ async def create_chat_completion(request: ChatCompletionRequest, raw_request: Re
         - function_call (Users should implement this by themselves)
         - logit_bias (to be supported by vLLM engine)
     """
-    logger.info(f"Received chat completion request: {request}")
+    logger.info(f"Received chat messages: {request.messages}")
 
     with_function_call = check_function_call(request.messages, functions=request.functions)
     if with_function_call and "qwen" not in config.MODEL_NAME.lower():

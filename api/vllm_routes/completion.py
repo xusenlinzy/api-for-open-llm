@@ -5,7 +5,6 @@ from typing import AsyncGenerator, Optional
 from fastapi import APIRouter
 from fastapi import BackgroundTasks, Request
 from fastapi.responses import StreamingResponse
-from vllm.logger import init_logger
 from vllm.outputs import RequestOutput
 from vllm.sampling_params import SamplingParams
 from vllm.utils import random_uuid
@@ -25,7 +24,6 @@ from api.utils.protocol import (
 )
 from api.vllm_routes.utils import create_error_response, get_model_inputs
 
-logger = init_logger(__name__)
 completion_router = APIRouter()
 
 
@@ -43,7 +41,6 @@ async def create_completion(request: CompletionRequest, raw_request: Request):
           suffix)
         - logit_bias (to be supported by vLLM engine)
     """
-    logger.info(f"Received completion request: {request}")
 
     if request.echo:
         # We do not support echo since the vLLM engine does not
