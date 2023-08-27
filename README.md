@@ -60,17 +60,17 @@
 + 🚀 支持加载经过自行训练过的 `lora` 模型
 
 
-+ ⚡ 支持[vLLM](https://github.com/vllm-project/vllm) 推理加速和处理并发请求
++ ⚡ 支持 [vLLM](https://github.com/vllm-project/vllm) 推理加速和处理并发请求
 
 
 ## 内容导引
 
 |                                             章节                                              |            描述            |
 |:-------------------------------------------------------------------------------------------:|:------------------------:|
-|              [💁🏻‍♂支持模型](https://github.com/xusenlinzy/api-for-open-llm#支持模型)              |     此项目支持的开源模型以及简要信息     |
+|             [💁🏻‍♂支持模型](https://github.com/xusenlinzy/api-for-open-llm#-支持模型)              |     此项目支持的开源模型以及简要信息     |
 |     [🚄启动方式](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md)     |      启动模型的环境配置和启动命令      |
 | [⚡vLLM启动方式](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/VLLM_SCRIPT.md) | 使用 `vLLM` 启动模型的环境配置和启动命令 |
-|                [💻调用方式](https://github.com/xusenlinzy/api-for-open-llm#使用方式)                |       启动模型之后的调用方式        |
+|               [💻调用方式](https://github.com/xusenlinzy/api-for-open-llm#-使用方式)                |       启动模型之后的调用方式        |
 |       [❓常见问题](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/FAQ.md)       |        一些常见问题的回复         |
 
 
