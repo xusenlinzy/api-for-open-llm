@@ -25,13 +25,15 @@ docker build -f docker/Dockerfile.vllm -t llm-api:vllm .
 ```shell
 pip install -r requirements.txt
 pip install torch -U
-pip install git+https://github.com/vllm-project/vllm.git
+pip install vllm>=0.1.4
+# pip install git+https://github.com/vllm-project/vllm.git
+pip uninstall transformer-engine
 ```
 
 如不需要安装 `vLLM`，则只需要
 
 ```shell
-pip install torch==1.14
+pip install torch==1.13
 pip install -r requirements.txt
 ```
 

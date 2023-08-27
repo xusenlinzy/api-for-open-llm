@@ -1,14 +1,18 @@
 ## 环境配置
 
-使用 `docker` 或者本地环境二者之一
+使用 `docker` 或者本地环境两种方式之一，推荐使用 `docker`
 
 ### docker
+
+构建镜像
 
 ```shell
 docker build -f docker/Dockerfile -t llm-api:pytorch .
 ```
 
 ### 本地环境
+
+安装依赖
 
 ```shell
 pip install torch==1.13.1
@@ -66,6 +70,9 @@ pip install -r requirements.txt
 
 选择下面两种方式之一启动模型接口服务
 
+
+#### docker启动
+
 1. docker run
 
 **不同模型只需要将 [.env.example](../.env.example) 文件内容复制到 `.env` 文件中，然后修改 `.env` 文件中环境变量**
@@ -78,13 +85,41 @@ docker run -it -d --gpus all --ipc=host -p 7891:8000 --name=llm-api \
     python api/server.py
 ```
 
-2. docker-compose
+2. docker compose
 
 ```shell
 docker-compose up -d
 ```
 
-**其中环境变量修改内容参考下面的模型**
+#### 本地启动
+
+同样的，将 [.env.example](../.env.example) 文件内容复制到 `.env` 文件中，然后修改 `.env` 文件中环境变量
+
+```shell
+python api/server.py
+```
+
+
+## 环境变量修改参考
+
+**环境变量修改内容参考下面**
+
+|                                                        模型                                                        |
+|:----------------------------------------------------------------------------------------------------------------:|
+|        [code-llama](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#code-llama)        | 
+|          [sqlcoder](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#sqlcoder)          |
+|   [xverse-13b-chat](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#xverse-13b-chat)   |
+|      [qwen-7b-chat](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#qwen-7b-chat)      |
+|    [aquila-chat-7b](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#aquilachat-7b)     |
+|          [starchat](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#starchat)          |
+| [baichuan-13b-chat](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#baichuan-13b-chat) |
+|          [internlm](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#internlm)          |
+|       [baichuan-7b](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#baichuan-7b)       |
+|         [openbuddy](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#openbuddy)         |
+|           [chatglm](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#chatglm)           |
+|              [moss](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#moss)              |
+|           [phoenix](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#phoenix)           |
+|             [tiger](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#tiger)             |
 
 ### ChatGLM
 
