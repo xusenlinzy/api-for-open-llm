@@ -38,8 +38,9 @@ async def create_completion(request: CompletionRequest):
     request.stop = request.stop or []
     if isinstance(request.stop, str):
         request.stop = [request.stop]
-
     request.stop = list(set(stop + request.stop))
+
+    request.stop_token_ids = request.stop_token_ids or []
     request.stop_token_ids = list(set(stop_token_ids + request.stop_token_ids))
 
     if request.stream:

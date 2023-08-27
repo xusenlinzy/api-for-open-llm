@@ -68,8 +68,9 @@ async def create_chat_completion(request: ChatCompletionRequest):
     request.stop = request.stop or []
     if isinstance(request.stop, str):
         request.stop = [request.stop]
-
     request.stop = list(set(stop + request.stop))
+
+    request.stop_token_ids = request.stop_token_ids or []
     request.stop_token_ids = list(set(stop_token_ids + request.stop_token_ids))
 
     gen_params = dict(
