@@ -41,5 +41,5 @@ def build_baichuan_chat_input(
     return input_tokens[-max_input_tokens:]  # truncate left
 
 
-def check_is_baichuan(model):
+def check_is_baichuan(model) -> bool:
     return "BaichuanLayer" in getattr(model, "_no_split_modules", [])

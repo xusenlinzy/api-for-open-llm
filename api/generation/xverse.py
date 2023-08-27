@@ -47,5 +47,5 @@ def build_xverse_chat_input(
     return input_tokens[-max_input_tokens:]  # truncate left
 
 
-def check_is_xverse(model):
+def check_is_xverse(model) -> bool:
     return "XverseDecoderLayer" in getattr(model, "_no_split_modules", [])

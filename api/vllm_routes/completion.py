@@ -30,7 +30,7 @@ completion_router = APIRouter()
 
 
 @completion_router.post("/completions")
-async def create_completion(raw_request: Request):
+async def create_completion(request: CompletionRequest, raw_request: Request):
     """Completion API similar to OpenAI's API.
 
     See https://platform.openai.com/docs/api-reference/completions/create
@@ -43,7 +43,6 @@ async def create_completion(raw_request: Request):
           suffix)
         - logit_bias (to be supported by vLLM engine)
     """
-    request = CompletionRequest(**await raw_request.json())
     logger.info(f"Received completion request: {request}")
 
     if request.echo:
@@ -77,14 +76,21 @@ async def create_completion(raw_request: Request):
     if error_check_ret is not None:
         return error_check_ret
 
+    # stop settings
+    stop = []
+    if VLLM_ENGINE.prompt_adapter.stop is not None:
+        stop = VLLM_ENGINE.prompt_adapter.stop.get("strings", [])
+
+    request.stop = request.stop or []
+    if isinstance(request.stop, str):
+        request.stop = [request.stop]
+    request.stop = list(set(stop + request.stop))
+
+    if request.infilling:
+        request.stop.append(VLLM_ENGINE.engine.tokenizer.eot_token.replace("▁", ""))
+
     created_time = int(time.time())
     try:
-        request.stop = request.stop or []
-        if isinstance(request.stop, str):
-            request.stop = [request.stop]
-        if request.infilling:
-            request.stop.append(VLLM_ENGINE.engine.tokenizer.eot_token.replace("▁", ""))
-
         sampling_params = SamplingParams(
             n=request.n,
             presence_penalty=request.presence_penalty,

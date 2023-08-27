@@ -90,6 +90,9 @@ class ChatCompletionRequest(BaseModel):
     functions: Optional[List[ChatFunction]] = None
     function_call: Union[str, Dict[str, str]] = "auto"
 
+    # Additional parameters support for stop generation
+    stop_token_ids: Optional[List[int]] = None
+
     # Additional parameters supported by vLLM
     best_of: Optional[int] = None
     top_k: Optional[int] = -1
@@ -162,6 +165,9 @@ class CompletionRequest(BaseModel):
     presence_penalty: Optional[float] = 0.0
     frequency_penalty: Optional[float] = 0.0
     user: Optional[str] = None
+
+    # Additional parameters support for stop generation
+    stop_token_ids: Optional[List[int]] = None
 
     # Additional parameters supported by vLLM
     top_k: Optional[int] = -1

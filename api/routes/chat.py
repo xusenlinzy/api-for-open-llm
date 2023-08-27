@@ -1,6 +1,6 @@
 import json
 import secrets
-from typing import Generator, Optional, Union, Dict, List, Any
+from typing import Generator, Dict, Any
 
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
@@ -59,22 +59,36 @@ async def create_chat_completion(request: ChatCompletionRequest):
             request.function_call,
         )
 
-    gen_params = get_gen_params(
-        request.model,
-        messages,
+    # stop settings
+    stop, stop_token_ids = [], []
+    if GENERATE_MDDEL.stop is not None:
+        stop_token_ids = GENERATE_MDDEL.stop.get("token_ids", [])
+        stop = GENERATE_MDDEL.stop.get("strings", [])
+
+    request.stop = request.stop or []
+    if isinstance(request.stop, str):
+        request.stop = [request.stop]
+
+    request.stop = list(set(stop + request.stop))
+    request.stop_token_ids = list(set(stop_token_ids + request.stop_token_ids))
+
+    gen_params = dict(
+        model=request.model,
+        prompt=messages,
         temperature=request.temperature,
         top_p=request.top_p,
-        max_tokens=request.max_tokens,
+        max_tokens=request.max_tokens or 1024,
         echo=False,
         stream=request.stream,
+        stop_token_ids=request.stop_token_ids,
         stop=request.stop,
         with_function_call=with_function_call,
     )
 
+    logger.debug(f"==== request ====\n{gen_params}")
+
     if request.stream:
-        generator = chat_completion_stream_generator(
-            request.model, gen_params, request.n
-        )
+        generator = chat_completion_stream_generator(request.model, gen_params, request.n)
         return StreamingResponse(generator, media_type="text/event-stream")
 
     choices = []
@@ -103,50 +117,6 @@ async def create_chat_completion(request: ChatCompletionRequest):
             setattr(usage, usage_key, getattr(usage, usage_key) + usage_value)
 
     return ChatCompletionResponse(model=request.model, choices=choices, usage=usage)
-
-
-def get_gen_params(
-    model_name: str,
-    messages: Union[str, List[ChatMessage]],
-    *,
-    temperature: float,
-    top_p: float,
-    max_tokens: Optional[int],
-    echo: Optional[bool],
-    stream: Optional[bool],
-    stop: Optional[Union[str, List[str]]] = None,
-    with_function_call: Optional[bool] = False,
-) -> Dict[str, Any]:
-    if not max_tokens:
-        max_tokens = 1024
-
-    gen_params = {
-        "model": model_name,
-        "prompt": messages,
-        "temperature": temperature,
-        "top_p": top_p,
-        "max_new_tokens": max_tokens,
-        "echo": echo,
-        "stream": stream,
-        "with_function_call": with_function_call,
-    }
-
-    if GENERATE_MDDEL.stop is not None:
-        if "token_ids" in GENERATE_MDDEL.stop:
-            gen_params["stop_token_ids"] = GENERATE_MDDEL.stop["token_ids"]
-
-        if "strings" in GENERATE_MDDEL.stop:
-            gen_params["stop"] = GENERATE_MDDEL.stop["strings"]
-
-    if stop is not None:
-        if isinstance(stop, str):
-            stop = [stop]
-
-        gen_params["stop"] = gen_params["stop"] + stop if "stop" in gen_params else stop
-        gen_params["stop"] = list(set(gen_params["stop"]))
-
-    logger.debug(f"==== request ====\n{gen_params}")
-    return gen_params
 
 
 async def chat_completion_stream_generator(

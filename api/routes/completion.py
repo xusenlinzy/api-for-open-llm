@@ -1,7 +1,6 @@
 import json
 import secrets
 import time
-from typing import Optional, Union, Dict, List, Any
 
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
@@ -10,7 +9,6 @@ from loguru import logger
 from api.models import GENERATE_MDDEL
 from api.routes.utils import check_requests, create_error_response
 from api.utils.protocol import (
-    ChatMessage,
     CompletionRequest,
     CompletionResponseStreamChoice,
     CompletionStreamResponse,
@@ -26,9 +24,23 @@ async def create_completion(request: CompletionRequest):
     error_check_ret = check_requests(request)
     if error_check_ret is not None:
         return error_check_ret
+
     start_time = time.time()
     if isinstance(request.prompt, str):
         request.prompt = [request.prompt]
+
+    # stop settings
+    stop, stop_token_ids = [], []
+    if GENERATE_MDDEL.stop is not None:
+        stop_token_ids = GENERATE_MDDEL.stop.get("token_ids", [])
+        stop = GENERATE_MDDEL.stop.get("strings", [])
+
+    request.stop = request.stop or []
+    if isinstance(request.stop, str):
+        request.stop = [request.stop]
+
+    request.stop = list(set(stop + request.stop))
+    request.stop_token_ids = list(set(stop_token_ids + request.stop_token_ids))
 
     if request.stream:
         generator = generate_completion_stream_generator(request)
@@ -36,14 +48,15 @@ async def create_completion(request: CompletionRequest):
     else:
         text_completions = []
         for text in request.prompt:
-            gen_params = get_gen_params(
-                request.model,
-                text,
+            gen_params = dict(
+                model=request.model,
+                prompt=text,
                 temperature=request.temperature,
                 top_p=request.top_p,
-                max_tokens=request.max_tokens,
+                max_tokens=request.max_tokens or 1024,
                 echo=request.echo,
                 stream=request.stream,
+                stop_token_ids=request.stop_token_ids,
                 stop=request.stop,
                 infilling=request.infilling,
                 suffix_first=request.suffix_first,
@@ -77,54 +90,6 @@ async def create_completion(request: CompletionRequest):
         )
 
 
-def get_gen_params(
-    model_name: str,
-    messages: Union[str, List[ChatMessage]],
-    *,
-    temperature: float,
-    top_p: float,
-    max_tokens: Optional[int],
-    echo: Optional[bool],
-    stream: Optional[bool],
-    stop: Optional[Union[str, List[str]]] = None,
-    with_function_call: Optional[bool] = False,
-    infilling: Optional[bool] = False,
-    suffix_first: Optional[bool] = False,
-) -> Dict[str, Any]:
-    if not max_tokens:
-        max_tokens = 1024
-
-    gen_params = {
-        "model": model_name,
-        "prompt": messages,
-        "temperature": temperature,
-        "top_p": top_p,
-        "max_new_tokens": max_tokens,
-        "echo": echo,
-        "stream": stream,
-        "with_function_call": with_function_call,
-        "infilling": infilling,
-        "suffix_first": suffix_first,
-    }
-
-    if GENERATE_MDDEL.stop is not None:
-        if "token_ids" in GENERATE_MDDEL.stop:
-            gen_params["stop_token_ids"] = GENERATE_MDDEL.stop["token_ids"]
-
-        if "strings" in GENERATE_MDDEL.stop:
-            gen_params["stop"] = GENERATE_MDDEL.stop["strings"]
-
-    if stop is not None:
-        if isinstance(stop, str):
-            stop = [stop]
-
-        gen_params["stop"] = gen_params["stop"] + stop if "stop" in gen_params else stop
-        gen_params["stop"] = list(set(gen_params["stop"]))
-
-    logger.debug(f"==== request ====\n{gen_params}")
-    return gen_params
-
-
 async def generate_completion_stream_generator(request: CompletionRequest):
     model_name = request.model
     _id = f"cmpl-{secrets.token_hex(12)}"
@@ -133,14 +98,15 @@ async def generate_completion_stream_generator(request: CompletionRequest):
     for text in request.prompt:
         for i in range(request.n):
             previous_text = ""
-            payload = get_gen_params(
-                request.model,
-                text,
+            payload = dict(
+                model=request.model,
+                prompt=text,
                 temperature=request.temperature,
                 top_p=request.top_p,
-                max_tokens=request.max_tokens,
+                max_tokens=request.max_tokens or 1024,
                 echo=request.echo,
                 stream=request.stream,
+                stop_token_ids=request.stop_token_ids,
                 stop=request.stop,
                 infilling=request.infilling,
                 suffix_first=request.suffix_first,

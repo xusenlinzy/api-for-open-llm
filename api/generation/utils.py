@@ -1,6 +1,7 @@
 from typing import List
 from typing import Tuple
 
+from api.utils.protocol import ChatMessage, Role
 from transformers.generation.logits_process import (
     LogitsProcessorList,
     RepetitionPenaltyLogitsProcessor,
@@ -8,8 +9,6 @@ from transformers.generation.logits_process import (
     TopKLogitsWarper,
     TopPLogitsWarper,
 )
-
-from api.utils.protocol import ChatMessage, Role
 
 
 def parse_messages(messages: List[ChatMessage], split_role=Role.USER) -> Tuple[str, List[List[ChatMessage]]]:
@@ -65,7 +64,7 @@ SEQUENCE_LENGTH_KEYS = [
 ]
 
 
-def get_context_length(config):
+def get_context_length(config) -> int:
     """Get the context length of a model from a huggingface model config."""
     rope_scaling = getattr(config, "rope_scaling", None)
     if rope_scaling:

@@ -58,5 +58,5 @@ def build_qwen_chat_input(
     return input_tokens[-max_input_tokens:]  # truncate left
 
 
-def check_is_qwen(model):
+def check_is_qwen(model) -> bool:
     return "QWenBlock" in getattr(model, "_no_split_modules", [])

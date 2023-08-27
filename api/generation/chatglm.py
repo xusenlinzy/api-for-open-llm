@@ -31,7 +31,7 @@ def process_response(response):
     return response
 
 
-def check_is_chatglm(model):
+def check_is_chatglm(model) -> bool:
     return "GLMBlock" in getattr(model, "_no_split_modules", [])
 
 

@@ -424,26 +424,6 @@ class ModelServer:
             }
         return ret
 
-    @torch.inference_mode()
-    def get_other_embeddings(self, client, params):
-        try:
-            embeddings = client.encode(params["input"], normalize_embeddings=True)
-            ret = {
-                "embedding": embeddings.tolist(),
-                "token_num": sum([len(i) for i in params["input"]]),
-            }
-        except torch.cuda.OutOfMemoryError as e:
-            ret = {
-                "text": f"{server_error_msg}\n\n({e})",
-                "error_code": ErrorCode.CUDA_OUT_OF_MEMORY,
-            }
-        except (ValueError, RuntimeError) as e:
-            ret = {
-                "text": f"{server_error_msg}\n\n({e})",
-                "error_code": ErrorCode.INTERNAL_ERROR,
-            }
-        return ret
-
     @property
     def stop(self):
         return self.prompt_adapter.stop if hasattr(self.prompt_adapter, "stop") else None

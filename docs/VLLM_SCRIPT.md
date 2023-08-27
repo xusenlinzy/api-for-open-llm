@@ -117,3 +117,17 @@ MODEL_NAME=starcode
 MODEL_PATH=defog/sqlcoder
 TENSOR_PARALLEL_SIZE=2
 ```
+
+### CODE-LLAMA
+
+```shell
+pip install git+https://github.com/huggingface/transformers.git
+pip install git+https://github.com/vllm-project/vllm.git
+```
+
+codellama/CodeLlama-7b-Instruct-hf
+
+```shell
+MODEL_NAME=code-llama
+MODEL_PATH=codellama/CodeLlama-7b-Instruct-hf
+```

@@ -36,7 +36,7 @@ chat_router = APIRouter(prefix="/chat")
 
 
 @chat_router.post("/completions")
-async def create_chat_completion(raw_request: Request):
+async def create_chat_completion(request: ChatCompletionRequest, raw_request: Request):
     """Completion API similar to OpenAI's API.
 
     See  https://platform.openai.com/docs/api-reference/chat/create
@@ -46,7 +46,6 @@ async def create_chat_completion(raw_request: Request):
         - function_call (Users should implement this by themselves)
         - logit_bias (to be supported by vLLM engine)
     """
-    request = ChatCompletionRequest(**await raw_request.json())
     logger.info(f"Received chat completion request: {request}")
 
     with_function_call = check_function_call(request.messages, functions=request.functions)
@@ -75,27 +74,27 @@ async def create_chat_completion(raw_request: Request):
     if error_check_ret is not None:
         return error_check_ret
 
+    # stop settings
+    stop = []
+    if VLLM_ENGINE.prompt_adapter.stop is not None:
+        stop = VLLM_ENGINE.prompt_adapter.stop.get("strings", [])
+
+    request.stop = request.stop or []
+    if isinstance(request.stop, str):
+        request.stop = [request.stop]
+    request.stop = list(set(stop + request.stop))
+
     model_name = request.model
     request_id = f"cmpl-{random_uuid()}"
     created_time = int(time.time())
     try:
-        stop = []
-        if VLLM_ENGINE.prompt_adapter.stop is not None:
-            if "strings" in VLLM_ENGINE.prompt_adapter.stop:
-                stop = VLLM_ENGINE.prompt_adapter.stop["strings"]
-
-        if request.stop is not None:
-            if isinstance(request.stop, str):
-                request.stop = [request.stop]
-            stop.extend(request.stop)
-
         sampling_params = SamplingParams(
             n=request.n,
             presence_penalty=request.presence_penalty,
             frequency_penalty=request.frequency_penalty,
             temperature=request.temperature,
             top_p=request.top_p,
-            stop=list(set(stop)),
+            stop=request.stop,
             max_tokens=request.max_tokens,
             best_of=request.best_of,
             top_k=request.top_k,
