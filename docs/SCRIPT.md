@@ -286,3 +286,18 @@ codellama/CodeLlama-7b-Instruct-hf
 MODEL_NAME=code-llama
 MODEL_PATH=codellama/CodeLlama-7b-Instruct-hf
 ```
+
+### Wizard-Coder
+
+```shell
+pip install git+https://github.com/huggingface/transformers.git
+```
+
+WizardLM/WizardCoder-Python-34B-V1.0
+
+```shell
+MODEL_NAME=code-llama
+MODEL_PATH=WizardLM/WizardCoder-Python-34B-V1.0
+PROMPT_NAME=alpaca
+DEVICE_MAP=auto
+```

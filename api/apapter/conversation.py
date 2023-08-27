@@ -73,6 +73,14 @@ def get_prompt_adapter(model_name: str, prompt_name: Optional[str] = None):
 
 
 class ChatGLMPromptAdapter(BasePromptAdapter):
+    """ formated prompt likes:
+        [Round 0]
+        问：{query0}
+        答：{response0}
+        [Round 1]
+        问：{query1}
+        答：
+    """
 
     name = "chatglm"
     system_prompt = ""
@@ -107,6 +115,19 @@ class ChatGLMPromptAdapter(BasePromptAdapter):
 
 
 class ChatGLM2PromptAdapter(BasePromptAdapter):
+    """ formated prompt likes:
+        [Round 1]
+
+        问：{query0}
+
+        答：{response0}
+
+        [Round 2]
+
+        问：{query1}
+
+        答：
+    """
 
     name = "chatglm2"
     system_prompt = ""
@@ -141,6 +162,12 @@ class ChatGLM2PromptAdapter(BasePromptAdapter):
 
 
 class MossPromptAdapter(BasePromptAdapter):
+    """ formated prompt likes:
+        <|Human|>: {query0}<eoh>
+        <|MOSS|>: {response0}
+        <|Human|>: {query1}<eoh>
+        <|MOSS|>:
+    """
 
     name = "moss"
     system_prompt = """You are an AI assistant whose name is MOSS.
@@ -164,6 +191,10 @@ Capabilities and tools that MOSS can possess.
 
 
 class PhoenixPromptAdapter(BasePromptAdapter):
+    """ formated prompt likes:
+        Human: <s>{query0}</s>Assistant: <s>{response0}</s>
+        Human: <s>{query1}</s>Assistant: <s>
+    """
 
     name = "phoenix"
     system_prompt = "A chat between a curious human and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the human's questions.\n\n"
@@ -175,10 +206,22 @@ class PhoenixPromptAdapter(BasePromptAdapter):
 
 
 class AlpacaPromptAdapter(BasePromptAdapter):
+    """ formated prompt likes:
+        ### Instruction:
+        {query0}
+
+        ### Response:
+        {response0}
+
+        ### Instruction:
+        {query1}
+
+        ### Response:
+    """
 
     name = "alpaca"
     system_prompt = "Below is an instruction that describes a task. Write a response that appropriately completes the request.\n\n"
-    user_prompt = "### Instruction:\n\n{}\n\n### Response:\n\n"
+    user_prompt = "### Instruction:\n{}\n\n### Response:\n"
     assistant_prompt = "{}\n\n"
     stop = {
         "strings": ["### Instruction", "### Response"],
@@ -189,6 +232,9 @@ class AlpacaPromptAdapter(BasePromptAdapter):
 
 
 class FireflyPromptAdapter(BasePromptAdapter):
+    """ formated prompt likes:
+        <s>{query0}</s>{response0}</s><s>{query1}</s>
+    """
 
     name = "firefly"
     system_prompt = ""
@@ -200,6 +246,12 @@ class FireflyPromptAdapter(BasePromptAdapter):
 
 
 class BaizePromptAdapter(BasePromptAdapter):
+    """ formated prompt likes:
+        [|Human|]{query0}
+        [|AI|]{response0}
+        [|Human|]{query1}
+        [|AI|]
+    """
 
     name = "baize"
     system_prompt = "The following is a conversation between a human and an AI assistant named Baize (named after a mythical creature in Chinese folklore). " \
@@ -218,6 +270,15 @@ class BaizePromptAdapter(BasePromptAdapter):
 
 
 class BellePromptAdapter(BasePromptAdapter):
+    """ formated prompt likes:
+        Human: {query0}
+
+        Assistant: {response0}
+
+        Human: {query1}
+
+        Assistant:
+    """
 
     name = "belle"
     system_prompt = ""
@@ -229,6 +290,12 @@ class BellePromptAdapter(BasePromptAdapter):
 
 
 class GuanacoPromptAdapter(BasePromptAdapter):
+    """ formated prompt likes:
+        ### Human: {query0}
+        ### Assistant: {response0}
+        ### Human: {query1}
+        ### Assistant:
+    """
 
     name = "guanaco"
     system_prompt = "A chat between a curious human and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions.\n"
@@ -243,6 +310,12 @@ class GuanacoPromptAdapter(BasePromptAdapter):
 
 
 class YuLanChatPromptAdapter(BasePromptAdapter):
+    """ formated prompt likes:
+        [|Human|]{query0}
+        [|AI|]{response0}
+        [|Human|]{query1}
+        [|AI|]
+    """
 
     name = "yulan"
     system_prompt = "The following is a conversation between a human and an AI assistant namely YuLan, developed by GSAI, Renmin University of China. The AI assistant gives helpful, detailed, and polite answers to the user's questions.\n\n"
@@ -257,6 +330,13 @@ class YuLanChatPromptAdapter(BasePromptAdapter):
 
 
 class OpenBuddyPromptAdapter(BasePromptAdapter):
+    """ formated prompt likes:
+        User: {query0}
+        Assistant: {response0}
+
+        User: {query1}
+        Assistant:
+    """
 
     name = "openbuddy"
     system_prompt = """Consider a conversation between User (a human) and Assistant (named Buddy).
@@ -277,13 +357,19 @@ Buddy strictly refuses to discuss harmful, political, NSFW, illegal, abusive, of
 
 
 class InternLMPromptAdapter(BasePromptAdapter):
+    """ formated prompt likes:
+        <s><|User|>:{query0}<eoh>
+        <|Bot|>:{response0}<eoa>
+        <s><|User|>:{query1}<eoh>
+        <|Bot|>:
+    """
 
     name = "internlm"
     system_prompt = ""
     user_prompt = "<s><|User|>:{}<eoh>\n<|Bot|>:"
     assistant_prompt = "{}<eoa>\n"
     stop = {
-        "strings": ["<|User|>", "<|Bot|>", "<eoa>"],
+        "strings": ["</s>", "<eoa>"],
     }
 
     def match(self, model_name) -> bool:
@@ -291,7 +377,11 @@ class InternLMPromptAdapter(BasePromptAdapter):
 
 
 class BaiChuanPromptAdapter(BasePromptAdapter):
-    """ https://github.com/lm-sys/FastChat/blob/main/fastchat/conversation.py """
+    """ https://github.com/lm-sys/FastChat/blob/main/fastchat/conversation.py
+
+    formated prompt likes:
+        <reserved_102>{query0}<reserved_103>{response0}<reserved_102>{query1}<reserved_103>
+    """
 
     name = "baichuan"
     system_prompt = ""
@@ -307,7 +397,17 @@ class BaiChuanPromptAdapter(BasePromptAdapter):
 
 
 class StarChatPromptAdapter(BasePromptAdapter):
-    """ https://huggingface.co/HuggingFaceH4/starchat-beta """
+    """ https://huggingface.co/HuggingFaceH4/starchat-beta
+
+    formated prompt likes:
+        <|user|>
+        {query0}<|end|>
+        <|assistant|>
+        {response0}<|end|>
+        <|user|>
+        {query1}<|end|>
+        <|assistant|>
+    """
 
     name = "starchat"
     system_prompt = "<|system|>\n{}<|end|>\n"
@@ -315,6 +415,7 @@ class StarChatPromptAdapter(BasePromptAdapter):
     assistant_prompt = "<|assistant|>\n{}<|end|>\n"
     stop = {
         "token_ids": [49152, 49153, 49154, 49155],
+        "strings": ["<|end|>"],
     }
 
     def match(self, model_name) -> bool:
@@ -337,8 +438,14 @@ class StarChatPromptAdapter(BasePromptAdapter):
 
 
 class AquilaChatPromptAdapter(BasePromptAdapter):
-    """ https://github.com/FlagAI-Open/FlagAI/blob/6f5d412558d73d5d12b8b55d56f51942f80252c1/examples/Aquila/Aquila-chat/cyg_conversation.py """
+    """ https://github.com/FlagAI-Open/FlagAI/blob/6f5d412558d73d5d12b8b55d56f51942f80252c1/examples/Aquila/Aquila-chat/cyg_conversation.py
 
+    formated prompt likes:
+        Human: {query0}###
+        Assistant: {response0}###
+        Human: {query1}###
+        Assistant:
+    """
     name = "aquila"
     system_prompt = "System: {}###"
     user_prompt = "Human: {}###"
@@ -367,7 +474,11 @@ class AquilaChatPromptAdapter(BasePromptAdapter):
 
 
 class Llama2ChatPromptAdapter(BasePromptAdapter):
-    """ https://github.com/facebookresearch/llama/blob/main/llama/generation.py """
+    """ https://github.com/facebookresearch/llama/blob/main/llama/generation.py
+
+    formated prompt likes:
+        <s>[INST] {query0} [/INST] {response0} </s><s>[INST] {query1} [/INST]
+    """
 
     name = "llama2"
     system_prompt = "[INST] <<SYS>>\n{}\n<</SYS>>\n\n"
@@ -401,7 +512,17 @@ If a question does not make any sense, or is not factually coherent, explain why
 
 
 class QwenPromptAdapter(BasePromptAdapter):
-    """ https://huggingface.co/Qwen/Qwen-7B-Chat """
+    """ https://huggingface.co/Qwen/Qwen-7B-Chat
+
+     formated prompt likes:
+        <|im_start|>user
+        {query0}<|im_end|>
+        <|im_start|>assistant
+        {response0}<|im_end|>
+        <|im_start|>user
+        {query0}<|im_end|>
+        <|im_start|>assistant
+    """
 
     name = "chatml"
     system_prompt = "<|im_start|>system\nYou are a helpful assistant.<|im_end|>\n"
@@ -416,7 +537,17 @@ class QwenPromptAdapter(BasePromptAdapter):
 
 
 class OctopackPromptAdapter(BasePromptAdapter):
-    """ https://huggingface.co/codeparrot/starcoder-self-instruct """
+    """ https://huggingface.co/codeparrot/starcoder-self-instruct
+
+    formated prompt likes:
+        Question:{query0}
+
+        Answer:{response0}
+
+        Question:{query1}
+
+        Answer:
+    """
 
     name = "octopack"
     system_prompt = ""
@@ -428,7 +559,15 @@ class OctopackPromptAdapter(BasePromptAdapter):
 
 
 class XversePromptAdapter(BasePromptAdapter):
-    """ https://huggingface.co/xverse/XVERSE-13B-Chat """
+    """ https://huggingface.co/xverse/XVERSE-13B-Chat
+
+    formated prompt likes:
+        Human: {query0}
+
+        Assistant: {response0}<|endoftext|>Human: {query1}
+
+        Assistant:
+    """
 
     name = "xverse"
     system_prompt = ""

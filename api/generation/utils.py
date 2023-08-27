@@ -1,5 +1,4 @@
-from typing import List
-from typing import Tuple
+from typing import List, Tuple
 
 from api.utils.protocol import ChatMessage, Role
 from transformers.generation.logits_process import (
