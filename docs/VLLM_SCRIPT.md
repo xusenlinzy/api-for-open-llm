@@ -67,7 +67,13 @@ pip uninstall transformer-engine -y
 
 1. docker run
 
-**不同模型只需要将 [.env.vllm.example](../.env.vllm.example) 文件内容复制到 `.env` 文件中，然后修改 `.env` 文件中环境变量**
+不同模型只需要将 [.env.vllm.example](../.env.vllm.example) 文件内容复制到 `.env` 文件中
+
+```shell
+cp .env.vllm.example .env
+```
+
+然后修改 `.env` 文件中的环境变量
 
 ```shell
 docker run -it -d --gpus all --ipc=host -p 7891:8000 --name=vllm-server \
@@ -85,7 +91,13 @@ docker-compose -f docker-compose.vllm.yml up -d
 
 #### 本地启动
 
-同样的，将 [.env.vllm.example](../.env.vllm.example) 文件内容复制到 `.env` 文件中，然后修改 `.env` 文件中环境变量**
+同样的，将 [.env.vllm.example](../.env.vllm.example) 文件内容复制到 `.env` 文件中
+
+```shell
+cp .env.vllm.example .env
+```
+
+然后修改 `.env` 文件中的环境变量
 
 ```shell
 python api/vllm_server.py
@@ -95,13 +107,15 @@ python api/vllm_server.py
 
 **环境变量修改内容参考下面**
 
-|                                                          模型                                                           |
-|:---------------------------------------------------------------------------------------------------------------------:|
-|        [code-llama](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/VLLM_SCRIPT.md#code-llama)        | 
-|          [sqlcoder](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/VLLM_SCRIPT.md#sqlcoder)          |
-|      [qwen-7b-chat](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/VLLM_SCRIPT.md#qwen-7b-chat)      |
-| [baichuan-13b-chat](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/VLLM_SCRIPT.md#baichuan-13b-chat) |
-|          [internlm](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/VLLM_SCRIPT.md#internlm)          |
++ [code-llama](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/VLLM_SCRIPT.md#code-llama) 
+
++ [sqlcoder](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/VLLM_SCRIPT.md#sqlcoder) 
+
++ [qwen-7b-chat](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/VLLM_SCRIPT.md#qwen-7b-chat)
+
++ [baichuan-13b-chat](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/VLLM_SCRIPT.md#baichuan-13b-chat)
+
++ [internlm](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/VLLM_SCRIPT.md#internlm)      
 
 
 ### Qwen-7b-chat

@@ -20,22 +20,22 @@
 
 ## 📢 新闻
 
-+ 【2023.08.28】 添加 `transformers.TextIteratorStreamer` 支持，只需将环境变量修改为 `USE_STREAMER_V2=true`
++ 【2023.08.28】 添加 `transformers.TextIteratorStreamer` 流式输出支持，只需将环境变量修改为 `USE_STREAMER_V2=true`
 
 
-+ 【2023.08.26】 添加 [code-llama](https://github.com/facebookresearch/codellama) 模型支持，[启动方式](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#code-llama)，[示例](./examples/code-llama)
++ 【2023.08.26】 添加 [code-llama](https://github.com/facebookresearch/codellama) 模型支持，[启动方式链接](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#code-llama)，[使用示例链接](./examples/code-llama)
 
 
-+ 【2023.08.23】 添加 [sqlcoder](https://huggingface.co/defog/sqlcoder) 模型支持，[启动方式](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#sqlcoder)，[示例](./examples/sqlcoder/inference.py)
++ 【2023.08.23】 添加 [sqlcoder](https://huggingface.co/defog/sqlcoder) 模型支持，[启动方式链接](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#sqlcoder)，[使用示例链接](./examples/sqlcoder/inference.py)
 
 
-+ 【2023.08.22】 添加 [xverse-13b-chat](https://github.com/xverse-ai/XVERSE-13B) 模型支持，[启动方式](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#xverse-13b-chat)
++ 【2023.08.22】 添加 [xverse-13b-chat](https://github.com/xverse-ai/XVERSE-13B) 模型支持，[启动方式链接](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#xverse-13b-chat)
 
 
-+ 【2023.08.10】 添加 [vLLM](https://github.com/vllm-project/vllm) 推理加速支持，[使用方式](./docs/VLLM_SCRIPT.md)
++ 【2023.08.10】 添加 [vLLM](https://github.com/vllm-project/vllm) 推理加速支持，[使用文档](./docs/VLLM_SCRIPT.md)
 
 
-+ 【2023.08.03】 添加 [qwen-7b-chat](https://github.com/QwenLM/Qwen-7B) 模型支持，[启动方式](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#qwen-7b-chat)
++ 【2023.08.03】 添加 [qwen-7b-chat](https://github.com/QwenLM/Qwen-7B) 模型支持，[启动方式链接](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#qwen-7b-chat)
 
 更多新闻和历史请转至 [此处](./docs/NEWS.md)
 
@@ -79,27 +79,36 @@
 
 ## 🐼 支持模型
 
-支持多种开源大模型
+**语言模型**
 
-| 模型                                                                    |     基座模型     |   参数量    |   语言   |                                                   模型权重链接                                                    |
-|:----------------------------------------------------------------------|:------------:|:--------:|:------:|:-----------------------------------------------------------------------------------------------------------:|
-| [codellama](https://github.com/facebookresearch/codellama)            |    LLaMA2    | 7/13/34B | multi  |       [codellama/CodeLlama-7b-Instruct-hf](https://huggingface.co/codellama/CodeLlama-7b-Instruct-hf)       |
-| [xverse-13b-chat](https://github.com/xverse-ai/XVERSE-13B)            |    Xverse    |   13B    | multi  |                   [xverse/XVERSE-13B-Chat](https://huggingface.co/xverse/XVERSE-13B-Chat)                   |
-| [qwen-7b-chat](https://github.com/QwenLM/Qwen-7B)                     |     Qwen     |    7B    | en, zh |                 [Qwen/Qwen-7B-Chat](https://huggingface.co/baichuan-inc/Qwen/Qwen-7B-Chat)                  |
-| [baichuan-13b-chat](https://github.com/baichuan-inc/Baichuan-13B)     |   Baichuan   |   13B    | en, zh |           [baichuan-inc/Baichuan-13B-Chat](https://huggingface.co/baichuan-inc/Baichuan-13B-Chat)           |
-| [InternLM](https://github.com/InternLM/InternLM)                      |   InternLM   |    7B    | en, zh |                [internlm/internlm-chat-7b](https://huggingface.co/internlm/internlm-chat-7b)                |
-| [ChatGLM2](https://github.com/THUDM/ChatGLM2-6B)                      |     GLM      |  6/130B  | en, zh |                        [THUDM/chatglm2-6b](https://huggingface.co/THUDM/chatglm2-6b)                        |
-| [baichaun-7b](https://github.com/baichuan-inc/baichuan-7B)            |   Baichuan   |    7B    | en, zh |                 [baichuan-inc/baichuan-7B](https://huggingface.co/baichuan-inc/baichuan-7B)                 |
-| [Guanaco](https://github.com/artidoro/qlora/tree/main)                |    LLaMA     | 7/33/65B |   en   |           [timdettmers/guanaco-33b-merged](https://huggingface.co/timdettmers/guanaco-33b-merged)           |
-| [YuLan-Chat](https://github.com/RUC-GSAI/YuLan-Chat)                  |    LLaMA     |  13/65B  | en, zh |            [RUCAIBox/YuLan-Chat-13b-delta](https://huggingface.co/RUCAIBox/YuLan-Chat-13b-delta)            |
-| [TigerBot](https://github.com/TigerResearch/TigerBot)                 |    BLOOMZ    |  7/180B  | en, zh |            [TigerResearch/tigerbot-7b-sft](https://huggingface.co/TigerResearch/tigerbot-7b-sft)            |
-| [OpenBuddy](https://github.com/OpenBuddy/OpenBuddy)                   | LLaMA、Falcon |    7B    | multi  |                                [OpenBuddy](https://huggingface.co/OpenBuddy)                                |
-| [MOSS](https://github.com/OpenLMLab/MOSS)                             |   CodeGen    |   16B    | en, zh |              [fnlp/moss-moon-003-sft-int4](https://huggingface.co/fnlp/moss-moon-003-sft-int4)              |
-| [Phoenix](https://github.com/FreedomIntelligence/LLMZoo)              |    BLOOMZ    |    7B    | multi  | [FreedomIntelligence/phoenix-inst-chat-7b](https://huggingface.co/FreedomIntelligence/phoenix-inst-chat-7b) |
-| [BAIZE](https://github.com/project-baize/baize-chatbot)               |    LLaMA     | 7/13/30B |   en   |              [project-baize/baize-lora-7B](https://huggingface.co/project-baize/baize-lora-7B)              |
-| [Chinese-LLaMA-Alpaca](https://github.com/ymcui/Chinese-LLaMA-Alpaca) |    LLaMA     |  7/13B   | en, zh |   [ziqingyang/chinese-alpaca-plus-lora-7b](https://huggingface.co/ziqingyang/chinese-alpaca-plus-lora-7b)   |
-| [BELLE](https://github.com/LianjiaTech/BELLE)                         |    BLOOMZ    |    7B    |   zh   |                   [BelleGroup/BELLE-7B-2M](https://huggingface.co/BelleGroup/BELLE-7B-2M)                   |
-| [ChatGLM](https://github.com/THUDM/ChatGLM-6B)                        |     GLM      |    6B    | en, zh |                         [THUDM/chatglm-6b](https://huggingface.co/THUDM/chatglm-6b)                         |
+|                                   模型                                   |     基座模型     |   参数量    |   语言   |                                                   模型权重链接                                                    |
+|:----------------------------------------------------------------------:|:------------:|:--------:|:------:|:-----------------------------------------------------------------------------------------------------------:|
+|       [codellama](https://github.com/facebookresearch/codellama)       |    LLaMA2    | 7/13/34B | multi  |       [codellama/CodeLlama-7b-Instruct-hf](https://huggingface.co/codellama/CodeLlama-7b-Instruct-hf)       |
+|       [xverse-13b-chat](https://github.com/xverse-ai/XVERSE-13B)       |    Xverse    |   13B    | multi  |                   [xverse/XVERSE-13B-Chat](https://huggingface.co/xverse/XVERSE-13B-Chat)                   |
+|           [qwen-7b-chat](https://github.com/QwenLM/Qwen-7B)            |     Qwen     |    7B    | en, zh |                 [Qwen/Qwen-7B-Chat](https://huggingface.co/baichuan-inc/Qwen/Qwen-7B-Chat)                  |
+|   [baichuan-13b-chat](https://github.com/baichuan-inc/Baichuan-13B)    |   Baichuan   |   13B    | en, zh |           [baichuan-inc/Baichuan-13B-Chat](https://huggingface.co/baichuan-inc/Baichuan-13B-Chat)           |
+|            [InternLM](https://github.com/InternLM/InternLM)            |   InternLM   |    7B    | en, zh |                [internlm/internlm-chat-7b](https://huggingface.co/internlm/internlm-chat-7b)                |
+|            [ChatGLM2](https://github.com/THUDM/ChatGLM2-6B)            |     GLM      |  6/130B  | en, zh |                        [THUDM/chatglm2-6b](https://huggingface.co/THUDM/chatglm2-6b)                        |
+|       [baichaun-7b](https://github.com/baichuan-inc/baichuan-7B)       |   Baichuan   |    7B    | en, zh |                 [baichuan-inc/baichuan-7B](https://huggingface.co/baichuan-inc/baichuan-7B)                 |
+|         [Guanaco](https://github.com/artidoro/qlora/tree/main)         |    LLaMA     | 7/33/65B |   en   |           [timdettmers/guanaco-33b-merged](https://huggingface.co/timdettmers/guanaco-33b-merged)           |
+|          [YuLan-Chat](https://github.com/RUC-GSAI/YuLan-Chat)          |    LLaMA     |  13/65B  | en, zh |            [RUCAIBox/YuLan-Chat-13b-delta](https://huggingface.co/RUCAIBox/YuLan-Chat-13b-delta)            |
+|         [TigerBot](https://github.com/TigerResearch/TigerBot)          |    BLOOMZ    |  7/180B  | en, zh |            [TigerResearch/tigerbot-7b-sft](https://huggingface.co/TigerResearch/tigerbot-7b-sft)            |
+|          [OpenBuddy](https://github.com/OpenBuddy/OpenBuddy)           | LLaMA、Falcon |    7B    | multi  |                                [OpenBuddy](https://huggingface.co/OpenBuddy)                                |
+|               [MOSS](https://github.com/OpenLMLab/MOSS)                |   CodeGen    |   16B    | en, zh |              [fnlp/moss-moon-003-sft-int4](https://huggingface.co/fnlp/moss-moon-003-sft-int4)              |
+|        [Phoenix](https://github.com/FreedomIntelligence/LLMZoo)        |    BLOOMZ    |    7B    | multi  | [FreedomIntelligence/phoenix-inst-chat-7b](https://huggingface.co/FreedomIntelligence/phoenix-inst-chat-7b) |
+|        [BAIZE](https://github.com/project-baize/baize-chatbot)         |    LLaMA     | 7/13/30B |   en   |              [project-baize/baize-lora-7B](https://huggingface.co/project-baize/baize-lora-7B)              |
+| [Chinese-LLaMA-Alpaca](https://github.com/ymcui/Chinese-LLaMA-Alpaca)  |    LLaMA     |  7/13B   | en, zh |   [ziqingyang/chinese-alpaca-plus-lora-7b](https://huggingface.co/ziqingyang/chinese-alpaca-plus-lora-7b)   |
+|             [BELLE](https://github.com/LianjiaTech/BELLE)              |    BLOOMZ    |    7B    |   zh   |                   [BelleGroup/BELLE-7B-2M](https://huggingface.co/BelleGroup/BELLE-7B-2M)                   |
+|             [ChatGLM](https://github.com/THUDM/ChatGLM-6B)             |     GLM      |    6B    | en, zh |                         [THUDM/chatglm-6b](https://huggingface.co/THUDM/chatglm-6b)                         |
+
+
+**嵌入模型**
+
+|           模型           |  维度  |                                        权重链接                                         |
+|:----------------------:|:----:|:-----------------------------------------------------------------------------------:|
+|      bge-large-zh      | 1024 |              [bge-large-zh](https://huggingface.co/BAAI/bge-large-zh)               |
+|       m3e-large        | 1024 |            [moka-ai/m3e-large](https://huggingface.co/moka-ai/m3e-large)            |
+| text2vec-large-chinese | 1024 | [text2vec-large-chinese](https://huggingface.co/GanymedeNil/text2vec-large-chinese) |
 
 
 ## 🤖 使用方式
@@ -109,6 +118,7 @@
 + `OPENAI_API_KEY`: 此处随意填一个字符串即可
 
 + `OPENAI_API_BASE`: 后端启动的接口地址，如：http://192.168.0.xx:80/v1
+
 
 ### [聊天界面](./applications)
 
@@ -120,7 +130,7 @@ python web_demo.py
 
 ![chat](images/chat.png)
 
-### [openai-python](https://github.com/openai/openai-python)
+### [openai](https://github.com/openai/openai-python)
 
 <details>
 <summary>👉 Chat Completions</summary>

@@ -75,7 +75,14 @@ pip install -r requirements.txt
 
 1. docker run
 
-**不同模型只需要将 [.env.example](../.env.example) 文件内容复制到 `.env` 文件中，然后修改 `.env` 文件中环境变量**
+不同模型只需要将 [.env.example](../.env.example) 文件内容复制到 `.env` 文件中
+
+```shell
+cp .env.example .env
+```
+
+然后修改 `.env` 文件中的环境变量
+
 
 ```shell
 docker run -it -d --gpus all --ipc=host -p 7891:8000 --name=llm-api \
@@ -93,7 +100,13 @@ docker-compose up -d
 
 #### 本地启动
 
-同样的，将 [.env.example](../.env.example) 文件内容复制到 `.env` 文件中，然后修改 `.env` 文件中环境变量
+同样的，将 [.env.example](../.env.example) 文件内容复制到 `.env` 文件中
+
+```shell
+cp .env.example .env
+```
+
+然后修改 `.env` 文件中的环境变量
 
 ```shell
 python api/server.py
@@ -104,22 +117,33 @@ python api/server.py
 
 **环境变量修改内容参考下面**
 
-|                                                        模型                                                        |
-|:----------------------------------------------------------------------------------------------------------------:|
-|        [code-llama](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#code-llama)        | 
-|          [sqlcoder](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#sqlcoder)          |
-|   [xverse-13b-chat](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#xverse-13b-chat)   |
-|      [qwen-7b-chat](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#qwen-7b-chat)      |
-|    [aquila-chat-7b](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#aquilachat-7b)     |
-|          [starchat](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#starchat)          |
-| [baichuan-13b-chat](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#baichuan-13b-chat) |
-|          [internlm](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#internlm)          |
-|       [baichuan-7b](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#baichuan-7b)       |
-|         [openbuddy](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#openbuddy)         |
-|           [chatglm](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#chatglm)           |
-|              [moss](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#moss)              |
-|           [phoenix](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#phoenix)           |
-|             [tiger](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#tiger)             |
++ [code-llama](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#code-llama)
+
++ [sqlcoder](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#sqlcoder)  
+
++ [xverse-13b-chat](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#xverse-13b-chat) 
+
++ [qwen-7b-chat](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#qwen-7b-chat)
+
++ [aquila-chat-7b](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#aquilachat-7b)  
+
++ [starchat](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#starchat)       
+
++ [baichuan-13b-chat](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#baichuan-13b-chat) 
+
++ [internlm](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#internlm)      
+
++ [baichuan-7b](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#baichuan-7b)    
+
++ [openbuddy](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#openbuddy)      
+
++ [chatglm](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#chatglm)        
+
++ [moss](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#moss)         
+
++ [phoenix](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#phoenix)     
+
++ [tiger](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#tiger)       
 
 ### ChatGLM
 
