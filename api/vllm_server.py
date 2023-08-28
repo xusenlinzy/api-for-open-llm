@@ -1,7 +1,3 @@
-import sys
-
-sys.path.insert(0, ".")
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -20,7 +16,7 @@ app.add_middleware(
 )
 
 prefix = config.API_PREFIX
-app.include_router(model_router, prefix=prefix, tags=["model"])
+app.include_router(model_router, prefix=prefix, tags=["Model"])
 if EMBEDDED_MODEL is not None:
     app.include_router(embedding_router, prefix=prefix, tags=["Embedding"])
 if VLLM_ENGINE is not None:

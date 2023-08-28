@@ -2,8 +2,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.config import config
-from api.models import EMBEDDED_MODEL, GENERATE_MDDEL
-from api.routes import chat_router, completion_router, embedding_router, model_router
+from api.ft_routes import file_router, finetune_router
+from api.routes import model_router
 
 app = FastAPI()
 app.add_middleware(
@@ -17,11 +17,8 @@ app.add_middleware(
 
 prefix = config.API_PREFIX
 app.include_router(model_router, prefix=prefix, tags=["Model"])
-if EMBEDDED_MODEL is not None:
-    app.include_router(embedding_router, prefix=prefix, tags=["Embedding"])
-if GENERATE_MDDEL is not None:
-    app.include_router(chat_router, prefix=prefix, tags=["Chat"])
-    app.include_router(completion_router, prefix=prefix, tags=["Completion"])
+app.include_router(file_router, prefix=prefix, tags=["File"])
+app.include_router(finetune_router, prefix=prefix, tags=["Finetune"])
 
 
 if __name__ == '__main__':

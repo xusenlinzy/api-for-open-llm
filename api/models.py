@@ -111,7 +111,14 @@ def get_vllm_engine():
     return engine
 
 
-EMBEDDED_MODEL = get_embedding_model() if config.EMBEDDING_NAME else None  # model for embedding
-GENERATE_MDDEL = get_generate_model() if not config.USE_VLLM else None  # model for transformers generate
-VLLM_ENGINE = get_vllm_engine() if config.USE_VLLM else None   # model for vllm generate
-EXCLUDE_MODELS = ["baichuan-13b", "qwen"]  # model names for special processing
+# model for embedding
+EMBEDDED_MODEL = get_embedding_model() if (config.EMBEDDING_NAME and config.ACTIVE_INFERENCE) else None
+
+# model for transformers generate
+GENERATE_MDDEL = get_generate_model() if (not config.USE_VLLM and config.ACTIVE_INFERENCE) else None
+
+# model for vllm generate
+VLLM_ENGINE = get_vllm_engine() if (config.USE_VLLM and config.ACTIVE_INFERENCE) else None
+
+# model names for special processing
+EXCLUDE_MODELS = ["baichuan-13b", "qwen"]

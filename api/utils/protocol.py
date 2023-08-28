@@ -152,7 +152,8 @@ class EmbeddingsResponse(BaseModel):
 
 class CompletionRequest(BaseModel):
     model: str
-    prompt: Union[List[int], List[List[int]], str, List[str]]  # a string, array of strings, array of tokens, or array of token arrays
+    prompt: Union[List[int], List[List[int]], str, List[
+        str]]  # a string, array of strings, array of tokens, or array of token arrays
     suffix: Optional[str] = None
     temperature: Optional[float] = 0.7
     n: Optional[int] = 1
@@ -208,3 +209,81 @@ class CompletionStreamResponse(BaseModel):
     created: int = Field(default_factory=lambda: int(time.time()))
     model: str
     choices: List[CompletionResponseStreamChoice]
+
+
+class File(BaseModel):
+    object: str = "file"
+    id: str
+    purpose: str  # Literal['fine-tune', 'search']
+    bytes: int
+    created_at: int = Field(default_factory=lambda: int(time.time()))
+    filename: str
+
+
+class ListFiles(BaseModel):
+    object: str = "list"
+    data: List[File]
+
+
+class DeleteFileResponse(BaseModel):
+    object: str = "file"
+    id: str
+    deleted: bool
+
+
+class FineTuneHyperparams(BaseModel):
+    n_epochs: Optional[int] = None
+    batch_size: Optional[int] = None
+    prompt_loss_weight: Optional[float] = None
+    learning_rate_multiplier: Optional[float] = None
+    compute_classification_metrics: Optional[bool] = None
+    classification_positive_class: Optional[str] = None
+    classification_n_classes: Optional[int] = None
+
+
+class FineTuneEvent(BaseModel):
+    object: str = "fine-tune-event"
+    created_at: int = Field(default_factory=lambda: int(time.time()))
+    level: Literal["info", "warning", "error"]
+    message: str
+
+
+class FineTune(BaseModel):
+    id: str
+    object: str = "fine-tune"
+    created_at: int = Field(default_factory=lambda: int(time.time()))
+    updated_at: int = Field(default_factory=lambda: int(time.time()))
+    model: str
+    fine_tuned_model: Optional[str] = None
+    organization_id: str
+    status: Literal["created", "pending", "running", "succeeded", "failed", "cancelled"]
+    hyperparams: FineTuneHyperparams
+    training_files: List[File]
+    validation_files: List[File]
+    result_files: List[File]
+    events: List[FineTuneEvent]
+
+
+class CreateFineTuneRequest(BaseModel):
+    training_file: str
+    validation_file: Optional[str]
+    model: Optional[str] = "curie"  # Literal["ada", "babbage", "curie", "davinci"]
+    n_epochs: Optional[int] = 4
+    batch_size: Optional[int] = None
+    learning_rate_multiplier: Optional[float] = None
+    prompt_loss_weight: Optional[float] = 0.01
+    compute_classification_metrics: Optional[bool] = False
+    classification_n_classes: Optional[int] = None
+    classification_positive_class: Optional[str] = None
+    classification_betas: Optional[List[float]] = None
+    suffix: Optional[str] = None
+
+
+class ListFineTunesResponse(BaseModel):
+    data: List[FineTune]
+    object: str = "list"
+
+
+class ListFineTuneEventsResponse(BaseModel):
+    data: List[FineTuneEvent]
+    object: str = "list"
