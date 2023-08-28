@@ -75,6 +75,7 @@
 | [⚡vLLM启动方式](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/VLLM_SCRIPT.md) | 使用 `vLLM` 启动模型的环境配置和启动命令 |
 |               [💻调用方式](https://github.com/xusenlinzy/api-for-open-llm#-使用方式)                |       启动模型之后的调用方式        |
 |       [❓常见问题](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/FAQ.md)       |        一些常见问题的回复         |
+|   [📚相关资源](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/RESOURCES.md)    |     关于开源模型训练和推理的相关资源     |
 
 
 ## 🐼 支持模型
