@@ -9,24 +9,30 @@ dotenv.load_dotenv()
 DEFAULTS = {
     'HOST': '0.0.0.0',
     'PORT': 8000,
+
+    # support for model
     'MODEL_NAME': '',
     'MODEL_PATH': '',
     'ADAPTER_MODEL_PATH': '',
 
+    # support for device
     'DEVICE': 'cuda',
     'DEVICE_MAP': "",
     'GPUS': '',
     'NUM_GPUs': 1,
 
+    # support for embeddings
     'EMBEDDING_NAME': '',
     'EMBEDDING_SIZE': '',
     'EMBEDDING_DEVICE': 'cuda',
 
+    # support for quantize
     'QUANTIZE': 16,
     'LOAD_IN_8BIT': 'False',
     'LOAD_IN_4BIT': 'False',
     'USING_PTUNING_V2': 'False',
 
+    # support for model input
     'CONTEXT_LEN': '',
     'STREAM_INTERVERL': 2,
     'PROMPT_NAME': '',
@@ -36,6 +42,7 @@ DEFAULTS = {
 
     'API_PREFIX': '/v1',
 
+    # support for vllm
     'USE_VLLM': 'False',
     'TRUST_REMOTE_CODE': "False",
     'TOKENIZE_MODE': "auto",
@@ -45,7 +52,11 @@ DEFAULTS = {
     "MAX_NUM_BATCHED_TOKENS": 5120,
     "MAX_NUM_SEQS": 256,
 
-    'USE_STREAMER_V2': 'False',  # use transformers.TextIteratorStreamer
+    # support for transformers.TextIteratorStreamer
+    'USE_STREAMER_V2': 'False',
+
+    # support for api key check
+    'API_KEYS': ''
 }
 
 
@@ -101,6 +112,8 @@ class Config:
         self.MAX_NUM_SEQS = int(get_env('MAX_NUM_SEQS'))
 
         self.USE_STREAMER_V2 = get_bool_env('USE_STREAMER_V2')
+
+        self.API_KEYS = get_env('API_KEYS').split(',') if get_env('API_KEYS') else None
 
 
 config = Config()

@@ -2,8 +2,7 @@ import time
 from http import HTTPStatus
 from typing import AsyncGenerator, Optional
 
-from fastapi import APIRouter
-from fastapi import BackgroundTasks, Request
+from fastapi import APIRouter, BackgroundTasks, Request, Depends
 from fastapi.responses import StreamingResponse
 from vllm.outputs import RequestOutput
 from vllm.sampling_params import SamplingParams
@@ -11,7 +10,7 @@ from vllm.utils import random_uuid
 
 from api.config import config
 from api.models import VLLM_ENGINE
-from api.routes.utils import create_error_response
+from api.routes.utils import check_api_key
 from api.utils.protocol import (
     CompletionRequest,
     CompletionResponseStreamChoice,
@@ -27,7 +26,7 @@ from api.vllm_routes.utils import create_error_response, get_model_inputs
 completion_router = APIRouter()
 
 
-@completion_router.post("/completions")
+@completion_router.post("/completions", dependencies=[Depends(check_api_key)])
 async def create_completion(request: CompletionRequest, raw_request: Request):
     """Completion API similar to OpenAI's API.
 

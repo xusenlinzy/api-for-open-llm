@@ -2,8 +2,7 @@ import time
 from http import HTTPStatus
 from typing import AsyncGenerator, Optional
 
-from fastapi import APIRouter
-from fastapi import BackgroundTasks, Request
+from fastapi import APIRouter, Depends, BackgroundTasks, Request
 from fastapi.responses import StreamingResponse
 from loguru import logger
 from vllm.outputs import RequestOutput
@@ -18,6 +17,7 @@ from api.apapter.react import (
 )
 from api.config import config
 from api.models import VLLM_ENGINE
+from api.routes.utils import check_api_key
 from api.utils.protocol import (
     ChatCompletionRequest,
     ChatCompletionResponse,
@@ -34,7 +34,7 @@ from api.vllm_routes.utils import create_error_response, get_gen_prompt, get_mod
 chat_router = APIRouter(prefix="/chat")
 
 
-@chat_router.post("/completions")
+@chat_router.post("/completions", dependencies=[Depends(check_api_key)])
 async def create_chat_completion(request: ChatCompletionRequest, raw_request: Request):
     """Completion API similar to OpenAI's API.
 

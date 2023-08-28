@@ -2,7 +2,7 @@ import json
 import secrets
 from typing import Generator, Dict, Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from loguru import logger
 
@@ -14,7 +14,7 @@ from api.apapter.react import (
 )
 from api.config import config
 from api.models import GENERATE_MDDEL
-from api.routes.utils import check_requests, create_error_response
+from api.routes.utils import check_requests, create_error_response, check_api_key
 from api.utils.constants import ErrorCode
 from api.utils.protocol import (
     ChatCompletionRequest,
@@ -31,7 +31,7 @@ from api.utils.protocol import (
 chat_router = APIRouter(prefix="/chat")
 
 
-@chat_router.post("/completions")
+@chat_router.post("/completions", dependencies=[Depends(check_api_key)])
 async def create_chat_completion(request: ChatCompletionRequest):
     """Creates a completion for the chat message"""
     error_check_ret = check_requests(request)

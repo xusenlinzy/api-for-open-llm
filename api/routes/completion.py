@@ -2,12 +2,12 @@ import json
 import secrets
 import time
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from loguru import logger
 
 from api.models import GENERATE_MDDEL
-from api.routes.utils import check_requests, create_error_response
+from api.routes.utils import check_requests, create_error_response, check_api_key
 from api.utils.protocol import (
     CompletionRequest,
     CompletionResponseStreamChoice,
@@ -19,7 +19,7 @@ from api.utils.protocol import CompletionResponse, CompletionResponseChoice
 completion_router = APIRouter()
 
 
-@completion_router.post("/completions")
+@completion_router.post("/completions", dependencies=[Depends(check_api_key)])
 async def create_completion(request: CompletionRequest):
     error_check_ret = check_requests(request)
     if error_check_ret is not None:
