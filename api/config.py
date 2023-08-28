@@ -44,6 +44,8 @@ DEFAULTS = {
     "GPU_MEMORY_UTILIZATION": 0.9,
     "MAX_NUM_BATCHED_TOKENS": 5120,
     "MAX_NUM_SEQS": 256,
+
+    'USE_STREAMER_V2': 'False',  # use transformers.TextIteratorStreamer
 }
 
 
@@ -97,6 +99,8 @@ class Config:
         self.GPU_MEMORY_UTILIZATION = float(get_env('GPU_MEMORY_UTILIZATION'))
         self.MAX_NUM_BATCHED_TOKENS = int(get_env('MAX_NUM_BATCHED_TOKENS'))
         self.MAX_NUM_SEQS = int(get_env('MAX_NUM_SEQS'))
+
+        self.USE_STREAMER_V2 = get_bool_env('USE_STREAMER_V2')
 
 
 config = Config()

@@ -20,6 +20,9 @@
 
 ## 📢 新闻
 
++ 【2023.08.28】 添加 `transformers.TextIteratorStreamer` 支持，只需将环境变量修改为 `USE_STREAMER_V2=true`
+
+
 + 【2023.08.26】 添加 [code-llama](https://github.com/facebookresearch/codellama) 模型支持，[启动方式](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#code-llama)，[示例](./examples/code-llama)
 
 

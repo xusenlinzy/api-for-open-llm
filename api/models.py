@@ -47,6 +47,7 @@ def get_generate_model():
         context_len=config.CONTEXT_LEN,
         stream_interval=config.STREAM_INTERVERL,
         prompt_name=config.PROMPT_NAME,
+        use_streamer_v2=config.USE_STREAMER_V2,
     )
 
 

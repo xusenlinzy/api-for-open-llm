@@ -1,6 +1,5 @@
 from typing import List, Tuple
 
-from api.utils.protocol import ChatMessage, Role
 from transformers.generation.logits_process import (
     LogitsProcessorList,
     RepetitionPenaltyLogitsProcessor,
@@ -8,6 +7,8 @@ from transformers.generation.logits_process import (
     TopKLogitsWarper,
     TopPLogitsWarper,
 )
+
+from api.utils.protocol import ChatMessage, Role
 
 
 def parse_messages(messages: List[ChatMessage], split_role=Role.USER) -> Tuple[str, List[List[ChatMessage]]]:
@@ -76,3 +77,27 @@ def get_context_length(config) -> int:
         if val is not None:
             return int(rope_scaling_factor * val)
     return 2048
+
+
+def apply_stopping_strings(reply, stop_strings) -> Tuple[str, bool]:
+    stop_found = False
+    for string in stop_strings:
+        idx = reply.find(string)
+        if idx != -1:
+            reply = reply[:idx]
+            stop_found = True
+            break
+
+    if not stop_found:
+        # If something like "\nYo" is generated just before "\nYou: is completed, trim it
+        for string in stop_strings:
+            for j in range(len(string) - 1, 0, -1):
+                if reply[-j:] == string[:j]:
+                    reply = reply[:-j]
+                    break
+            else:
+                continue
+
+            break
+
+    return reply, stop_found
