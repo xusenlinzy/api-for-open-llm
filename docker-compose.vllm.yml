@@ -3,7 +3,7 @@ version: '3.10'
 services:
   vllmapiserver:
     image: llm-api:vllm
-    command: python api/vllm_server.py
+    command: python api/server.py
     ulimits:
       stack: 67108864
       memlock: -1
