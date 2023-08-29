@@ -432,7 +432,8 @@ class StarChatPromptAdapter(BasePromptAdapter):
             else:
                 prompt += self.assistant_prompt.format(content)
 
-        prompt += "<|assistant|>\n"
+        if messages[-1].role == Role.USER:
+            prompt += "<|assistant|>\n"
 
         return prompt
 
@@ -468,7 +469,8 @@ class AquilaChatPromptAdapter(BasePromptAdapter):
             else:
                 prompt += self.assistant_prompt.format(content)
 
-        prompt += "Assistant: "
+        if messages[-1].role == Role.USER:
+            prompt += "Assistant: "
 
         return prompt
 
@@ -506,7 +508,8 @@ If a question does not make any sense, or is not factually coherent, explain why
                 else:
                     prompt += self.assistant_prompt.format(content)
 
-        prompt += "[/INST] "
+        if messages[-1].role == Role.USER:
+            prompt += "[/INST] "
 
         return prompt
 

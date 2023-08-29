@@ -58,8 +58,7 @@ DEFAULTS = {
     # support for api key check
     'API_KEYS': '',
 
-    'ACTIVE_INFERENCE': 'True',
-    'ACTIVE_FINETUNE': 'False',
+    'ACTIVATE_INFERENCE': 'True',
 }
 
 
@@ -118,15 +117,11 @@ class Config:
 
         self.API_KEYS = get_env('API_KEYS').split(',') if get_env('API_KEYS') else None
 
-        self.ACTIVE_INFERENCE = get_bool_env('ACTIVE_INFERENCE')
-        self.ACTIVE_FINETUNE = get_bool_env('ACTIVE_FINETUNE')
-        parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        self.UPLOAD_FOLDER = os.path.join(parent_dir, "upload_files")
+        self.ACTIVATE_INFERENCE = get_bool_env('ACTIVATE_INFERENCE')
 
 
 config = Config()
 logger.debug(f"Config: {config.__dict__}")
-os.makedirs(config.UPLOAD_FOLDER, exist_ok=True)
 if config.GPUS:
     if len(config.GPUS.split(",")) < config.NUM_GPUs:
         raise ValueError(
