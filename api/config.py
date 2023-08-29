@@ -56,7 +56,9 @@ DEFAULTS = {
     'USE_STREAMER_V2': 'False',
 
     # support for api key check
-    'API_KEYS': ''
+    'API_KEYS': '',
+
+    'ACTIVATE_INFERENCE': 'True',
 }
 
 
@@ -114,6 +116,8 @@ class Config:
         self.USE_STREAMER_V2 = get_bool_env('USE_STREAMER_V2')
 
         self.API_KEYS = get_env('API_KEYS').split(',') if get_env('API_KEYS') else None
+
+        self.ACTIVATE_INFERENCE = get_bool_env('ACTIVATE_INFERENCE')
 
 
 config = Config()

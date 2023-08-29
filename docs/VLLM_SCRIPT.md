@@ -80,7 +80,7 @@ docker run -it -d --gpus all --ipc=host -p 7891:8000 --name=vllm-server \
     --ulimit memlock=-1 --ulimit stack=67108864 \
     -v `pwd`:/workspace \
     llm-api:vllm \
-    python api/vllm_server.py
+    python api/server.py
 ```
 
 2. docker compose
@@ -100,7 +100,7 @@ cp .env.vllm.example .env
 然后修改 `.env` 文件中的环境变量
 
 ```shell
-python api/vllm_server.py
+python api/server.py
 ```
 
 ## 环境变量修改参考

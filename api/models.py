@@ -1,5 +1,7 @@
 import asyncio
 
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 from sentence_transformers import SentenceTransformer
 
@@ -7,12 +9,25 @@ from api.apapter import get_prompt_adapter
 from api.config import config
 
 
-def get_embedding_model() -> SentenceTransformer:
+def create_app():
+    """ create fastapi app server """
+    app = FastAPI()
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+    return app
+
+
+def create_embedding_model() -> SentenceTransformer:
     """ get embedding model from sentence-transformers. """
     return SentenceTransformer(config.EMBEDDING_NAME, device=config.EMBEDDING_DEVICE)
 
 
-def get_generate_model():
+def create_generate_model():
     """ get generate model for chat or completion. """
     from api.generation import ModelServer
     from api.apapter.model import load_model
@@ -60,7 +75,7 @@ def get_context_len(model_config) -> int:
     return max_model_len
 
 
-def get_vllm_engine():
+def create_vllm_engine():
     """ get vllm generate engine for chat or completion. """
     try:
         from vllm.engine.arg_utils import AsyncEngineArgs
@@ -111,7 +126,17 @@ def get_vllm_engine():
     return engine
 
 
-EMBEDDED_MODEL = get_embedding_model() if config.EMBEDDING_NAME else None  # model for embedding
-GENERATE_MDDEL = get_generate_model() if not config.USE_VLLM else None  # model for transformers generate
-VLLM_ENGINE = get_vllm_engine() if config.USE_VLLM else None   # model for vllm generate
-EXCLUDE_MODELS = ["baichuan-13b", "qwen"]  # model names for special processing
+# fastapi app
+app = create_app()
+
+# model for embedding
+EMBEDDED_MODEL = create_embedding_model() if (config.EMBEDDING_NAME and config.ACTIVATE_INFERENCE) else None
+
+# model for transformers generate
+GENERATE_MDDEL = create_generate_model() if (not config.USE_VLLM and config.ACTIVATE_INFERENCE) else None
+
+# model for vllm generate
+VLLM_ENGINE = create_vllm_engine() if (config.USE_VLLM and config.ACTIVATE_INFERENCE) else None
+
+# model names for special processing
+EXCLUDE_MODELS = ["baichuan-13b", "qwen"]
