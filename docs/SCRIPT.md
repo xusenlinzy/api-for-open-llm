@@ -109,7 +109,8 @@ cp .env.example .env
 然后修改 `.env` 文件中的环境变量
 
 ```shell
-python api/server.py
+cp api/server.py .
+python server.py
 ```
 
 
