@@ -27,7 +27,7 @@ def generate_stream(
     repetition_penalty = float(params.get("repetition_penalty", 1.0))
     top_p = float(params.get("top_p", 1.0))
     top_k = int(params.get("top_k", -1))  # -1 means disable
-    max_new_tokens = int(params.get("max_new_tokens", 256))
+    max_new_tokens = int(params.get("max_tokens", 256))
     echo = bool(params.get("echo", True))
     stop_str = params.get("stop", None)
 
@@ -236,7 +236,7 @@ def generate_stream_v2(
     repetition_penalty = float(params.get("repetition_penalty", 1.0))
     top_p = float(params.get("top_p", 1.0))
     top_k = int(params.get("top_k", 40))
-    max_new_tokens = int(params.get("max_new_tokens", 256))
+    max_new_tokens = int(params.get("max_tokens", 256))
 
     stop_token_ids = params.get("stop_token_ids", None) or []
     if tokenizer.eos_token_id not in stop_token_ids:
