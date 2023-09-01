@@ -2,7 +2,7 @@ import json
 import secrets
 from typing import Generator, Dict, Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from loguru import logger
 
@@ -34,6 +34,9 @@ chat_router = APIRouter(prefix="/chat")
 @chat_router.post("/completions", dependencies=[Depends(check_api_key)])
 async def create_chat_completion(request: ChatCompletionRequest):
     """Creates a completion for the chat message"""
+    if len(request.messages) < 1 or request.messages[-1].role != Role.USER:
+        raise HTTPException(status_code=400, detail="Invalid request")
+
     error_check_ret = check_requests(request)
     if error_check_ret is not None:
         return error_check_ret

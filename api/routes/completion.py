@@ -2,7 +2,7 @@ import json
 import secrets
 import time
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from loguru import logger
 
@@ -27,6 +27,8 @@ async def create_completion(request: CompletionRequest):
 
     start_time = time.time()
     if isinstance(request.prompt, str):
+        if len(request.prompt) < 1:
+            raise HTTPException(status_code=400, detail="Invalid request")
         request.prompt = [request.prompt]
 
     # stop settings

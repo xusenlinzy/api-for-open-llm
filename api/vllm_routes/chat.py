@@ -47,9 +47,15 @@ async def create_chat_completion(request: ChatCompletionRequest, raw_request: Re
     """
     logger.info(f"Received chat messages: {request.messages}")
 
+    if len(request.messages) < 1 or request.messages[-1].role != Role.USER:
+        return create_error_response(
+            HTTPStatus.BAD_REQUEST,
+            "Invalid request: messages is empty"
+        )
+
     with_function_call = check_function_call(request.messages, functions=request.functions)
     if with_function_call and "qwen" not in config.MODEL_NAME.lower():
-        create_error_response(
+        return create_error_response(
             HTTPStatus.BAD_REQUEST,
             "Invalid request format: functions only supported by Qwen-7B-Chat",
         )

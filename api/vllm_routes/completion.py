@@ -40,6 +40,11 @@ async def create_completion(request: CompletionRequest, raw_request: Request):
           suffix)
         - logit_bias (to be supported by vLLM engine)
     """
+    if len(request.prompt) < 1:
+        return create_error_response(
+            HTTPStatus.BAD_REQUEST,
+            "Invalid request: prompt is empty"
+        )
 
     if request.echo:
         # We do not support echo since the vLLM engine does not
