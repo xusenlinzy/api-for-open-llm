@@ -1,22 +1,6 @@
 # API for Open LLMs
-
-<p align="center">
-    <a href="https://github.com/xusenlinzy/api-for-open-llm"><img src="https://img.shields.io/github/license/xusenlinzy/api-for-open-llm"></a>
-    <a href=""><img src="https://img.shields.io/badge/python-3.8+-aff.svg"></a>
-    <a href=""><img src="https://img.shields.io/badge/pytorch-%3E=1.14-red?logo=pytorch"></a>
-    <a href="https://github.com/xusenlinzy/api-for-open-llm"><img src="https://img.shields.io/github/last-commit/xusenlinzy/api-for-open-llm"></a>
-    <a href="https://github.com/xusenlinzy/api-for-open-llm"><img src="https://img.shields.io/github/issues/xusenlinzy/api-for-open-llm?color=9cc"></a>
-    <a href="https://github.com/xusenlinzy/api-for-open-llm"><img src="https://img.shields.io/github/stars/xusenlinzy/api-for-open-llm?color=ccf"></a>
-    <a href="https://github.com/xusenlinzy/api-for-open-llm"><img src="https://img.shields.io/badge/langurage-py-brightgreen?style=flat&color=blue"></a>
-</p>
-
-
-![llm.png](images/llm.png)
-<div align="center"> 图片来自于论文: [A Survey of Large Language Models](https://arxiv.org/pdf/2303.18223.pdf) </div>
-
   
 ## 🐧 QQ交流群：870207830
-
 
 ## 📢 新闻
 
@@ -124,17 +108,15 @@
 ### [聊天界面](./applications)
 
 ```shell
-cd streamlit-demo
-pip install -r requirements.txt
-streamlit run streamlit_app.py
+cd applications
+
+python web_demo.py
 ```
 
-![img.png](images/demo.png)
 
 ### [openai](https://github.com/openai/openai-python)
 
-<details>
-<summary>👉 Chat Completions</summary>
+👉 Chat Completions
 
 ```python
 import openai
@@ -157,10 +139,8 @@ print(completion.choices[0].message.content)
 # 你好👋！我是人工智能助手 ChatGLM-6B，很高兴见到你，欢迎问我任何问题。
 ```
 
-</details>
 
-<details>
-<summary>👉 Completions</summary>
+👉 Completions
 
 ```python
 import openai
@@ -177,10 +157,8 @@ print(completion.choices[0].text)
 # 你好👋！我是人工智能助手 ChatGLM-6B，很高兴见到你，欢迎问我任何问题。
 ```
 
-</details>
 
-<details>
-<summary>👉 Embeddings</summary>
+👉 Embeddings
 
 ```python
 import openai
@@ -199,12 +177,10 @@ embedding = openai.Embedding.create(
 print(embedding['data'][0]['embedding'])
 ```
 
-</details>
 
 ### [langchain](https://github.com/hwchase17/langchain)
 
-<details>
-<summary>👉 Chat Completions</summary>
+👉 Chat Completions
 
 ```python
 import os
@@ -219,10 +195,8 @@ chat = ChatOpenAI()
 print(chat([HumanMessage(content="你好")]))
 # content='你好👋！我是人工智能助手 ChatGLM-6B，很高兴见到你，欢迎问我任何问题。' additional_kwargs={}
 ```
-</details>
 
-<details>
-<summary>👉 Completions</summary>
+>👉 Completions
 
 ```python
 import os
@@ -237,10 +211,9 @@ print(llm("你好"))
 # 你好👋！我是人工智能助手 ChatGLM-6B，很高兴见到你，欢迎问我任何问题。
 ```
 
-</details>
 
-<details>
-<summary>👉 Embeddings</summary>
+👉 Embeddings
+
 
 ```python
 import os
@@ -254,7 +227,7 @@ embeddings = OpenAIEmbeddings()
 query_result = embeddings.embed_query("什么是chatgpt？")
 print(query_result)
 ```
-</details>
+
 
 ### 可接入的项目
 
@@ -269,7 +242,6 @@ docker run -d -p 3000:3000 \
    yidadaa/chatgpt-next-web
 ```
 
-![web](images/web.png)
 
 + [dify: An easy-to-use LLMOps platform designed to empower more people to create sustainable, AI-native applications](https://github.com/langgenius/dify)
 
@@ -278,8 +250,6 @@ docker run -d -p 3000:3000 \
 OPENAI_API_BASE: http://192.168.0.xx:80/v1
 DISABLE_PROVIDER_CONFIG_VALIDATION: 'true'
 ```
-
-![dify](images/dify.png)
 
 
 ## 📜 License

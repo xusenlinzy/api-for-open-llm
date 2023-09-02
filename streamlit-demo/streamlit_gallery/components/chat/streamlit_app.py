@@ -7,7 +7,7 @@ import streamlit as st
 def main():
     st.title("💬 Chatbot")
 
-    openai.api_base = os.getenv("CHAT_MODEL_API_BASE")
+    openai.api_base = os.getenv("CHAT_API_BASE")
     openai.api_key = os.getenv("API_KEY")
 
     if "messages" not in st.session_state:

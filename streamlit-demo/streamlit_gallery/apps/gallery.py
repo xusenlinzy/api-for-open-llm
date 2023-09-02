@@ -4,7 +4,7 @@ import streamlit as st
 
 
 def main():
-    with open(Path(__file__).parents[3]/"README.md", "r", encoding="utf8") as f:
+    with open(Path(__file__).parents[3]/"docs/DISPLAY.md", "r", encoding="utf8") as f:
         text = f.read()
     st.markdown(text)
 
