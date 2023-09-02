@@ -13,10 +13,13 @@ def main():
     openai.api_key = os.getenv("API_KEY")
 
     with st.expander("🐬 DATABASE SETTINGS", False):
-        db_host = st.text_input("Host", placeholder="192.168.0.121")
-        db_port = st.number_input("Port", value=3306)
-        db_user = st.text_input("User", value="root")
-        db_password = st.text_input("Password", type="password")
+        col1, col2 = st.columns(2)
+        with col1:
+            db_host = st.text_input("Host", placeholder="192.168.0.121")
+            db_user = st.text_input("User", value="root")
+        with col2:
+            db_port = st.number_input("Port", value=3306)
+            db_password = st.text_input("Password", type="password")
         db_name = st.text_input("Database Name", placeholder="test2")
 
         db_creds = dict(
@@ -41,7 +44,12 @@ def main():
 
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
-            st.markdown(message["content"])
+            if message["role"] == "user":
+                st.markdown(message["content"])
+            else:
+                st.code(message["content"])
+                if message["result"] is not None:
+                    st.dataframe(message["result"])
 
     if prompt := st.chat_input("2022年xx大学参与了哪些项目？"):
         table_name = st.session_state.get("table_name", None)
@@ -78,12 +86,14 @@ def main():
                 result = None
 
             if result is not None:
-                st.dataframe(result.head(5))
+                result = result.head(5)
+                st.dataframe(result)
 
         st.session_state.messages.append(
             {
                 "role": "assistant",
-                "content": full_response
+                "content": full_response,
+                "result": result,
             }
         )
 
