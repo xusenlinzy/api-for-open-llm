@@ -1,11 +1,12 @@
 import streamlit as st
 
-from streamlit_gallery.apps import gallery
-from streamlit_gallery.components import chat, doc_chat, sql_chat
 from streamlit_gallery.utils.page import page_group
 
 
 def main():
+    from streamlit_gallery.apps import gallery
+    from streamlit_gallery.components import chat, doc_chat, sql_chat
+
     page = page_group("p")
 
     with st.sidebar:

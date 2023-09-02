@@ -16,14 +16,14 @@ class PageGroup:
 
     def __init__(self, param):
         self._param: str = param
-        self._default: str = None
-        self._selected: str = None
+        self._default = None
+        self._selected = None
 
         # Fix some rollback issues when multiple pages are selected in the same run.
         self._backup: Optional[str] = None
 
     @property
-    def selected(self) -> bool:
+    def selected(self):
         params = st.experimental_get_query_params()
         return params[self._param][0] if self._param in params else self._default
 

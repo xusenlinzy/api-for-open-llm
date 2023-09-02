@@ -43,7 +43,6 @@ def create_index(file, chunk_size, chunk_overlap):
     return filename
 
 
-@st.cache_resource
 def delete_index(filename):
     file_path = f"{UPLOAD_FOLDER}/{filename}"
     os.remove(file_path)
