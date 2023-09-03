@@ -1,0 +1,80 @@
+import os
+
+import openai
+import streamlit as st
+from langchain.utilities import SerpAPIWrapper
+
+
+PROMPT_TEMPLATE = """<指令>根据已知信息，简洁和专业的来回答问题。如果无法从中得到答案，请说 “根据已知信息无法回答该问题”，不允许在答案中添加编造成分，答案请使用中文。 </指令>
+
+<已知信息>{context}</已知信息>
+
+<问题>{query}</问题>"""
+
+
+def main():
+    st.title("💬 Search Chatbot")
+
+    openai.api_base = os.getenv("CHAT_API_BASE")
+    openai.api_key = os.getenv("API_KEY")
+
+    # os.environ["SERPAPI_API_KEY"] = "5d55a4e5bf2b45868d19480fe0f1a9d898eb272e11d9b92e381158610430aef2"
+    search = SerpAPIWrapper()
+    # search.serpapi_api_key = os.getenv("SERPAPI_API_KEY", default="")
+
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
+
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+            if message["role"] == "assistant" and message["reference"] is not None:
+                st.markdown("### Reference Search Results")
+                st.text(message["reference"], expanded=False)
+
+    if prompt := st.chat_input("What is up?"):
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        with st.chat_message("user"):
+            st.markdown(prompt)
+
+        with st.chat_message("assistant"):
+            result = search.run(prompt)
+            message_placeholder = st.empty()
+            full_response = ""
+            for response in openai.ChatCompletion.create(
+                model="baichuan",
+                messages=[
+                     {
+                         "role": m["role"],
+                         "content": m["content"]
+                     }
+                     for m in st.session_state.messages[:-1]
+                 ] + [
+                     {
+                         "role": "user",
+                         "content": PROMPT_TEMPLATE.format(query=prompt, context=result)
+                     }
+                 ],
+                max_tokens=st.session_state.get("max_tokens", 512),
+                temperature=st.session_state.get("temperature", 0.9),
+                stream=True,
+            ):
+                full_response += response.choices[0].delta.get("content", "")
+
+                message_placeholder.markdown(full_response + "▌")
+            message_placeholder.markdown(full_response)
+
+            st.markdown("### Reference Search Results")
+            st.text(result, expanded=False)
+
+        st.session_state.messages.append(
+            {
+                "role": "assistant",
+                "content": full_response,
+                "reference": result,
+            }
+        )
+
+
+if __name__ == "__main__":
+    main()
