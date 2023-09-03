@@ -13,3 +13,4 @@ opencv-python==4.7.0.72
 faiss-cpu
 pymysql
 streamlit
+google-search-results

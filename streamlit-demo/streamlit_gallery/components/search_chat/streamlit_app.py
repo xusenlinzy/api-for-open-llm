@@ -18,9 +18,7 @@ def main():
     openai.api_base = os.getenv("CHAT_API_BASE")
     openai.api_key = os.getenv("API_KEY")
 
-    # os.environ["SERPAPI_API_KEY"] = "5d55a4e5bf2b45868d19480fe0f1a9d898eb272e11d9b92e381158610430aef2"
     search = SerpAPIWrapper()
-    # search.serpapi_api_key = os.getenv("SERPAPI_API_KEY", default="")
 
     if "messages" not in st.session_state:
         st.session_state.messages = []
@@ -30,7 +28,7 @@ def main():
             st.markdown(message["content"])
             if message["role"] == "assistant" and message["reference"] is not None:
                 st.markdown("### Reference Search Results")
-                st.text(message["reference"], expanded=False)
+                st.json(message["reference"], expanded=False)
 
     if prompt := st.chat_input("What is up?"):
         st.session_state.messages.append({"role": "user", "content": prompt})
@@ -65,13 +63,13 @@ def main():
             message_placeholder.markdown(full_response)
 
             st.markdown("### Reference Search Results")
-            st.text(result, expanded=False)
+            st.json({"search_result": result}, expanded=False)
 
         st.session_state.messages.append(
             {
                 "role": "assistant",
                 "content": full_response,
-                "reference": result,
+                "reference": {"search_result": result},
             }
         )
 
