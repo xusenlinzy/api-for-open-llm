@@ -23,21 +23,22 @@
 + 【2023.08.28】 添加 `transformers.TextIteratorStreamer` 流式输出支持，只需将环境变量修改为 `USE_STREAMER_V2=true`
 
 
-+ 【2023.08.26】 添加 [code-llama](https://github.com/facebookresearch/codellama) 模型支持，[启动方式链接](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#code-llama)，[使用示例链接](./examples/code-llama)
++ 【2023.08.26】 添加 [code-llama](https://github.com/facebookresearch/codellama) 模型支持，[启动方式链接](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#code-llama)，[使用示例链接](https://github.com/xusenlinzy/api-for-open-llm/tree/master/examples/code-llama)
 
 
-+ 【2023.08.23】 添加 [sqlcoder](https://huggingface.co/defog/sqlcoder) 模型支持，[启动方式链接](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#sqlcoder)，[使用示例链接](./examples/sqlcoder/inference.py)
++ 【2023.08.23】 添加 [sqlcoder](https://huggingface.co/defog/sqlcoder) 模型支持，[启动方式链接](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#sqlcoder)，[使用示例链接](https://github.com/xusenlinzy/api-for-open-llm/blob/master/examples/sqlcoder/inference.py)
 
 
 + 【2023.08.22】 添加 [xverse-13b-chat](https://github.com/xverse-ai/XVERSE-13B) 模型支持，[启动方式链接](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#xverse-13b-chat)
 
 
-+ 【2023.08.10】 添加 [vLLM](https://github.com/vllm-project/vllm) 推理加速支持，[使用文档](./docs/VLLM_SCRIPT.md)
++ 【2023.08.10】 添加 [vLLM](https://github.com/vllm-project/vllm) 推理加速支持，[使用文档](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/VLLM_SCRIPT.md)
 
 
 + 【2023.08.03】 添加 [qwen-7b-chat](https://github.com/QwenLM/Qwen-7B) 模型支持，[启动方式链接](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#qwen-7b-chat)
 
-更多新闻和历史请转至 [此处](./docs/NEWS.md)
+
+更多新闻和历史请转至 [此处](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/NEWS.md)
 
 ---
 

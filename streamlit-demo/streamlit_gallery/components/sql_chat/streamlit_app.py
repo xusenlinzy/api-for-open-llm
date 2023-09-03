@@ -17,10 +17,10 @@ def main():
         with col1:
             db_host = st.text_input("Host", placeholder="192.168.0.121")
             db_user = st.text_input("User", value="root")
+            db_name = st.text_input("Database Name", placeholder="test2")
         with col2:
             db_port = st.number_input("Port", value=3306)
             db_password = st.text_input("Password", type="password")
-        db_name = st.text_input("Database Name", placeholder="test2")
 
         db_creds = dict(
             host=db_host,
@@ -30,8 +30,9 @@ def main():
         )
 
         if db_name and db_creds:
-            table_names = query_table_names(db_name, db_creds)
-            table_name = st.selectbox("Select a table", table_names)
+            with col2:
+                table_names = query_table_names(db_name, db_creds)
+                table_name = st.selectbox("Select a table", table_names)
             st.session_state.update(dict(table_name=table_name))
 
             table_info = query_table_schema(table_name, db_name, db_creds)
