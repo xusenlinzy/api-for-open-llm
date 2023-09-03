@@ -7,4 +7,4 @@ import nltk
 NLTK_DATA_PATH = os.path.join(Path(__file__).parents[3], "applications/nltk_data")
 nltk.data.path = [NLTK_DATA_PATH] + nltk.data.path
 
-dotenv.load_dotenv()
+dotenv.load_dotenv(os.path.join(Path(__file__).parents[2], ".env"))

@@ -66,7 +66,9 @@ def main():
 
         vector_store_names = os.listdir(VECTOR_STORE_PATH)
         vector_store_name = st.selectbox("Select a vector store", vector_store_names)
-        st.session_state.update(dict(vector_store_name=vector_store_name))
+        st.session_state.update(
+            dict(vector_store_name=vector_store_name)
+        )
 
         if st.button("❌️ DELETE FILE"):
             _ = delete_index(vector_store_name)
@@ -77,18 +79,28 @@ def main():
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
+            if message["role"] == "assistant" and message["reference"] is not None:
+                st.markdown("### Reference Documents")
+                st.json(message["reference"], expanded=False)
 
     if prompt := st.chat_input("What is up?"):
         vector_store_name = st.session_state.get("vector_store_name", None)
-        doc_prompt = None
+        doc_prompt, reference = None, None
         if vector_store_name is not None:
             result = FAISS.doc_search(
                 query=prompt,
                 top_k=st.session_state.get("top_k", 3),
-                vs_path=vector_store_name
+                vs_path=f"{VECTOR_STORE_PATH}/{vector_store_name}"
             )
             context = "\n".join([doc[0].page_content for doc in result])
             doc_prompt = DOCQA_PROMPT.format(query=prompt, context=context)
+            reference = [
+                {
+                    "content": doc[0].page_content,
+                    "score": float(doc[1])
+                }
+                for doc in result
+            ]
 
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
@@ -121,11 +133,15 @@ def main():
                 message_placeholder.markdown(full_response + "▌")
 
             message_placeholder.markdown(full_response)
+            if reference is not None:
+                st.markdown("### Reference Documents")
+                st.json(reference, expanded=False)
 
         st.session_state.messages.append(
             {
                 "role": "assistant",
-                "content": full_response
+                "content": full_response,
+                "reference": reference,
             }
         )
 
