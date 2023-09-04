@@ -2,6 +2,7 @@ openai
 langchain
 bitsandbytes
 fastapi==0.95.1
+typing_extensions==4.4.0
 python-dotenv==1.0.0
 uvicorn
 tenacity
