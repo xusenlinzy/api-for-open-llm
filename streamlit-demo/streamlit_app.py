@@ -1,3 +1,5 @@
+import os
+
 import streamlit as st
 
 from streamlit_gallery.utils.page import page_group
@@ -16,10 +18,16 @@ def main():
             page.item("Morris Chat Gallery", gallery, default=True)
 
         with st.expander("🧩 COMPONENTS", True):
-            page.item("Chat", chat)
-            page.item("Doc Chat", doc_chat)
-            page.item("SQL Chat", sql_chat)
-            page.item("Search Chat", search_chat)
+
+            if os.getenv("CHAT_API_BASE", ""):
+                page.item("Chat", chat)
+                page.item("Doc Chat", doc_chat)
+
+            if os.getenv("SQL_CHAT_API_BASE", ""):
+                page.item("SQL Chat", sql_chat)
+
+            if os.getenv("SERPAPI_API_KEY", ""):
+                page.item("Search Chat", search_chat)
 
         with st.expander("🐧 PARAMTERS", False):
             max_tokens = st.slider("MaxTokens", 20, 4096, 1024)

@@ -7,7 +7,7 @@ from langchain.utilities import SerpAPIWrapper
 
 PROMPT_TEMPLATE = """<指令>根据已知信息，简洁和专业的来回答问题。如果无法从中得到答案，请说 “根据已知信息无法回答该问题”，不允许在答案中添加编造成分，答案请使用中文。 </指令>
 
-<已知信息>{context}</已知信息>
+<已知信息>问题的搜索结果为：{context}</已知信息>
 
 <问题>{query}</问题>"""
 
