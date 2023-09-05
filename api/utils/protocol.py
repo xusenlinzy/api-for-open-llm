@@ -92,6 +92,7 @@ class ChatCompletionRequest(BaseModel):
 
     # Additional parameters support for stop generation
     stop_token_ids: Optional[List[int]] = None
+    repetition_penalty: Optional[float] = 1.1
 
     # Additional parameters supported by vLLM
     best_of: Optional[int] = None
@@ -169,6 +170,7 @@ class CompletionRequest(BaseModel):
 
     # Additional parameters support for stop generation
     stop_token_ids: Optional[List[int]] = None
+    repetition_penalty: Optional[float] = 1.1
 
     # Additional parameters supported by vLLM
     top_k: Optional[int] = -1

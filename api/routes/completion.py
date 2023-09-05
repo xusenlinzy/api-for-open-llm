@@ -63,6 +63,7 @@ async def create_completion(request: CompletionRequest):
                 stop=request.stop,
                 infilling=request.infilling,
                 suffix_first=request.suffix_first,
+                repetition_penalty=request.repetition_penalty,
             )
             for i in range(request.n):
                 content = GENERATE_MDDEL.generate_gate(gen_params)
@@ -113,6 +114,7 @@ async def generate_completion_stream_generator(request: CompletionRequest):
                 stop=request.stop,
                 infilling=request.infilling,
                 suffix_first=request.suffix_first,
+                repetition_penalty=request.repetition_penalty,
             )
 
             for content in GENERATE_MDDEL.generate_stream_gate(payload):

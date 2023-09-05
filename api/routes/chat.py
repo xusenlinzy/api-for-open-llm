@@ -86,6 +86,7 @@ async def create_chat_completion(request: ChatCompletionRequest):
         stream=request.stream,
         stop_token_ids=request.stop_token_ids,
         stop=request.stop,
+        repetition_penalty=request.repetition_penalty,
         with_function_call=with_function_call,
     )
 
