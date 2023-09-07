@@ -7,7 +7,7 @@ def page_group(param):
     key = f"{__name__}_page_group_{param}"
 
     if key not in st.session_state:
-        st.session_state[key] = PageGroup(param)
+        st.session_state.update({key: PageGroup(param)})
 
     return st.session_state[key]
 
