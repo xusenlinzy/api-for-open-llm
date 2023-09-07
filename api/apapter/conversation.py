@@ -393,7 +393,7 @@ class BaiChuanPromptAdapter(BasePromptAdapter):
     }
 
     def match(self, model_name) -> bool:
-        return "baichuan-13b" in model_name
+        return "baichuan-13b" in model_name or "baichuan2" in model_name
 
 
 class StarChatPromptAdapter(BasePromptAdapter):
