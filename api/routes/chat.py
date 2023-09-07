@@ -180,7 +180,7 @@ async def chat_completion_stream_generator(
                         found_action_name = True
                         finish_reason = "function_call"
             else:
-                messages = [DeltaMessage(content=delta_text)]
+                messages = [DeltaMessage(content=delta_text, role=Role.ASSISTANT)]
                 finish_reason = content.get("finish_reason", "stop")
 
             chunks = []

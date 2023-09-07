@@ -189,7 +189,7 @@ async def create_chat_completion(request: ChatCompletionRequest, raw_request: Re
                             found_action_name = True
                             finish_reason = "function_call"
                 else:
-                    msgs = [DeltaMessage(content=delta_text)]
+                    msgs = [DeltaMessage(content=delta_text, role=Role.ASSISTANT)]
                     finish_reason = output.finish_reason
 
                 for m in msgs:
@@ -199,7 +199,7 @@ async def create_chat_completion(request: ChatCompletionRequest, raw_request: Re
                 if output.finish_reason is not None:
                     response_json = create_stream_response_json(
                         index=i,
-                        delta=DeltaMessage(content=""),
+                        delta=DeltaMessage(content="", role=Role.ASSISTANT),
                         finish_reason=output.finish_reason,
                     )
                     yield f"data: {response_json}\n\n"
