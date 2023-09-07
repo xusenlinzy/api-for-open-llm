@@ -330,6 +330,7 @@ DEVICE_MAP=auto
 
 ```shell
 pip install torch -U
+# pip uninstall transformer-engine -y
 ```
 
 baichuan-inc/Baichuan2-13B-Chat

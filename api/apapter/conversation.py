@@ -393,7 +393,27 @@ class BaiChuanPromptAdapter(BasePromptAdapter):
     }
 
     def match(self, model_name) -> bool:
-        return "baichuan-13b" in model_name or "baichuan2" in model_name
+        return "baichuan-13b" in model_name
+
+
+class BaiChuan2PromptAdapter(BasePromptAdapter):
+    """ https://huggingface.co/baichuan-inc/Baichuan2-13B-Chat
+
+    formated prompt likes:
+        <reserved_106>{query0}<reserved_107>{response0}<reserved_106>{query1}<reserved_107>
+    """
+
+    name = "baichuan2"
+    system_prompt = ""
+    user_prompt = "<reserved_106>{}<reserved_107>"
+    assistant_prompt = "{}"
+    stop = {
+        "strings": ["<reserved_106>", "<reserved_107>"],
+        "token_ids": [195, 196],
+    }
+
+    def match(self, model_name) -> bool:
+        return "baichuan2" in model_name
 
 
 class StarChatPromptAdapter(BasePromptAdapter):
@@ -594,6 +614,7 @@ register_prompt_adapter(YuLanChatPromptAdapter)
 register_prompt_adapter(OpenBuddyPromptAdapter)
 register_prompt_adapter(InternLMPromptAdapter)
 register_prompt_adapter(BaiChuanPromptAdapter)
+register_prompt_adapter(BaiChuan2PromptAdapter)
 register_prompt_adapter(StarChatPromptAdapter)
 register_prompt_adapter(AquilaChatPromptAdapter)
 register_prompt_adapter(Llama2ChatPromptAdapter)
