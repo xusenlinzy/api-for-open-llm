@@ -2,7 +2,6 @@ import asyncio
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from loguru import logger
 from sentence_transformers import SentenceTransformer
 
 from api.apapter import get_prompt_adapter
@@ -52,6 +51,7 @@ def create_generate_model():
         load_in_8bit=config.LOAD_IN_8BIT,
         load_in_4bit=config.LOAD_IN_4BIT,
         use_ptuning_v2=config.USING_PTUNING_V2,
+        dtype=config.DTYPE,
     )
 
     return ModelServer(
@@ -98,14 +98,12 @@ def create_vllm_engine():
 
     # A separate tokenizer to map token IDs to strings.
     if "code-llama" in config.MODEL_NAME.lower():
-        try:
-            from transformers import CodeLlamaTokenizer
+        from transformers.utils.versions import require_version
 
-            engine.engine.tokenizer = CodeLlamaTokenizer.from_pretrained(engine_args.tokenizer)
-        except ImportError:
-            logger.error(
-                "transformers is not installed correctly. Please use the following command to install transformers\npip install git+https://github.com/huggingface/transformers.git."
-            )
+        require_version("transformers>=4.33.1", "To fix: pip install transformers>=4.33.1")
+        from transformers import CodeLlamaTokenizer
+
+        engine.engine.tokenizer = CodeLlamaTokenizer.from_pretrained(engine_args.tokenizer)
     else:
         engine.engine.tokenizer = get_tokenizer(
             engine_args.tokenizer,

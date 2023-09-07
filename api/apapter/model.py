@@ -8,7 +8,6 @@ import torch
 from loguru import logger
 from peft import PeftModel
 from tqdm import tqdm
-
 from transformers import (
     AutoModel,
     AutoConfig,
@@ -51,7 +50,14 @@ class BaseModelAdapter:
         num_gpus = kwargs.get("num_gpus", 1)
         if device == "cuda":
             if "torch_dtype" not in config_kwargs:
-                config_kwargs["torch_dtype"] = torch.float16
+                dtype = kwargs.get("dtype", "half")
+                if dtype == "half":
+                    config_kwargs["torch_dtype"] = torch.float16
+                elif dtype == "bfloat16":
+                    config_kwargs["torch_dtype"] = torch.bfloat16
+                else:
+                    config_kwargs["torch_dtype"] = torch.float32
+
             if num_gpus != 1:
                 config_kwargs["device_map"] = "auto"
                 # model_kwargs["device_map"] = "sequential"  # This is important for not the same VRAM sizes
@@ -449,13 +455,14 @@ class CodeLlamaModelAdapter(LlamaModelAdapter):
 
     @property
     def tokenizer_class(self):
-        try:
-            from transformers import CodeLlamaTokenizer
-            return CodeLlamaTokenizer
-        except ImportError:
-            logger.error(
-                "transformers is not installed correctly. Please use the following command to install transformers\npip install git+https://github.com/huggingface/transformers.git."
-            )
+        require_version("transformers>=4.33.1", "To fix: pip install transformers>=4.33.1")
+        from transformers import CodeLlamaTokenizer
+
+        return CodeLlamaTokenizer
+
+    @property
+    def default_model_name_or_path(self):
+        return "codellama/CodeLlama-7b-Instruct-hf"
 
 
 register_model_adapter(ChatglmModelAdapter)

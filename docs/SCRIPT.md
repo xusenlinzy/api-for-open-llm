@@ -118,6 +118,8 @@ python server.py
 
 **环境变量修改内容参考下面**
 
++ [baichuan2](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#baichuan2)
+
 + [code-llama](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#code-llama)
 
 + [sqlcoder](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#sqlcoder)  
@@ -301,10 +303,6 @@ DEVICE_MAP=auto
 
 ### CODE-LLAMA
 
-```shell
-pip install git+https://github.com/huggingface/transformers.git
-```
-
 codellama/CodeLlama-7b-Instruct-hf
 
 ```shell
@@ -314,10 +312,6 @@ MODEL_PATH=codellama/CodeLlama-7b-Instruct-hf
 
 ### Wizard-Coder
 
-```shell
-pip install git+https://github.com/huggingface/transformers.git
-```
-
 WizardLM/WizardCoder-Python-34B-V1.0
 
 ```shell
@@ -325,4 +319,43 @@ MODEL_NAME=code-llama
 MODEL_PATH=WizardLM/WizardCoder-Python-34B-V1.0
 PROMPT_NAME=alpaca
 DEVICE_MAP=auto
+```
+
+
+### Baichuan2
+
+`Baichuan2` 系列模型中，为了加快推理速度使用了 `pytorch2.0` 加入的新功能 `F.scaled_dot_product_attention`，因此需要在 `pytorch2.0` 环境下运行
+
+可以使用下面的命令升级 `llm-api:pytorch` 环境，或者直接使用 `llm-api:vllm` 环境
+
+```shell
+pip install torch -U
+```
+
+baichuan-inc/Baichuan2-13B-Chat
+
+```shell
+MODEL_NAME=baichuan2-13b-chat
+MODEL_PATH=baichuan-inc/Baichuan2-13B-Chat
+DEVICE_MAP=auto
+DTYPE=bfloat16
+```
+
+`BitsAndBytes` 量化
+
+```shell
+MODEL_NAME=baichuan2-13b-chat
+MODEL_PATH=baichuan-inc/Baichuan2-13B-Chat
+DEVICE_MAP=auto
+LOAD_IN_8BIT=true
+```
+
+在线量化
+
+```shell
+MODEL_NAME=baichuan2-13b-chat
+MODEL_PATH=baichuan-inc/Baichuan2-13B-Chat
+DEVICE_MAP=
+DTYPE=half
+QUANTIZE=8
 ```
