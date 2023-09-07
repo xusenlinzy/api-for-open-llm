@@ -20,7 +20,7 @@
 
 ## 📢 新闻
 
-+ 【2023.08.28】 添加 [baichuan2](https://github.com/baichuan-inc/Baichuan2) 模型支持，[启动方式链接](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#baichuan2)
++ 【2023.09.07】 添加 [baichuan2](https://github.com/baichuan-inc/Baichuan2) 模型支持，[启动方式链接](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#baichuan2)
 
 
 + 【2023.08.28】 添加 `transformers.TextIteratorStreamer` 流式输出支持，只需将环境变量修改为 `USE_STREAMER_V2=true`
