@@ -34,7 +34,7 @@ chat_router = APIRouter(prefix="/chat")
 @chat_router.post("/completions", dependencies=[Depends(check_api_key)])
 async def create_chat_completion(request: ChatCompletionRequest):
     """Creates a completion for the chat message"""
-    if len(request.messages) < 1 or request.messages[-1].role != Role.USER:
+    if len(request.messages) < 1 or request.messages[-1].role not in [Role.USER, Role.FUNCTION]:
         raise HTTPException(status_code=400, detail="Invalid request")
 
     error_check_ret = check_requests(request)

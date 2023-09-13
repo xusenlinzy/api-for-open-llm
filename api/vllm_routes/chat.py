@@ -47,7 +47,7 @@ async def create_chat_completion(request: ChatCompletionRequest, raw_request: Re
     """
     logger.info(f"Received chat messages: {request.messages}")
 
-    if len(request.messages) < 1 or request.messages[-1].role != Role.USER:
+    if len(request.messages) < 1 or request.messages[-1].role not in [Role.USER, Role.FUNCTION]:
         return create_error_response(
             HTTPStatus.BAD_REQUEST,
             "Invalid request: messages is empty"
