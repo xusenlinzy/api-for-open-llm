@@ -14,6 +14,7 @@ DEFAULTS = {
     'MODEL_NAME': '',
     'MODEL_PATH': '',
     'ADAPTER_MODEL_PATH': '',
+    'RESIZE_EMBEDDINGS': 'False',
 
     # support for device
     'DEVICE': 'cuda',
@@ -80,6 +81,7 @@ class Config:
         self.MODEL_NAME = get_env('MODEL_NAME')
         self.MODEL_PATH = get_env('MODEL_PATH')
         self.ADAPTER_MODEL_PATH = get_env('ADAPTER_MODEL_PATH') if get_env('ADAPTER_MODEL_PATH') else None
+        self.RESIZE_EMBEDDINGS = get_bool_env('RESIZE_EMBEDDINGS')
 
         self.DEVICE = get_env('DEVICE')
         self.DEVICE_MAP = get_env('DEVICE_MAP') if get_env('DEVICE_MAP') else None

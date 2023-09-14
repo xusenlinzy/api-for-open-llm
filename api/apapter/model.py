@@ -144,7 +144,8 @@ class BaseModelAdapter:
 
     def load_adapter_model(self, model, tokenizer, adapter_model, is_chatglm, model_kwargs, **kwargs):
         use_ptuning_v2 = kwargs.get("use_ptuning_v2", False)
-        if not is_chatglm and adapter_model:
+        resize_embeddings = kwargs.get("resize_embeddings", False)
+        if adapter_model and resize_embeddings and not is_chatglm:
             model_vocab_size = model.get_input_embeddings().weight.size(0)
             tokenzier_vocab_size = len(tokenizer)
             logger.info(f"Vocab of the base model: {model_vocab_size}")

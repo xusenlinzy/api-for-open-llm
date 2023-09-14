@@ -52,6 +52,7 @@ def create_generate_model():
         load_in_4bit=config.LOAD_IN_4BIT,
         use_ptuning_v2=config.USING_PTUNING_V2,
         dtype=config.DTYPE,
+        resize_embeddings=config.RESIZE_EMBEDDINGS,
     )
 
     return ModelServer(
