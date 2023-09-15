@@ -54,7 +54,10 @@ def generate_stream(
             input_ids = tokenizer(prompt, suffix_first=suffix_first).input_ids
             stop_token_ids.append(tokenizer.eot_id)
         else:
-            input_ids = tokenizer(prompt).input_ids
+            if check_is_qwen(model):
+                input_ids = tokenizer(prompt, allowed_special="all", disallowed_special=()).input_ids
+            else:
+                input_ids = tokenizer(prompt).input_ids
 
         if model.config.is_encoder_decoder:
             max_src_len = context_len
@@ -256,7 +259,10 @@ def generate_stream_v2(
         if infilling:
             input_ids = tokenizer(prompt, suffix_first=suffix_first).input_ids
         else:
-            input_ids = tokenizer(prompt).input_ids
+            if check_is_qwen(model):
+                input_ids = tokenizer(prompt, allowed_special="all", disallowed_special=()).input_ids
+            else:
+                input_ids = tokenizer(prompt).input_ids
 
         if model.config.is_encoder_decoder:
             max_src_len = context_len

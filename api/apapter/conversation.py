@@ -233,16 +233,30 @@ class AlpacaPromptAdapter(BasePromptAdapter):
 
 class FireflyPromptAdapter(BasePromptAdapter):
     """ formated prompt likes:
-        <s>{query0}</s>{response0}</s><s>{query1}</s>
+        <s>{query0}</s>{response0}</s>{query1}</s>
     """
 
     name = "firefly"
-    system_prompt = ""
-    user_prompt = "<s>{}</s>"
+    system_prompt = "<s>"
+    user_prompt = "{}</s>"
     assistant_prompt = "{}</s>"
 
     def match(self, model_name) -> bool:
-        return "firefly" in model_name or "baichuan-7b" in model_name
+        return "firefly" in model_name
+
+
+class FireflyForQwenPromptAdapter(BasePromptAdapter):
+    """ formated prompt likes:
+        <|endoftext|>{query0}<|endoftext|>{response0}<|endoftext|>{query1}<|endoftext|>
+    """
+
+    name = "firefly-qwen"
+    system_prompt = "<|endoftext|>"
+    user_prompt = "{}<|endoftext|>"
+    assistant_prompt = "{}<|endoftext|>"
+
+    def match(self, model_name) -> bool:
+        return "firefly-qwen" in model_name
 
 
 class BaizePromptAdapter(BasePromptAdapter):
@@ -607,6 +621,7 @@ register_prompt_adapter(MossPromptAdapter)
 register_prompt_adapter(PhoenixPromptAdapter)
 register_prompt_adapter(AlpacaPromptAdapter)
 register_prompt_adapter(FireflyPromptAdapter)
+register_prompt_adapter(FireflyForQwenPromptAdapter)
 register_prompt_adapter(BaizePromptAdapter)
 register_prompt_adapter(BellePromptAdapter)
 register_prompt_adapter(GuanacoPromptAdapter)
