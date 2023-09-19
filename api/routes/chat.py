@@ -1,8 +1,9 @@
+import asyncio
 import json
 import secrets
 from typing import Generator, Dict, Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from loguru import logger
 
@@ -32,7 +33,7 @@ chat_router = APIRouter(prefix="/chat")
 
 
 @chat_router.post("/completions", dependencies=[Depends(check_api_key)])
-async def create_chat_completion(request: ChatCompletionRequest):
+async def create_chat_completion(request: ChatCompletionRequest, raw_request: Request):
     """Creates a completion for the chat message"""
     if len(request.messages) < 1 or request.messages[-1].role not in [Role.USER, Role.FUNCTION]:
         raise HTTPException(status_code=400, detail="Invalid request")
@@ -93,7 +94,7 @@ async def create_chat_completion(request: ChatCompletionRequest):
     logger.debug(f"==== request ====\n{gen_params}")
 
     if request.stream:
-        generator = chat_completion_stream_generator(request.model, gen_params, request.n)
+        generator = chat_completion_stream_generator(request.model, gen_params, request.n, raw_request)
         return StreamingResponse(generator, media_type="text/event-stream")
 
     choices = []
@@ -125,7 +126,7 @@ async def create_chat_completion(request: ChatCompletionRequest):
 
 
 async def chat_completion_stream_generator(
-    model_name: str, gen_params: Dict[str, Any], n: int
+    model_name: str, gen_params: Dict[str, Any], n: int, raw_request: Request
 ) -> Generator[str, Any, None]:
     """
     Event stream format:
@@ -149,6 +150,10 @@ async def chat_completion_stream_generator(
         with_function_call = gen_params.get("with_function_call", False)
         found_action_name = False
         for content in GENERATE_MDDEL.generate_stream_gate(gen_params):
+            if await raw_request.is_disconnected():
+                asyncio.current_task().cancel()
+                return
+
             if content["error_code"] != 0:
                 yield f"data: {json.dumps(content, ensure_ascii=False)}\n\n"
                 yield "data: [DONE]\n\n"

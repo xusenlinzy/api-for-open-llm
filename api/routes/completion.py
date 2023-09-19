@@ -1,8 +1,9 @@
+import asyncio
 import json
 import secrets
 import time
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from loguru import logger
 
@@ -20,7 +21,7 @@ completion_router = APIRouter()
 
 
 @completion_router.post("/completions", dependencies=[Depends(check_api_key)])
-async def create_completion(request: CompletionRequest):
+async def create_completion(request: CompletionRequest, raw_request: Request):
     error_check_ret = check_requests(request)
     if error_check_ret is not None:
         return error_check_ret
@@ -46,7 +47,7 @@ async def create_completion(request: CompletionRequest):
     request.stop_token_ids = list(set(stop_token_ids + request.stop_token_ids))
 
     if request.stream:
-        generator = generate_completion_stream_generator(request)
+        generator = generate_completion_stream_generator(request, raw_request)
         return StreamingResponse(generator, media_type="text/event-stream")
     else:
         text_completions = []
@@ -94,7 +95,7 @@ async def create_completion(request: CompletionRequest):
         )
 
 
-async def generate_completion_stream_generator(request: CompletionRequest):
+async def generate_completion_stream_generator(request: CompletionRequest, raw_request: Request):
     model_name = request.model
     _id = f"cmpl-{secrets.token_hex(12)}"
     finish_stream_events = []
@@ -118,6 +119,10 @@ async def generate_completion_stream_generator(request: CompletionRequest):
             )
 
             for content in GENERATE_MDDEL.generate_stream_gate(payload):
+                if await raw_request.is_disconnected():
+                    asyncio.current_task().cancel()
+                    return
+
                 if content["error_code"] != 0:
                     yield f"data: {json.dumps(content, ensure_ascii=False)}\n\n"
                     yield "data: [DONE]\n\n"
