@@ -1,8 +1,7 @@
 import time
-from http import HTTPStatus
 from typing import AsyncGenerator, Optional
 
-from fastapi import APIRouter, BackgroundTasks, Request, Depends
+from fastapi import APIRouter, BackgroundTasks, Request, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from vllm.outputs import RequestOutput
 from vllm.sampling_params import SamplingParams
@@ -21,7 +20,7 @@ from api.utils.protocol import (
     CompletionResponseChoice,
     UsageInfo,
 )
-from api.vllm_routes.utils import create_error_response, get_model_inputs
+from api.vllm_routes.utils import get_model_inputs
 
 completion_router = APIRouter()
 
@@ -41,19 +40,16 @@ async def create_completion(request: CompletionRequest, raw_request: Request):
         - logit_bias (to be supported by vLLM engine)
     """
     if len(request.prompt) < 1:
-        return create_error_response(
-            HTTPStatus.BAD_REQUEST,
-            "Invalid request: prompt is empty"
-        )
+        raise HTTPException(status_code=400, detail="Invalid request")
 
     if request.echo:
         # We do not support echo since the vLLM engine does not
         # currently support getting the logprobs of prompt tokens.
-        return create_error_response(HTTPStatus.BAD_REQUEST, "echo is not currently supported")
+        raise HTTPException(status_code=400, detail="echo is not currently supported")
 
     if request.suffix is not None:
         # The language models we currently support do not support suffix.
-        return create_error_response(HTTPStatus.BAD_REQUEST, "suffix is not currently supported")
+        raise HTTPException(status_code=400, detail="suffix is not currently supported")
 
     model_name = request.model
     request.max_tokens = request.max_tokens or 512
@@ -61,14 +57,15 @@ async def create_completion(request: CompletionRequest, raw_request: Request):
 
     if isinstance(request.prompt, list):
         if len(request.prompt) == 0:
-            return create_error_response(HTTPStatus.BAD_REQUEST, "please provide at least one prompt")
+            raise HTTPException(status_code=400, detail="please provide at least one prompt")
+
         first_element = request.prompt[0]
         if isinstance(first_element, int):
             prompt = request.prompt
         elif isinstance(first_element, (str, list)):
             # TODO: handles multiple prompt case in list[list[int]]
             if len(request.prompt) > 1:
-                return create_error_response(HTTPStatus.BAD_REQUEST, "multiple prompts in a batch is not currently supported")
+                raise HTTPException(status_code=400, detail="multiple prompts in a batch is not currently supported")
             prompt = request.prompt[0]
     else:
         prompt = request.prompt
@@ -106,7 +103,7 @@ async def create_completion(request: CompletionRequest, raw_request: Request):
             use_beam_search=request.use_beam_search,
         )
     except ValueError as e:
-        return create_error_response(HTTPStatus.BAD_REQUEST, str(e))
+        raise HTTPException(status_code=400, detail=str(e))
 
     result_generator = VLLM_ENGINE.generate(
         prompt if isinstance(prompt, str) else None,
@@ -184,7 +181,7 @@ async def create_completion(request: CompletionRequest, raw_request: Request):
         if await raw_request.is_disconnected():
             # Abort the request if the client disconnects.
             await abort_request()
-            return create_error_response(HTTPStatus.BAD_REQUEST, "Client disconnected")
+            return
         final_res = res
     assert final_res is not None
     choices = []

@@ -1,17 +1,6 @@
-from http import HTTPStatus
-
-from fastapi.responses import JSONResponse
-
 from api.config import config
 from api.generation import build_qwen_chat_input, build_baichuan_chat_input
 from api.models import EXCLUDE_MODELS, VLLM_ENGINE
-from api.utils.protocol import ErrorResponse
-
-
-def create_error_response(status_code: HTTPStatus, message: str) -> JSONResponse:
-    return JSONResponse(
-        ErrorResponse(message=message, type="invalid_request_error").dict(), status_code=status_code.value
-    )
 
 
 async def get_gen_prompt(request, model_name):

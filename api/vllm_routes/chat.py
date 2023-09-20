@@ -1,8 +1,7 @@
 import time
-from http import HTTPStatus
 from typing import AsyncGenerator, Optional
 
-from fastapi import APIRouter, Depends, BackgroundTasks, Request
+from fastapi import APIRouter, Depends, BackgroundTasks, Request, HTTPException
 from fastapi.responses import StreamingResponse
 from loguru import logger
 from vllm.outputs import RequestOutput
@@ -29,7 +28,7 @@ from api.utils.protocol import (
     UsageInfo,
     Role,
 )
-from api.vllm_routes.utils import create_error_response, get_gen_prompt, get_model_inputs
+from api.vllm_routes.utils import get_gen_prompt, get_model_inputs
 
 chat_router = APIRouter(prefix="/chat")
 
@@ -48,17 +47,11 @@ async def create_chat_completion(request: ChatCompletionRequest, raw_request: Re
     logger.info(f"Received chat messages: {request.messages}")
 
     if len(request.messages) < 1 or request.messages[-1].role not in [Role.USER, Role.FUNCTION]:
-        return create_error_response(
-            HTTPStatus.BAD_REQUEST,
-            "Invalid request: messages is empty"
-        )
+        raise HTTPException(status_code=400, detail="Invalid request")
 
     with_function_call = check_function_call(request.messages, functions=request.functions)
     if with_function_call and "qwen" not in config.MODEL_NAME.lower():
-        return create_error_response(
-            HTTPStatus.BAD_REQUEST,
-            "Invalid request format: functions only supported by Qwen-7B-Chat",
-        )
+        raise HTTPException(status_code=400, detail="Invalid request format: functions only supported by Qwen-7B-Chat")
 
     if with_function_call:
         if request.functions is None:
@@ -107,7 +100,7 @@ async def create_chat_completion(request: ChatCompletionRequest, raw_request: Re
             use_beam_search=request.use_beam_search,
         )
     except ValueError as e:
-        return create_error_response(HTTPStatus.BAD_REQUEST, str(e))
+        raise HTTPException(status_code=400, detail=str(e))
 
     result_generator = VLLM_ENGINE.generate(
         prompt if isinstance(prompt, str) else None,
@@ -223,7 +216,7 @@ async def create_chat_completion(request: ChatCompletionRequest, raw_request: Re
         if await raw_request.is_disconnected():
             # Abort the request if the client disconnects.
             await abort_request()
-            return create_error_response(HTTPStatus.BAD_REQUEST, "Client disconnected")
+            return
         final_res = res
 
     assert final_res is not None
