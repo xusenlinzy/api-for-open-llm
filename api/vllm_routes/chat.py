@@ -73,14 +73,18 @@ async def create_chat_completion(request: ChatCompletionRequest, raw_request: Re
         return error_check_ret
 
     # stop settings
-    stop = []
+    stop, stop_token_ids = [], []
     if VLLM_ENGINE.prompt_adapter.stop is not None:
+        stop_token_ids = VLLM_ENGINE.prompt_adapter.stop.get("token_ids", [])
         stop = VLLM_ENGINE.prompt_adapter.stop.get("strings", [])
 
     request.stop = request.stop or []
     if isinstance(request.stop, str):
         request.stop = [request.stop]
     request.stop = list(set(stop + request.stop))
+
+    request.stop_token_ids = request.stop_token_ids or []
+    request.stop_token_ids = list(set(stop_token_ids + request.stop_token_ids))
 
     model_name = request.model
     request_id = f"cmpl-{random_uuid()}"
@@ -93,6 +97,7 @@ async def create_chat_completion(request: ChatCompletionRequest, raw_request: Re
             temperature=request.temperature,
             top_p=request.top_p,
             stop=request.stop,
+            stop_token_ids=request.stop_token_ids,
             max_tokens=request.max_tokens,
             best_of=request.best_of,
             top_k=request.top_k,

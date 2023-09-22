@@ -75,14 +75,18 @@ async def create_completion(request: CompletionRequest, raw_request: Request):
         return error_check_ret
 
     # stop settings
-    stop = []
+    stop, stop_token_ids = [], []
     if VLLM_ENGINE.prompt_adapter.stop is not None:
+        stop_token_ids = VLLM_ENGINE.prompt_adapter.stop.get("token_ids", [])
         stop = VLLM_ENGINE.prompt_adapter.stop.get("strings", [])
 
     request.stop = request.stop or []
     if isinstance(request.stop, str):
         request.stop = [request.stop]
     request.stop = list(set(stop + request.stop))
+
+    request.stop_token_ids = request.stop_token_ids or []
+    request.stop_token_ids = list(set(stop_token_ids + request.stop_token_ids))
 
     if request.infilling:
         request.stop.append(VLLM_ENGINE.engine.tokenizer.eot_token.replace("▁", ""))
@@ -97,6 +101,7 @@ async def create_completion(request: CompletionRequest, raw_request: Request):
             top_p=request.top_p,
             top_k=request.top_k,
             stop=request.stop,
+            stop_token_ids=request.stop_token_ids,
             ignore_eos=request.ignore_eos,
             max_tokens=request.max_tokens,
             logprobs=request.logprobs,
