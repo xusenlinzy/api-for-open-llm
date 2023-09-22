@@ -632,6 +632,22 @@ class XversePromptAdapter(BasePromptAdapter):
         return "xverse" in model_name
 
 
+class VicunaPromptAdapter(BasePromptAdapter):
+    """ https://github.com/lm-sys/FastChat/blob/main/fastchat/conversation.py
+
+    formated prompt likes:
+        USER: {query0} ASSISTANT: {response0}</s>USER: {query1} ASSISTANT:
+    """
+
+    name = "vicuna"
+    system_prompt = "A chat between a curious user and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions."
+    user_prompt = "USER: {} ASSISTANT: "
+    assistant_prompt = "{}</s>"
+
+    def match(self, model_name) -> bool:
+        return "vicuna" in model_name or "xwin" in model_name
+
+
 register_prompt_adapter(ChatGLMPromptAdapter)
 register_prompt_adapter(ChatGLM2PromptAdapter)
 register_prompt_adapter(MossPromptAdapter)
@@ -654,6 +670,7 @@ register_prompt_adapter(ChineseAlpaca2ChatPromptAdapter)
 register_prompt_adapter(QwenPromptAdapter)
 register_prompt_adapter(OctopackPromptAdapter)
 register_prompt_adapter(XversePromptAdapter)
+register_prompt_adapter(VicunaPromptAdapter)
 
 # After all adapters, try the default base adapter.
 register_prompt_adapter(BasePromptAdapter)

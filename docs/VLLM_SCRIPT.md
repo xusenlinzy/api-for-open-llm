@@ -171,3 +171,13 @@ codellama/CodeLlama-7b-Instruct-hf
 MODEL_NAME=code-llama
 MODEL_PATH=codellama/CodeLlama-7b-Instruct-hf
 ```
+
+### Xwin-LM
+
+Xwin-LM/Xwin-LM-7B-V0.1
+
+```shell
+MODEL_NAME=xwin-7b
+MODEL_PATH=Xwin-LM/Xwin-LM-7B-V0.1
+PROMPT_NAME=vicuna
+```

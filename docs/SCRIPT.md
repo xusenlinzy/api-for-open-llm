@@ -360,3 +360,13 @@ DEVICE_MAP=
 DTYPE=half
 QUANTIZE=8
 ```
+
+### Xwin-LM
+
+Xwin-LM/Xwin-LM-7B-V0.1
+
+```shell
+MODEL_NAME=xwin-7b
+MODEL_PATH=Xwin-LM/Xwin-LM-7B-V0.1
+PROMPT_NAME=vicuna
+```
