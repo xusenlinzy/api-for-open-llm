@@ -20,6 +20,9 @@
 
 ## 📢 新闻
 
++ 【2023.09.27】 添加 [Qwen-14B-Chat-Int4](https://huggingface.co/Qwen/Qwen-14B-Chat-Int4) 模型支持，[启动方式链接](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#qwen-14b-chat)
+
+
 + 【2023.09.07】 添加 [baichuan2](https://github.com/baichuan-inc/Baichuan2) 模型支持，[启动方式链接](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#baichuan2)
 
 

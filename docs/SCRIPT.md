@@ -279,6 +279,36 @@ MODEL_PATH=Qwen/Qwen-7B-Chat
 DEVICE_MAP=auto
 ```
 
+### Qwen-14b-chat
+
+Qwen/Qwen-14B-Chat:
+
+```shell
+MODEL_NAME=qwen
+MODEL_PATH=Qwen/Qwen-14B-Chat
+DEVICE_MAP=auto
+```
+
+Qwen/Qwen-14B-Chat-Int4:
+
+本地环境安装下面的依赖包
+
+```shell
+pip install auto-gptq optimum
+```
+
+`docker` 环境使用下面的命令构建一个新的 `GPTQ` 镜像，并基于此镜像启动模型
+
+```shell
+docker build -f docker/Dockerfile.gptq -t llm-api:gptq .
+```
+
+```shell
+MODEL_NAME=qwen
+MODEL_PATH=Qwen/Qwen-14B-Chat-Int4
+DEVICE_MAP=auto
+```
+
 
 ### XVERSE-13B-Chat
 
