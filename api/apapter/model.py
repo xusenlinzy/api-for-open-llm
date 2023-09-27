@@ -48,14 +48,14 @@ class BaseModelAdapter:
         config_kwargs = self.model_kwargs
         device = kwargs.get("device", "cuda")
         num_gpus = kwargs.get("num_gpus", 1)
+        dtype = kwargs.get("dtype", "half")
         if device == "cuda":
             if "torch_dtype" not in config_kwargs:
-                dtype = kwargs.get("dtype", "half")
                 if dtype == "half":
                     config_kwargs["torch_dtype"] = torch.float16
                 elif dtype == "bfloat16":
                     config_kwargs["torch_dtype"] = torch.bfloat16
-                else:
+                elif dtype == "float32":
                     config_kwargs["torch_dtype"] = torch.float32
 
             if num_gpus != 1:
@@ -92,7 +92,14 @@ class BaseModelAdapter:
 
         if kwargs.get("device_map", None) == "auto":
             config_kwargs["device_map"] = "auto"
+
         config = AutoConfig.from_pretrained(model_name_or_path, trust_remote_code=True)
+
+        # Fix config (for Qwen)
+        if hasattr(config, "fp16") and hasattr(config, "bf16"):
+            setattr(config, "fp16", dtype == "half")
+            setattr(config, "bf16", dtype == "bfloat16")
+            config_kwargs.pop("torch_dtype", None)
 
         use_ptuning_v2 = kwargs.get("use_ptuning_v2", False)
         if use_ptuning_v2 and adapter_model:
