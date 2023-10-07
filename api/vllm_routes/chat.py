@@ -1,7 +1,7 @@
 import time
 from typing import AsyncGenerator, Optional
 
-from fastapi import APIRouter, Depends, BackgroundTasks, Request, HTTPException
+from fastapi import APIRouter, Depends, Request, HTTPException
 from fastapi.responses import StreamingResponse
 from loguru import logger
 from vllm.outputs import RequestOutput
@@ -88,7 +88,7 @@ async def create_chat_completion(request: ChatCompletionRequest, raw_request: Re
 
     model_name = request.model
     request_id = f"cmpl-{random_uuid()}"
-    created_time = int(time.time())
+    created_time = int(time.monotonic())
     try:
         sampling_params = SamplingParams(
             n=request.n,
@@ -103,6 +103,7 @@ async def create_chat_completion(request: ChatCompletionRequest, raw_request: Re
             top_k=request.top_k,
             ignore_eos=request.ignore_eos,
             use_beam_search=request.use_beam_search,
+            skip_special_tokens=request.skip_special_tokens,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -113,9 +114,6 @@ async def create_chat_completion(request: ChatCompletionRequest, raw_request: Re
         request_id,
         token_ids,
     )
-
-    async def abort_request() -> None:
-        await VLLM_ENGINE.abort(request_id)
 
     def create_stream_response_json(
         index: int,
@@ -206,21 +204,14 @@ async def create_chat_completion(request: ChatCompletionRequest, raw_request: Re
 
     # Streaming response
     if request.stream:
-        background_tasks = BackgroundTasks()
-        # Abort the request if the client disconnects.
-        background_tasks.add_task(abort_request)
-        return StreamingResponse(
-            completion_stream_generator(),
-            media_type="text/event-stream",
-            background=background_tasks,
-        )
+        return StreamingResponse(completion_stream_generator(), media_type="text/event-stream")
 
     # Non-streaming response
     final_res: RequestOutput = None
     async for res in result_generator:
         if await raw_request.is_disconnected():
             # Abort the request if the client disconnects.
-            await abort_request()
+            await VLLM_ENGINE.abort(request_id)
             return
         final_res = res
 

@@ -99,6 +99,7 @@ class ChatCompletionRequest(BaseModel):
     top_k: Optional[int] = -1
     ignore_eos: Optional[bool] = False
     use_beam_search: Optional[bool] = False
+    skip_special_tokens: Optional[bool] = True
 
 
 class ChatCompletionResponseChoice(BaseModel):
@@ -176,6 +177,7 @@ class CompletionRequest(BaseModel):
     top_k: Optional[int] = -1
     ignore_eos: Optional[bool] = False
     use_beam_search: Optional[bool] = False
+    skip_special_tokens: Optional[bool] = True
 
     # Additional parameters support for code llama infilling
     infilling: Optional[bool] = False

@@ -23,6 +23,7 @@ DEFAULTS = {
     'NUM_GPUs': 1,
 
     # support for embeddings
+    'ONLY_EMBEDDING': 'False',
     'EMBEDDING_NAME': '',
     'EMBEDDING_SIZE': '',
     'EMBEDDING_DEVICE': 'cuda',
@@ -50,8 +51,9 @@ DEFAULTS = {
     'TENSOR_PARALLEL_SIZE': 1,
     'DTYPE': "half",
     "GPU_MEMORY_UTILIZATION": 0.9,
-    "MAX_NUM_BATCHED_TOKENS": 5120,
+    "MAX_NUM_BATCHED_TOKENS": "",
     "MAX_NUM_SEQS": 256,
+    "QUANTIZATION_METHOD": "",
 
     # support for transformers.TextIteratorStreamer
     'USE_STREAMER_V2': 'False',
@@ -88,6 +90,7 @@ class Config:
         self.GPUS = get_env('GPUS')
         self.NUM_GPUs = int(get_env('NUM_GPUs'))
 
+        self.ONLY_EMBEDDING = get_bool_env('ONLY_EMBEDDING')
         self.EMBEDDING_NAME = get_env('EMBEDDING_NAME') if get_env('EMBEDDING_NAME') else None
         self.EMBEDDING_SIZE = int(get_env('EMBEDDING_SIZE')) if get_env('EMBEDDING_SIZE') else None
         self.EMBEDDING_DEVICE = get_env('EMBEDDING_DEVICE')
@@ -112,8 +115,9 @@ class Config:
         self.TENSOR_PARALLEL_SIZE = int(get_env('TENSOR_PARALLEL_SIZE'))
         self.DTYPE = get_env('DTYPE')
         self.GPU_MEMORY_UTILIZATION = float(get_env('GPU_MEMORY_UTILIZATION'))
-        self.MAX_NUM_BATCHED_TOKENS = int(get_env('MAX_NUM_BATCHED_TOKENS'))
+        self.MAX_NUM_BATCHED_TOKENS = int(get_env('MAX_NUM_BATCHED_TOKENS')) if get_env('MAX_NUM_BATCHED_TOKENS') else None
         self.MAX_NUM_SEQS = int(get_env('MAX_NUM_SEQS'))
+        self.QUANTIZATION_METHOD = get_env('QUANTIZATION_METHOD') if get_env('QUANTIZATION_METHOD') else None
 
         self.USE_STREAMER_V2 = get_bool_env('USE_STREAMER_V2')
 

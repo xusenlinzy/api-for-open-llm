@@ -94,23 +94,17 @@ def create_vllm_engine():
         gpu_memory_utilization=config.GPU_MEMORY_UTILIZATION,
         max_num_batched_tokens=config.MAX_NUM_BATCHED_TOKENS,
         max_num_seqs=config.MAX_NUM_SEQS,
+        max_model_len=config.CONTEXT_LEN,
+        quantization=config.QUANTIZATION_METHOD,
     )
     engine = AsyncLLMEngine.from_engine_args(engine_args)
 
     # A separate tokenizer to map token IDs to strings.
-    if "code-llama" in config.MODEL_NAME.lower():
-        from transformers.utils.versions import require_version
-
-        require_version("transformers>=4.33.1", "To fix: pip install transformers>=4.33.1")
-        from transformers import CodeLlamaTokenizer
-
-        engine.engine.tokenizer = CodeLlamaTokenizer.from_pretrained(engine_args.tokenizer)
-    else:
-        engine.engine.tokenizer = get_tokenizer(
-            engine_args.tokenizer,
-            tokenizer_mode=engine_args.tokenizer_mode,
-            trust_remote_code=True,
-        )
+    engine.engine.tokenizer = get_tokenizer(
+        engine_args.tokenizer,
+        tokenizer_mode=engine_args.tokenizer_mode,
+        trust_remote_code=True,
+    )
 
     # prompt adapter for constructing model inputs
     engine.prompt_adapter = get_prompt_adapter(
@@ -132,10 +126,13 @@ app = create_app()
 EMBEDDED_MODEL = create_embedding_model() if (config.EMBEDDING_NAME and config.ACTIVATE_INFERENCE) else None
 
 # model for transformers generate
-GENERATE_MDDEL = create_generate_model() if (not config.USE_VLLM and config.ACTIVATE_INFERENCE) else None
-
-# model for vllm generate
-VLLM_ENGINE = create_vllm_engine() if (config.USE_VLLM and config.ACTIVATE_INFERENCE) else None
+if config.ONLY_EMBEDDING:
+    GENERATE_MDDEL = None
+    VLLM_ENGINE = None
+else:
+    GENERATE_MDDEL = create_generate_model() if (not config.USE_VLLM and config.ACTIVATE_INFERENCE) else None
+    # model for vllm generate
+    VLLM_ENGINE = create_vllm_engine() if (config.USE_VLLM and config.ACTIVATE_INFERENCE) else None
 
 # model names for special processing
 EXCLUDE_MODELS = ["baichuan-13b", "qwen"]

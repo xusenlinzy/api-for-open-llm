@@ -1,7 +1,7 @@
 import time
 from typing import AsyncGenerator, Optional
 
-from fastapi import APIRouter, BackgroundTasks, Request, Depends, HTTPException
+from fastapi import APIRouter, Request, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from vllm.outputs import RequestOutput
 from vllm.sampling_params import SamplingParams
@@ -91,7 +91,7 @@ async def create_completion(request: CompletionRequest, raw_request: Request):
     if request.infilling:
         request.stop.append(VLLM_ENGINE.engine.tokenizer.eot_token.replace("▁", ""))
 
-    created_time = int(time.time())
+    created_time = int(time.monotonic())
     try:
         sampling_params = SamplingParams(
             n=request.n,
@@ -106,6 +106,7 @@ async def create_completion(request: CompletionRequest, raw_request: Request):
             max_tokens=request.max_tokens,
             logprobs=request.logprobs,
             use_beam_search=request.use_beam_search,
+            skip_special_tokens=request.skip_special_tokens,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -120,9 +121,6 @@ async def create_completion(request: CompletionRequest, raw_request: Request):
     # Similar to the OpenAI API, when n != best_of, we do not stream the
     # results. In addition, we do not stream the results when use beam search.
     stream = request.stream
-
-    async def abort_request() -> None:
-        await VLLM_ENGINE.abort(request_id)
 
     def create_stream_response_json(
         index: int,
@@ -171,23 +169,17 @@ async def create_completion(request: CompletionRequest, raw_request: Request):
 
     # Streaming response
     if stream:
-        background_tasks = BackgroundTasks()
-        # Abort the request if the client disconnects.
-        background_tasks.add_task(abort_request)
-        return StreamingResponse(
-            completion_stream_generator(),
-            media_type="text/event-stream",
-            background=background_tasks,
-        )
+        return StreamingResponse(completion_stream_generator(), media_type="text/event-stream")
 
     # Non-streaming response
     final_res: RequestOutput = None
     async for res in result_generator:
         if await raw_request.is_disconnected():
             # Abort the request if the client disconnects.
-            await abort_request()
+            await VLLM_ENGINE.abort(request_id)
             return
         final_res = res
+        
     assert final_res is not None
     choices = []
     for output in final_res.outputs:

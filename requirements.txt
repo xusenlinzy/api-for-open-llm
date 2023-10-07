@@ -9,7 +9,7 @@ tenacity
 sentencepiece
 tiktoken
 loguru
-transformers>=4.33.1
+transformers==4.33.2
 peft>=0.4.0
 accelerate>=0.20.3
 triton
