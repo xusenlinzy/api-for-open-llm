@@ -18,8 +18,9 @@ docker build -f docker/Dockerfile.vllm -t llm-api:vllm .
 
 ```shell
 pip install -r requirements.txt
-pip install torch -U
-pip install vllm>=0.2.0
+pip install torch==2.0.1
+pip install xformers --no-deps
+pip install vllm==0.2.0
 # pip install git+https://github.com/vllm-project/vllm.git
 pip uninstall transformer-engine -y
 ```

@@ -72,7 +72,7 @@ def get_context_len(model_config) -> int:
     if "qwen" in config.MODEL_NAME.lower():
         max_model_len = config.CONTEXT_LEN or 8192
     else:
-        max_model_len = config.CONTEXT_LEN or model_config.get_max_model_len()
+        max_model_len = config.CONTEXT_LEN or model_config.max_model_len
     return max_model_len
 
 

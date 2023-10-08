@@ -7,6 +7,7 @@ COPY . /workspace
 
 RUN pip install --no-cache-dir -r /workspace/requirements.txt -i https://mirror.baidu.com/pypi/simple
 RUN pip install bitsandbytes --upgrade -i https://mirror.baidu.com/pypi/simple && \
-    pip install torch -U -i https://mirror.baidu.com/pypi/simple && \
-    pip install vllm>=0.2.0 && \
+    pip install torch==2.0.1 -i https://mirror.baidu.com/pypi/simple && \
+    pip install xformers --no-deps -i https://mirror.baidu.com/pypi/simple && \
+    pip install vllm==0.2.0 -i https://mirror.baidu.com/pypi/simple && \
     pip uninstall transformer-engine -y
