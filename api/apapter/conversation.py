@@ -583,7 +583,8 @@ class QwenPromptAdapter(BasePromptAdapter):
     user_prompt = "<|im_start|>user\n{}<|im_end|>\n<|im_start|>assistant\n"
     assistant_prompt = "{}<|im_end|>\n"
     stop = {
-        "strings": ["<|im_end|>"],
+        "token_ids": [151643, 151644, 151645],  # "<|endoftext|>", "<|im_start|>", "<|im_end|>"
+        "strings": ["<|endoftext|>", "<|im_end|>"],
     }
 
     def match(self, model_name) -> bool:
