@@ -39,6 +39,8 @@ def check_function_call(messages: List[ChatMessage], functions: List[ChatFunctio
         return True
     if messages is not None and len(messages) > 0 and messages[-1].role == Role.FUNCTION:
         return True
+    if messages[0].role == Role.SYSTEM and messages[0].tools is not None:
+        return True
     return False
 
 

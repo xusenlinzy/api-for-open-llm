@@ -14,6 +14,7 @@ from api.apapter.react import (
     build_delta_message,
 )
 from api.config import config
+from api.generation.chatglm import process_response_v3
 from api.models import GENERATE_MDDEL
 from api.routes.utils import check_requests, create_error_response, check_api_key
 from api.utils.constants import ErrorCode
@@ -35,7 +36,7 @@ chat_router = APIRouter(prefix="/chat")
 @chat_router.post("/completions", dependencies=[Depends(check_api_key)])
 async def create_chat_completion(request: ChatCompletionRequest, raw_request: Request):
     """Creates a completion for the chat message"""
-    if len(request.messages) < 1 or request.messages[-1].role not in [Role.USER, Role.FUNCTION]:
+    if len(request.messages) < 1 or request.messages[-1].role == Role.ASSISTANT:
         raise HTTPException(status_code=400, detail="Invalid request")
 
     error_check_ret = check_requests(request)
@@ -43,25 +44,26 @@ async def create_chat_completion(request: ChatCompletionRequest, raw_request: Re
         return error_check_ret
 
     with_function_call = check_function_call(request.messages, functions=request.functions)
-    if with_function_call and "qwen" not in config.MODEL_NAME.lower():
+    if with_function_call and ("qwen" not in config.MODEL_NAME.lower() or "chatglm3" not in config.MODEL_NAME.lower()):
         create_error_response(
             ErrorCode.VALIDATION_TYPE_ERROR,
-            "Invalid request format: functions only supported by Qwen-7B-Chat",
+            "Invalid request format: functions only supported by Qwen-7B-Chat and ChatGLM3",
         )
 
     messages = request.messages
     if with_function_call:
-        if request.functions is None:
-            for message in messages:
-                if message.functions is not None:
-                    request.functions = message.functions
-                    break
+        if "qwen" in config.MODEL_NAME.lower():
+            if request.functions is None:
+                for message in messages:
+                    if message.functions is not None:
+                        request.functions = message.functions
+                        break
 
-        messages = build_function_call_messages(
-            request.messages,
-            request.functions,
-            request.function_call,
-        )
+            messages = build_function_call_messages(
+                request.messages,
+                request.functions,
+                request.function_call,
+            )
 
     # stop settings
     stop, stop_token_ids = [], []
@@ -104,9 +106,20 @@ async def create_chat_completion(request: ChatCompletionRequest, raw_request: Re
         if content["error_code"] != 0:
             return create_error_response(content["error_code"], content["text"])
 
-        finish_reason = "stop"
+        finish_reason, history = "stop", None
         if with_function_call:
-            message, finish_reason = build_chat_message(content["text"], request.functions)
+            if "qwen" in config.MODEL_NAME.lower():
+                message, finish_reason = build_chat_message(content["text"], request.functions)
+            else:
+                history = [m.dict(exclude_none=True) for m in request.messages]
+                response, history = process_response_v3(content["text"], history)
+                if isinstance(response, dict):
+                    message, finish_reason = ChatMessage(
+                        role=Role.ASSISTANT,
+                        content=json.dumps(response, ensure_ascii=False),
+                    ), "function_call"
+                else:
+                    message = ChatMessage(role=Role.ASSISTANT, content=response)
         else:
             message = ChatMessage(role=Role.ASSISTANT, content=content["text"])
 
@@ -115,6 +128,7 @@ async def create_chat_completion(request: ChatCompletionRequest, raw_request: Re
                 index=i,
                 message=message,
                 finish_reason=finish_reason,
+                history=history,
             )
         )
 

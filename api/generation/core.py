@@ -1,3 +1,4 @@
+import traceback
 from typing import Optional, List, Union
 
 import torch
@@ -6,7 +7,7 @@ from loguru import logger
 
 from api.apapter import get_prompt_adapter
 from api.generation.baichuan import check_is_baichuan
-from api.generation.chatglm import generate_stream_chatglm, check_is_chatglm
+from api.generation.chatglm import generate_stream_chatglm, check_is_chatglm, generate_stream_chatglm_v3
 from api.generation.qwen import check_is_qwen
 from api.generation.stream import generate_stream, generate_stream_v2
 from api.generation.utils import get_context_length
@@ -42,19 +43,24 @@ class ModelServer:
 
         self.construct_prompt = True
         self.generate_stream_func = generate_stream
-        if check_is_chatglm(self.model):
-            logger.info("Using ChatGLM Model for Chat!")
-            self.generate_stream_func = generate_stream_chatglm
-        elif check_is_baichuan(self.model):
-            logger.info("Using Baichuan Model for Chat!")
+        if "chatglm3" in self.model_name:
+            logger.info("Using ChatGLM3 Model for Chat!")
+            self.generate_stream_func = generate_stream_chatglm_v3
             self.construct_prompt = False if self.prompt_name is None else True
-        elif check_is_qwen(self.model):
-            logger.info("Using Qwen Model for Chat!")
-            self.construct_prompt = False if self.prompt_name is None else True
-            self.context_len = 8192 if self.context_len is None else self.context_len
-        elif check_is_xverse(self.model):
-            logger.info("Using Xverse Model for Chat!")
-            self.construct_prompt = False if self.prompt_name is None else True
+        else:
+            if check_is_chatglm(self.model):
+                logger.info("Using ChatGLM Model for Chat!")
+                self.generate_stream_func = generate_stream_chatglm
+            elif check_is_baichuan(self.model):
+                logger.info("Using Baichuan Model for Chat!")
+                self.construct_prompt = False if self.prompt_name is None else True
+            elif check_is_qwen(self.model):
+                logger.info("Using Qwen Model for Chat!")
+                self.construct_prompt = False if self.prompt_name is None else True
+                self.context_len = 8192 if self.context_len is None else self.context_len
+            elif check_is_xverse(self.model):
+                logger.info("Using Xverse Model for Chat!")
+                self.construct_prompt = False if self.prompt_name is None else True
 
         self.prompt_adapter = get_prompt_adapter(self.model_name, prompt_name=self.prompt_name)
         self.use_streamer_v2 = use_streamer_v2
@@ -118,6 +124,7 @@ class ModelServer:
             yield ret
 
         except (ValueError, RuntimeError) as e:
+            traceback.print_exc(e)
             ret = {
                 "text": f"{server_error_msg}\n\n({e})",
                 "error_code": ErrorCode.INTERNAL_ERROR,

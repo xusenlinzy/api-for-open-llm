@@ -173,6 +173,13 @@ ADAPTER_MODEL_PATH=ptuing_v2_chekpint_dir
 USING_PTUNING_V2=true
 ```
 
+### ChatGLM3:
+
+```shell
+MODEL_NAME=chatglm3
+MODEL_PATH=THUDM/chatglm3-6b
+```
+
 ### MOSS
 
 ```shell

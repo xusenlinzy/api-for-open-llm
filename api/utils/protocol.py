@@ -11,6 +11,7 @@ class Role(str, Enum):
     ASSISTANT = "assistant"
     SYSTEM = "system"
     FUNCTION = "function"
+    OBSERVATION = "observation"
 
 
 class ErrorResponse(BaseModel):
@@ -67,12 +68,20 @@ class FunctionCallResponse(BaseModel):
     thought: Optional[str] = None
 
 
+class ChatGLMFunctionCallResponse(BaseModel):
+    name: Optional[str] = None
+    parameters: Optional[str] = None
+    content: Optional[str] = None
+
+
 class ChatMessage(BaseModel):
     role: str
     content: str = None
     name: Optional[str] = None
     functions: Optional[List[ChatFunction]] = None
     function_call: Optional[FunctionCallResponse] = None
+    metadata: Optional[str] = None
+    tools: Optional[List[dict]] = None
 
 
 class ChatCompletionRequest(BaseModel):
@@ -106,6 +115,7 @@ class ChatCompletionResponseChoice(BaseModel):
     index: int
     message: ChatMessage
     finish_reason: Optional[Literal["stop", "length", "function_call"]] = None
+    history: Optional[List[dict]] = None
 
 
 class ChatCompletionResponse(BaseModel):
