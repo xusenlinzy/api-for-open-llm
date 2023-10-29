@@ -68,12 +68,6 @@ class FunctionCallResponse(BaseModel):
     thought: Optional[str] = None
 
 
-class ChatGLMFunctionCallResponse(BaseModel):
-    name: Optional[str] = None
-    parameters: Optional[str] = None
-    content: Optional[str] = None
-
-
 class ChatMessage(BaseModel):
     role: str
     content: str = None
@@ -109,6 +103,9 @@ class ChatCompletionRequest(BaseModel):
     ignore_eos: Optional[bool] = False
     use_beam_search: Optional[bool] = False
     skip_special_tokens: Optional[bool] = True
+
+    # Additional parameters supported by vLLM
+    return_function_call: Optional[bool] = True
 
 
 class ChatCompletionResponseChoice(BaseModel):

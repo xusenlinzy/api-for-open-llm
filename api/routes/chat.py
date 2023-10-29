@@ -107,7 +107,7 @@ async def create_chat_completion(request: ChatCompletionRequest, raw_request: Re
             return create_error_response(content["error_code"], content["text"])
 
         finish_reason, history = "stop", None
-        if with_function_call:
+        if with_function_call and request.return_function_call:
             if "qwen" in config.MODEL_NAME.lower():
                 message, finish_reason = build_chat_message(content["text"], request.functions)
             else:
