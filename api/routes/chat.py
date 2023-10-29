@@ -181,7 +181,7 @@ async def chat_completion_stream_generator(
                 delta_text = None
 
             messages = []
-            if with_function_call:
+            if with_function_call and "qwen" in config.MODEL_NAME.lower():
                 if found_action_name:
                     messages.append(build_delta_message(delta_text, "arguments"))
                     finish_reason = "function_call"

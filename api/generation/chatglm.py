@@ -205,16 +205,16 @@ def generate_stream_chatglm_v3(
             output_ids = total_ids[input_echo_len:-1]
 
         response = tokenizer.decode(output_ids)
-
-        yield {
-            "text": response,
-            "usage": {
-                "prompt_tokens": input_echo_len,
-                "completion_tokens": total_len - input_echo_len,
-                "total_tokens": total_len,
-            },
-            "finish_reason": None,
-        }
+        if response and response[-1] != "�":
+            yield {
+                "text": response,
+                "usage": {
+                    "prompt_tokens": input_echo_len,
+                    "completion_tokens": total_len - input_echo_len,
+                    "total_tokens": total_len,
+                },
+                "finish_reason": None,
+            }
 
     # Only last stream result contains finish_reason, we set finish_reason as stop
     ret = {
