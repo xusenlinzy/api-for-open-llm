@@ -34,6 +34,7 @@ async def get_model_inputs(request, prompt, model_name):
                 VLLM_ENGINE.engine.tokenizer,
                 prompt,
                 max_new_tokens=request.max_tokens,
+                functions=request.functions,
             )
         else:
             raise ValueError(f"Model not supported yet: {model_name}")
