@@ -407,3 +407,13 @@ MODEL_NAME=xwin-7b
 MODEL_PATH=Xwin-LM/Xwin-LM-7B-V0.1
 PROMPT_NAME=vicuna
 ```
+
+### XuanYuan
+
+Duxiaoman-DI/XuanYuan-70B-Chat
+
+```shell
+MODEL_NAME=llama2
+MODEL_PATH=Duxiaoman-DI/XuanYuan-70B-Chat
+PROMPT_NAME=xuanyuan
+```
