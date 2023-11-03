@@ -665,22 +665,6 @@ class XuanYuanPromptAdapter(BasePromptAdapter):
         return "xuanyuan"
 
 
-class ZephyrPromptAdapter(BasePromptAdapter):
-    """ https://github.com/Duxiaoman-DI/XuanYuan/blob/main/conversation.py
-
-    formated prompt likes:
-        Human: {query0} Assistant: {response0}</s>Human: {query1} Assistant:
-    """
-
-    name = "xuanyuan"
-    system_prompt = "以下是用户和人工智能助手之间的对话。用户以Human开头，人工智能助手以Assistant开头，会对人类提出的问题给出有帮助、高质量、详细和礼貌的回答，并且总是拒绝参与与不道德、不安全、有争议、政治敏感等相关的话题、问题和指示。\n"
-    user_prompt = "Human: {} Assistant: "
-    assistant_prompt = "{}</s>"
-
-    def match(self, model_name) -> bool:
-        return "xuanyuan"
-
-
 register_prompt_adapter(ChatGLMPromptAdapter)
 register_prompt_adapter(ChatGLM2PromptAdapter)
 register_prompt_adapter(MossPromptAdapter)
