@@ -20,7 +20,7 @@
 
 ## 📢 新闻
 
-+ 【2023.11.03】 支持 `chatglm3` 和 `qwen` 模型的 `function call` 调用功能，同时支持流式和非流式模式  [工具使用示例](https://github.com/xusenlinzy/api-for-open-llm/tree/master/examples/chatglm3/tool_using.py), 已经集成到 [streamlit-demo](./streamlit-demo)
++ 【2023.11.03】 支持 `chatglm3` 和 `qwen` 模型的 `function call` 调用功能，同时支持流式和非流式模式, [工具使用示例](https://github.com/xusenlinzy/api-for-open-llm/tree/master/examples/chatglm3/tool_using.py), 网页 `demo` 已经集成到 [streamlit-demo](./streamlit-demo)
 
 
 + 【2023.10.29】 添加 [ChatGLM3](https://github.com/THUDM/ChatGLM3) 模型支持，[启动方式链接](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#chatglm3)，[工具使用示例](https://github.com/xusenlinzy/api-for-open-llm/tree/master/examples/chatglm3)
