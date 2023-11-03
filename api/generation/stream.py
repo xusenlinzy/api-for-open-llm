@@ -23,6 +23,7 @@ def generate_stream(
 ):
     # Read parameters
     prompt = params["prompt"]
+    functions = params["functions"]
     temperature = float(params.get("temperature", 1.0))
     repetition_penalty = float(params.get("repetition_penalty", 1.0))
     top_p = float(params.get("top_p", 1.0))
@@ -45,7 +46,7 @@ def generate_stream(
     if isinstance(prompt, list) and check_is_baichuan(model):
         input_ids = build_baichuan_chat_input(tokenizer, prompt, context_len, max_new_tokens)
     elif isinstance(prompt, list) and check_is_qwen(model):
-        input_ids = build_qwen_chat_input(tokenizer, prompt, context_len, max_new_tokens)
+        input_ids = build_qwen_chat_input(tokenizer, prompt, context_len, max_new_tokens, functions)
         stop_token_ids.extend([tokenizer.im_end_id, tokenizer.im_start_id])
     elif isinstance(prompt, list) and check_is_xverse(model):
         input_ids = build_xverse_chat_input(tokenizer, prompt, context_len, max_new_tokens)
@@ -164,7 +165,7 @@ def generate_stream(
                 clean_up_tokenization_spaces=True,
             )
 
-            partially_stopped = False
+            partially_stopped, finish_reason = False, None
             if stop_str:
                 if isinstance(stop_str, str):
                     pos = output.rfind(stop_str, rfind_start)
@@ -179,6 +180,8 @@ def generate_stream(
                         if pos != -1:
                             output = output[:pos]
                             stopped = True
+                            if each_stop == "Observation:":
+                                finish_reason = "function_call"
                             break
                         else:
                             partially_stopped = is_partial_stop(output, each_stop)
@@ -196,19 +199,11 @@ def generate_stream(
                         "completion_tokens": i,
                         "total_tokens": input_echo_len + i,
                     },
-                    "finish_reason": None,
+                    "finish_reason": finish_reason,
                 }
 
         if stopped:
             break
-
-    # Finish stream event, which contains finish reason
-    if i == max_new_tokens - 1:
-        finish_reason = "length"
-    elif stopped:
-        finish_reason = "stop"
-    else:
-        finish_reason = None
 
     yield {
         "text": output,
@@ -217,7 +212,7 @@ def generate_stream(
             "completion_tokens": i,
             "total_tokens": input_echo_len + i,
         },
-        "finish_reason": finish_reason,
+        "finish_reason": "stop",
     }
 
     # Clean
@@ -235,6 +230,7 @@ def generate_stream_v2(
     context_len: int,
 ):
     prompt = params["prompt"]
+    functions = params["functions"]
     temperature = float(params.get("temperature", 1.0))
     repetition_penalty = float(params.get("repetition_penalty", 1.0))
     top_p = float(params.get("top_p", 1.0))
@@ -252,7 +248,7 @@ def generate_stream_v2(
     if isinstance(prompt, list) and check_is_baichuan(model):
         input_ids = build_baichuan_chat_input(tokenizer, prompt, context_len, max_new_tokens)
     elif isinstance(prompt, list) and check_is_qwen(model):
-        input_ids = build_qwen_chat_input(tokenizer, prompt, context_len, max_new_tokens)
+        input_ids = build_qwen_chat_input(tokenizer, prompt, context_len, max_new_tokens, functions)
     elif isinstance(prompt, list) and check_is_xverse(model):
         input_ids = build_xverse_chat_input(tokenizer, prompt, context_len, max_new_tokens)
     else:
@@ -297,9 +293,11 @@ def generate_stream_v2(
     thread = Thread(target=model.generate, kwargs=generation_kwargs)
     thread.start()
 
-    generated_text = ""
+    generated_text, func_call_found = "", False
     for i, new_text in enumerate(streamer):
         generated_text += new_text
+        if functions:
+            _, func_call_found = apply_stopping_strings(generated_text, ["Observation:"])
         generated_text, stop_found = apply_stopping_strings(generated_text, stop_strings)
 
         yield {
@@ -309,17 +307,12 @@ def generate_stream_v2(
                 "completion_tokens": i,
                 "total_tokens": input_echo_len + i,
             },
-            "finish_reason": None,
+            "finish_reason": "function_call" if func_call_found else None,
             "error_code": 0,
         }
 
         if stop_found:
             break
-
-    if stop_found:
-        finish_reason = "stop"
-    else:
-        finish_reason = None
 
     yield {
         "text": generated_text,
@@ -328,6 +321,6 @@ def generate_stream_v2(
             "completion_tokens": i,
             "total_tokens": input_echo_len + i,
         },
-        "finish_reason": finish_reason,
+        "finish_reason": "stop",
         "error_code": 0,
     }

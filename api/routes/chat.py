@@ -7,17 +7,11 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from loguru import logger
 
-from api.apapter.react import (
-    check_function_call,
-    build_function_call_messages,
-    build_chat_message,
-    build_delta_message,
-)
 from api.config import config
 from api.generation.chatglm import process_response_v3
+from api.generation.qwen import parse_response
 from api.models import GENERATE_MDDEL
 from api.routes.utils import check_requests, create_error_response, check_api_key
-from api.utils.constants import ErrorCode
 from api.utils.protocol import (
     ChatCompletionRequest,
     ChatCompletionResponse,
@@ -28,6 +22,7 @@ from api.utils.protocol import (
     DeltaMessage,
     UsageInfo,
     Role,
+    FunctionCallResponse,
 )
 
 chat_router = APIRouter(prefix="/chat")
@@ -43,28 +38,6 @@ async def create_chat_completion(request: ChatCompletionRequest, raw_request: Re
     if error_check_ret is not None:
         return error_check_ret
 
-    with_function_call = check_function_call(request.messages, functions=request.functions)
-    if with_function_call and ("qwen" not in config.MODEL_NAME.lower() or "chatglm3" not in config.MODEL_NAME.lower()):
-        create_error_response(
-            ErrorCode.VALIDATION_TYPE_ERROR,
-            "Invalid request format: functions only supported by Qwen-7B-Chat and ChatGLM3",
-        )
-
-    messages = request.messages
-    if with_function_call:
-        if "qwen" in config.MODEL_NAME.lower():
-            if request.functions is None:
-                for message in messages:
-                    if message.functions is not None:
-                        request.functions = message.functions
-                        break
-
-            messages = build_function_call_messages(
-                request.messages,
-                request.functions,
-                request.function_call,
-            )
-
     # stop settings
     stop, stop_token_ids = [], []
     if GENERATE_MDDEL.stop is not None:
@@ -74,6 +47,9 @@ async def create_chat_completion(request: ChatCompletionRequest, raw_request: Re
     request.stop = request.stop or []
     if isinstance(request.stop, str):
         request.stop = [request.stop]
+
+    if "qwen" in config.MODEL_NAME.lower() and request.functions:
+        request.stop.append("Observation:")
     request.stop = list(set(stop + request.stop))
 
     request.stop_token_ids = request.stop_token_ids or []
@@ -81,7 +57,7 @@ async def create_chat_completion(request: ChatCompletionRequest, raw_request: Re
 
     gen_params = dict(
         model=request.model,
-        prompt=messages,
+        prompt=request.messages,
         temperature=request.temperature,
         top_p=request.top_p,
         max_tokens=request.max_tokens or 1024,
@@ -90,7 +66,7 @@ async def create_chat_completion(request: ChatCompletionRequest, raw_request: Re
         stop_token_ids=request.stop_token_ids,
         stop=request.stop,
         repetition_penalty=request.repetition_penalty,
-        with_function_call=with_function_call,
+        functions=request.functions,
     )
 
     logger.debug(f"==== request ====\n{gen_params}")
@@ -106,29 +82,32 @@ async def create_chat_completion(request: ChatCompletionRequest, raw_request: Re
         if content["error_code"] != 0:
             return create_error_response(content["error_code"], content["text"])
 
-        finish_reason, history = "stop", None
-        if with_function_call and request.return_function_call:
-            if "qwen" in config.MODEL_NAME.lower():
-                message, finish_reason = build_chat_message(content["text"], request.functions)
-            else:
-                history = [m.dict(exclude_none=True) for m in request.messages]
-                response, history = process_response_v3(content["text"], history)
-                if isinstance(response, dict):
-                    message, finish_reason = ChatMessage(
-                        role=Role.ASSISTANT,
-                        content=json.dumps(response, ensure_ascii=False),
-                    ), "function_call"
-                else:
-                    message = ChatMessage(role=Role.ASSISTANT, content=response)
-        else:
-            message = ChatMessage(role=Role.ASSISTANT, content=content["text"])
+        function_call, finish_reason = None, "stop"
+        if request.functions and "chatglm3" in config.MODEL_NAME.lower():
+            try:
+                function_call = process_response_v3(content["text"], use_tool=True)
+            except:
+                logger.warning("Failed to parse tool call")
+
+        elif request.functions and "qwen" in config.MODEL_NAME.lower():
+            res, function_call = parse_response(content["text"])
+            content["text"] = res
+
+        if isinstance(function_call, dict):
+            finish_reason = "function_call"
+            function_call = FunctionCallResponse(**function_call)
+
+        message = ChatMessage(
+            role=Role.ASSISTANT,
+            content=content["text"],
+            function_call=function_call if isinstance(function_call, FunctionCallResponse) else None,
+        )
 
         choices.append(
             ChatCompletionResponseChoice(
                 index=i,
                 message=message,
                 finish_reason=finish_reason,
-                history=history,
             )
         )
 
@@ -147,7 +126,6 @@ async def chat_completion_stream_generator(
     https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events#event_stream_format
     """
     _id = f"chatcmpl-{secrets.token_hex(12)}"
-    finish_stream_events = []
     for i in range(n):
         # First chunk with role
         choice_data = ChatCompletionResponseStreamChoice(
@@ -161,8 +139,6 @@ async def chat_completion_stream_generator(
         yield f"data: {chunk.json(exclude_unset=True, ensure_ascii=False)}\n\n"
 
         previous_text = ""
-        with_function_call = gen_params.get("with_function_call", False)
-        found_action_name = False
         for content in GENERATE_MDDEL.generate_stream_gate(gen_params):
             if await raw_request.is_disconnected():
                 asyncio.current_task().cancel()
@@ -177,50 +153,43 @@ async def chat_completion_stream_generator(
             delta_text = decoded_unicode[len(previous_text):]
             previous_text = decoded_unicode
 
-            if len(delta_text) == 0:
-                delta_text = None
-
-            messages = []
-            if with_function_call and "qwen" in config.MODEL_NAME.lower():
-                if found_action_name:
-                    messages.append(build_delta_message(delta_text, "arguments"))
-                    finish_reason = "function_call"
-                else:
-                    if previous_text.rfind("\nFinal Answer:") > 0:
-                        with_function_call = False
-
-                    if previous_text.rfind("\nAction Input:") == -1:
-                        continue
-                    else:
-                        messages.append(build_delta_message(previous_text))
-                        pos = previous_text.rfind("\nAction Input:") + len("\nAction Input:")
-                        messages.append(build_delta_message(previous_text[pos:], "arguments"))
-
-                        found_action_name = True
-                        finish_reason = "function_call"
-            else:
-                messages = [DeltaMessage(content=delta_text, role=Role.ASSISTANT)]
-                finish_reason = content.get("finish_reason", "stop")
-
-            chunks = []
-            for m in messages:
-                choice_data = ChatCompletionResponseStreamChoice(
-                    index=i,
-                    delta=m,
-                    finish_reason=finish_reason,
-                )
-                chunks.append(ChatCompletionStreamResponse(id=_id, choices=[choice_data], model=model_name))
-
-            if delta_text is None:
-                if content.get("finish_reason", None) is not None:
-                    finish_stream_events.extend(chunks)
+            finish_reason = content.get("finish_reason", None)
+            if len(delta_text) == 0 and finish_reason != "function_call":
                 continue
 
-            for chunk in chunks:
-                yield f"data: {chunk.json(exclude_unset=True, ensure_ascii=False)}\n\n"
+            function_call = None
+            if finish_reason == "function_call" and "chatglm3" in config.MODEL_NAME.lower():
+                try:
+                    function_call = process_response_v3(decoded_unicode, use_tool=True)
+                except:
+                    logger.warning("Failed to parse tool call")
 
-    # There is not "content" field in the last delta message, so exclude_none to exclude field "content".
-    for finish_chunk in finish_stream_events:
-        yield f"data: {finish_chunk.json(exclude_none=True, ensure_ascii=False)}\n\n"
+            elif finish_reason == "function_call" and "qwen" in config.MODEL_NAME.lower():
+                _, function_call = parse_response(decoded_unicode)
 
-    yield "data: [DONE]\n\n"
+            if isinstance(function_call, dict):
+                function_call = FunctionCallResponse(**function_call)
+
+            delta = DeltaMessage(
+                content=delta_text,
+                role=Role.ASSISTANT,
+                function_call=function_call if isinstance(function_call, FunctionCallResponse) else None,
+            )
+
+            choice_data = ChatCompletionResponseStreamChoice(
+                index=i,
+                delta=delta,
+                finish_reason=finish_reason,
+            )
+
+            chunk = ChatCompletionStreamResponse(id=_id, choices=[choice_data], model=model_name)
+            yield f"data: {chunk.json(exclude_unset=True, ensure_ascii=False)}\n\n"
+
+        choice_data = ChatCompletionResponseStreamChoice(
+            index=i,
+            delta=DeltaMessage(),
+            finish_reason="stop"
+        )
+        chunk = ChatCompletionStreamResponse(id=_id, choices=[choice_data], model=model_name)
+        yield f"data: {chunk.json(exclude_unset=True, ensure_ascii=False)}\n]\n"
+        yield "data: [DONE]\n\n"

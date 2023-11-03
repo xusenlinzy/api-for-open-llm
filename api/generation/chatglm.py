@@ -1,11 +1,13 @@
 import gc
+import json
 import re
-from copy import deepcopy
-from typing import List
+from typing import List, Union
 
 import torch
+from loguru import logger
 from transformers.generation.logits_process import LogitsProcessor
 
+from api.generation.utils import apply_stopping_strings
 from api.utils.protocol import Role, ChatMessage
 
 
@@ -35,31 +37,15 @@ def process_response(response):
     return response
 
 
-def process_response_v3(output, history):
+def process_response_v3(output: str, use_tool: bool = False) -> Union[str, dict]:
     content = ""
-    history = deepcopy(history)
     for response in output.split("<|assistant|>"):
         metadata, content = response.split("\n", maxsplit=1)
         if not metadata.strip():
             content = content.strip()
-            history.append(
-                {
-
-                    "role": Role.ASSISTANT,
-                    "metadata": metadata,
-                    "content": content
-                }
-            )
             content = content.replace("[[训练时间]]", "2023年")
         else:
-            history.append(
-                {
-                    "role": Role.ASSISTANT,
-                    "metadata": metadata,
-                    "content": content
-                }
-            )
-            if history[0]["role"] == Role.SYSTEM and "tools" in history[0]:
+            if use_tool:
                 content = "\n".join(content.split("\n")[1:-1])
 
                 def tool_call(**kwargs):
@@ -68,14 +54,14 @@ def process_response_v3(output, history):
                 parameters = eval(content)
                 content = {
                     "name": metadata.strip(),
-                    "parameters": parameters
+                    "arguments": json.dumps(parameters, ensure_ascii=False)
                 }
             else:
                 content = {
                     "name": metadata.strip(),
                     "content": content
                 }
-    return content, history
+    return content
 
 
 def check_is_chatglm(model) -> bool:
@@ -101,8 +87,11 @@ def generate_stream_chatglm(
     inputs = tokenizer([prompt], return_tensors="pt").to(model.device)
     input_echo_len = len(inputs["input_ids"][0])
 
+    if input_echo_len >= model.config.seq_length:
+        logger.warning(f"Input length larger than {model.config.seq_length}")
+
     gen_kwargs = {
-        "max_length": max_new_tokens + input_echo_len,
+        "max_length": min(max_new_tokens + input_echo_len, model.config.seq_length),
         "do_sample": True if temperature > 1e-5 else False,
         "top_p": top_p,
         "repetition_penalty": repetition_penalty,
@@ -159,27 +148,33 @@ def generate_stream_chatglm_v3(
     stream_interval=2,
 ):
     prompt: List[ChatMessage] = params["prompt"]
+    functions = params["functions"]
     temperature = float(params.get("temperature", 1.0))
     repetition_penalty = float(params.get("repetition_penalty", 1.0))
     top_p = float(params.get("top_p", 1.0))
     max_new_tokens = int(params.get("max_tokens", 256))
     echo = params.get("echo", True)
 
-    query, role = prompt[-1].content, prompt[-1].role
-    history = [m.dict(exclude_none=True) for m in prompt[:-1]]
+    messages = process_chatglm_messages(prompt, functions=functions)
+    if functions:
+        logger.debug(f"==== Messages with tools ====\n{messages}")
 
-    inputs = tokenizer.build_chat_input(query, history=history, role=role)
+    query, role = messages[-1]["content"], messages[-1]["role"]
+
+    inputs = tokenizer.build_chat_input(query, history=messages[:-1], role=role)
     inputs = inputs.to(model.device)
     input_echo_len = len(inputs["input_ids"][0])
+
+    if input_echo_len >= model.config.seq_length:
+        logger.warning(f"Input length larger than {model.config.seq_length}")
 
     eos_token_id = [
         tokenizer.eos_token_id,
         tokenizer.get_command("<|user|>"),
-        tokenizer.get_command("<|observation|>")
     ]
 
     gen_kwargs = {
-        "max_length": max_new_tokens + input_echo_len,
+        "max_length": min(max_new_tokens + input_echo_len, model.config.seq_length),
         "do_sample": True if temperature > 1e-5 else False,
         "top_p": top_p,
         "repetition_penalty": repetition_penalty,
@@ -187,13 +182,6 @@ def generate_stream_chatglm_v3(
     }
     if temperature > 1e-5:
         gen_kwargs["temperature"] = temperature
-
-    history.append(
-        {
-            "role": role,
-            "content": query
-        }
-    )
 
     total_len = 0
     for total_ids in model.stream_generate(**inputs, eos_token_id=eos_token_id, **gen_kwargs):
@@ -206,6 +194,8 @@ def generate_stream_chatglm_v3(
 
         response = tokenizer.decode(output_ids)
         if response and response[-1] != "�":
+            response, stop_found = apply_stopping_strings(response, ["<|observation|>"])
+
             yield {
                 "text": response,
                 "usage": {
@@ -213,8 +203,11 @@ def generate_stream_chatglm_v3(
                     "completion_tokens": total_len - input_echo_len,
                     "total_tokens": total_len,
                 },
-                "finish_reason": None,
+                "finish_reason": "function_call" if stop_found else None,
             }
+
+            if stop_found:
+                break
 
     # Only last stream result contains finish_reason, we set finish_reason as stop
     ret = {
@@ -230,3 +223,30 @@ def generate_stream_chatglm_v3(
 
     gc.collect()
     torch.cuda.empty_cache()
+
+
+def process_chatglm_messages(messages: List[ChatMessage], functions: Union[dict, List[dict]] = None) -> List[dict]:
+    _messages = messages
+    messages = []
+
+    if functions:
+        messages.append(
+            {
+                "role": Role.SYSTEM,
+                "content": "Answer the following questions as best as you can. You have access to the following tools:",
+                "tools": functions
+            }
+        )
+
+    for m in _messages:
+        role, content, func_call = m.role, m.content, m.function_call
+        if role == Role.FUNCTION:
+            messages.append({"role": "observation", "content": content})
+
+        elif role == Role.ASSISTANT and func_call is not None:
+            for response in content.split("<|assistant|>"):
+                metadata, sub_content = response.split("\n", maxsplit=1)
+                messages.append({"role": role, "metadata": metadata, "content": sub_content.strip()})
+        else:
+            messages.append({"role": role, "content": content})
+    return messages

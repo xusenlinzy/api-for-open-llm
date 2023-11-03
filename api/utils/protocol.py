@@ -11,7 +11,6 @@ class Role(str, Enum):
     ASSISTANT = "assistant"
     SYSTEM = "system"
     FUNCTION = "function"
-    OBSERVATION = "observation"
 
 
 class ErrorResponse(BaseModel):
@@ -56,26 +55,16 @@ class UsageInfo(BaseModel):
     completion_tokens: Optional[int] = 0
 
 
-class ChatFunction(BaseModel):
-    name: str
-    description: Optional[str] = None
-    parameters: Optional[Any] = None
-
-
 class FunctionCallResponse(BaseModel):
     name: Optional[str] = None
     arguments: Optional[str] = None
-    thought: Optional[str] = None
 
 
 class ChatMessage(BaseModel):
     role: str
     content: str = None
     name: Optional[str] = None
-    functions: Optional[List[ChatFunction]] = None
     function_call: Optional[FunctionCallResponse] = None
-    metadata: Optional[str] = None
-    tools: Optional[List[dict]] = None
 
 
 class ChatCompletionRequest(BaseModel):
@@ -90,7 +79,8 @@ class ChatCompletionRequest(BaseModel):
     presence_penalty: Optional[float] = 0.0
     frequency_penalty: Optional[float] = 0.0
     user: Optional[str] = None
-    functions: Optional[List[ChatFunction]] = None
+
+    functions: Optional[Union[dict, List[dict]]] = None
     function_call: Union[str, Dict[str, str]] = "auto"
 
     # Additional parameters support for stop generation
@@ -112,7 +102,6 @@ class ChatCompletionResponseChoice(BaseModel):
     index: int
     message: ChatMessage
     finish_reason: Optional[Literal["stop", "length", "function_call"]] = None
-    history: Optional[List[dict]] = None
 
 
 class ChatCompletionResponse(BaseModel):
