@@ -811,7 +811,7 @@ class PhindTemplate(BaseTemplate):
             "{% if message['role'] == 'system' %}"
             "{{ message['content'] }}"
             "{% elif message['role'] == 'user' %}"
-            "{{ '### User Message\\n' + message['content'] + '\\n\\n' + '### Assistant\\n'}}"
+            "{{ '### User Message\\n' + message['content'] + '\\n\\n' + '### Assistant\\n' }}"
             "{% elif message['role'] == 'assistant' %}"
             "{{ message['content'] + '\\n\\n' }}"
             "{% endif %}"
@@ -846,7 +846,7 @@ class DeepseekTemplate(BaseTemplate):
             "{% if message['role'] == 'system' %}"
             "{{ message['content'] }}"
             "{% elif message['role'] == 'user' %}"
-            "{{ '### Instruction:\\n' + message['content'] + '\\n' + '### Response:\\n'}}"
+            "{{ '### Instruction:\\n' + message['content'] + '\\n' + '### Response:\\n' }}"
             "{% elif message['role'] == 'assistant' %}"
             "{{ message['content'] + '\\n<|EOT|>\\n' }}"
             "{% endif %}"
@@ -869,9 +869,32 @@ class BlueLMTemplate(BaseTemplate):
             "{% if message['role'] == 'system' %}"
             "{{ message['content'] }}"
             "{% elif message['role'] == 'user' %}"
-            "{{ '[|Human|]:' + message['content'] + '[|AI|]:'}}"
+            "{{ '[|Human|]:' + message['content'] + '[|AI|]:' }}"
             "{% elif message['role'] == 'assistant' %}"
             "{{ message['content'] + '</s>' }}"
+            "{% endif %}"
+            "{% endfor %}"
+        )
+
+
+class ZephyrTemplate(BaseTemplate):
+
+    name = "zephyr"
+    allow_models = ["zephyr"]
+
+    @property
+    def template(self):
+        return (
+            "{% for message in messages %}"
+            "{% if message['role'] == 'system' %}"
+            "{{ '<|system|>\\n' + message['content'] + '</s>' + + '\\n' }}"
+            "{% elif message['role'] == 'user' %}"
+            "{{ '<|user|>\\n' + message['content'] + '</s>' + '\\n' }}"
+            "{% elif message['role'] == 'assistant' %}"
+            "{{ '<|assistant|>\\n'  + message['content'] + '</s>' + '\\n' }}"
+            "{% endif %}"
+            "{% if loop.last and add_generation_prompt %}"
+            "{{ '<|assistant|>' + '\\n' }}"
             "{% endif %}"
             "{% endfor %}"
         )
@@ -901,6 +924,7 @@ register_prompt_adapter(StarChatTemplate)
 register_prompt_adapter(VicunaTemplate)
 register_prompt_adapter(XuanYuanTemplate)
 register_prompt_adapter(XverseTemplate)
+register_prompt_adapter(ZephyrTemplate)
 register_prompt_adapter(BaseTemplate)
 
 
@@ -910,5 +934,5 @@ if __name__ == '__main__':
         {"role": "assistant", "content": "I'm doing great. How can I help you today?"},
         {"role": "user", "content": "I'd like to show off how chat templating works!"},
     ]
-    template = get_prompt_adapter(prompt_name="bluelm")
+    template = get_prompt_adapter(prompt_name="zephyr")
     print(template.apply_chat_template(chat))
