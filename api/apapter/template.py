@@ -901,6 +901,7 @@ register_prompt_adapter(StarChatTemplate)
 register_prompt_adapter(VicunaTemplate)
 register_prompt_adapter(XuanYuanTemplate)
 register_prompt_adapter(XverseTemplate)
+register_prompt_adapter(BaseTemplate)
 
 
 if __name__ == '__main__':
