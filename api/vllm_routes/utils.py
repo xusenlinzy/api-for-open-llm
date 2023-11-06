@@ -7,7 +7,7 @@ async def get_gen_prompt(request, model_name):
     if any(m in model_name for m in EXCLUDE_MODELS) and config.PROMPT_NAME is None:
         return request.messages
     else:
-        return VLLM_ENGINE.prompt_adapter.generate_prompt(request.messages)
+        return VLLM_ENGINE.prompt_adapter.apply_chat_template(request.messages)
 
 
 async def get_model_inputs(request, prompt, model_name):

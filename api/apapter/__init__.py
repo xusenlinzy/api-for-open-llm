@@ -1,1 +1,1 @@
-from api.apapter.conversation import get_prompt_adapter
+from api.apapter.template import get_prompt_adapter

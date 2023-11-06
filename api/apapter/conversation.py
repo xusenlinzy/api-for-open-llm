@@ -662,7 +662,7 @@ class XuanYuanPromptAdapter(BasePromptAdapter):
     assistant_prompt = "{}</s>"
 
     def match(self, model_name) -> bool:
-        return "xuanyuan"
+        return "xuanyuan" in model_name
 
 
 register_prompt_adapter(ChatGLMPromptAdapter)

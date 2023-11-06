@@ -83,7 +83,7 @@ class ModelServer:
             logger.info("Add pad token: {}".format(self.tokenizer.pad_token))
 
     def generate_prompt(self, messages: List[ChatMessage]) -> Union[str, List[ChatMessage]]:
-        return self.prompt_adapter.generate_prompt(messages) if self.construct_prompt else messages
+        return self.prompt_adapter.apply_chat_template(messages) if self.construct_prompt else messages
 
     def generate_stream_gate(self, params):
         if self.use_streamer_v2:
