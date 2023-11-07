@@ -181,7 +181,6 @@ def process_qwen_messages(messages: List[ChatMessage], functions: Union[dict, Li
                         content = f"Thought: 我可以使用 {f_name} API。"
                     else:
                         content = f"Thought: I can use {f_name}."
-                content = f"\n{content}\nAction: {f_name}\nAction Input: {f_args}"
 
             if messages[-1].role == Role.USER:
                 messages.append(
@@ -247,7 +246,7 @@ def parse_response(response):
 
     if func_name:
         function_call = {"name": func_name, "arguments": func_args}
-        return response[:i], function_call
+        return response[:k], function_call
 
     z = response.rfind("\nFinal Answer: ")
     if z >= 0:
