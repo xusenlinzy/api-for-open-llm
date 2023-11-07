@@ -1,14 +1,15 @@
 from typing import List
 
-from transformers import PreTrainedTokenizer
+from openai.types.chat import ChatCompletionMessageParam
 
 from api.generation.utils import parse_messages
-from api.utils.protocol import Role, ChatMessage
+from api.utils.protocol import Role
+from transformers import PreTrainedTokenizer
 
 
 def build_xverse_chat_input(
     tokenizer: PreTrainedTokenizer,
-    messages: List[ChatMessage],
+    messages: List[ChatCompletionMessageParam],
     context_len: int = 8192,
     max_new_tokens: int = 256
 ) -> List[int]:
@@ -27,13 +28,13 @@ def build_xverse_chat_input(
     for i, r in enumerate(rounds[::-1]):
         round_tokens = []
         for message in r:
-            if message.role == Role.USER:
-                content = f"{message.content}\n\n"
+            if message["role"] == Role.USER:
+                content = f"{message['content']}\n\n"
                 if i == 0:
                     content += "Assistant: "
                 content_tokens = _tokenize_str("Human", content)
             else:
-                content_tokens = _tokenize_str("Assistant", f"{message.content}") + [3]  # add eos token id
+                content_tokens = _tokenize_str("Assistant", f"{message['content']}") + [3]  # add eos token id
 
             round_tokens.extend(content_tokens)
 

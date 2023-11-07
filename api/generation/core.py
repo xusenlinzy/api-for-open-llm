@@ -2,8 +2,8 @@ import traceback
 from typing import Optional, List, Union
 
 import torch
-import torch.nn.functional as F
 from loguru import logger
+from openai.types.chat import ChatCompletionMessageParam
 
 from api.apapter import get_prompt_adapter
 from api.generation.baichuan import check_is_baichuan
@@ -13,7 +13,7 @@ from api.generation.stream import generate_stream, generate_stream_v2
 from api.generation.utils import get_context_length
 from api.generation.xverse import check_is_xverse
 from api.utils.constants import ErrorCode
-from api.utils.protocol import ChatMessage
+from transformers import PreTrainedModel, PreTrainedTokenizer
 
 server_error_msg = (
     "**NETWORK ERROR DUE TO HIGH TRAFFIC. PLEASE REGENERATE OR REFRESH THIS PAGE.**"
@@ -23,10 +23,10 @@ server_error_msg = (
 class ModelServer:
     def __init__(
         self,
-        model,
-        tokenizer,
-        device,
-        model_name,
+        model: PreTrainedModel,
+        tokenizer: PreTrainedTokenizer,
+        device: Union[str, torch.device],
+        model_name: str,
         context_len: Optional[int] = None,
         stream_interval: Optional[int] = 2,
         prompt_name: Optional[str] = None,
@@ -82,7 +82,9 @@ class ModelServer:
                 self.tokenizer.pad_token = self.tokenizer.eos_token
             logger.info("Add pad token: {}".format(self.tokenizer.pad_token))
 
-    def generate_prompt(self, messages: List[ChatMessage]) -> Union[str, List[ChatMessage]]:
+    def generate_prompt(
+        self, messages: List[ChatCompletionMessageParam]
+    ) -> Union[str, List[ChatCompletionMessageParam]]:
         return self.prompt_adapter.apply_chat_template(messages) if self.construct_prompt else messages
 
     def generate_stream_gate(self, params):
@@ -162,69 +164,6 @@ class ModelServer:
         for x in self.generate_stream_gate(params):
             pass
         return x
-
-    @torch.inference_mode()
-    def get_embeddings(self, params):
-        try:
-            tokenizer = self.tokenizer
-            is_llama = "llama" in str(type(self.model))  # vicuna support batch inference
-            is_chatglm = "chatglm" in self.model_name
-            is_t5 = "t5" in str(type(self.model))
-            if is_llama:
-                encoding = tokenizer.batch_encode_plus(
-                    params["input"], padding=True, return_tensors="pt"
-                )
-                input_ids = encoding["input_ids"].to(self.device)
-                attention_mask = encoding["attention_mask"].to(self.device)
-                model_output = self.model(
-                    input_ids, attention_mask, output_hidden_states=True
-                )
-                data = model_output.hidden_states[-1]
-                mask = attention_mask.unsqueeze(-1).expand(data.size()).float()
-                masked_embeddings = data * mask
-                sum_embeddings = torch.sum(masked_embeddings, dim=1)
-                seq_length = torch.sum(mask, dim=1)
-                embedding = sum_embeddings / seq_length
-                normalized_embeddings = F.normalize(embedding, p=2, dim=1)
-                ret = {
-                    "embedding": normalized_embeddings.tolist(),
-                    "token_num": torch.sum(attention_mask).item(),
-                }
-            else:
-                embedding = []
-                token_num = 0
-                for text in params["input"]:
-                    input_ids = tokenizer.encode(text, return_tensors="pt").to(
-                        self.device
-                    )
-                    if is_t5:
-                        model_output = self.model(input_ids, decoder_input_ids=input_ids)
-                    else:
-                        model_output = self.model(input_ids, output_hidden_states=True)
-                    if is_chatglm:
-                        data = (model_output.hidden_states[-1].transpose(0, 1))[0]
-                    elif is_t5:
-                        data = model_output.encoder_last_hidden_state[0]
-                    else:
-                        data = model_output.hidden_states[-1][0]
-                    data = F.normalize(torch.mean(data, dim=0), p=2, dim=0)
-                    embedding.append(data.tolist())
-                    token_num += len(input_ids[0])
-                ret = {
-                    "embedding": embedding,
-                    "token_num": token_num,
-                }
-        except torch.cuda.OutOfMemoryError as e:
-            ret = {
-                "text": f"{server_error_msg}\n\n({e})",
-                "error_code": ErrorCode.CUDA_OUT_OF_MEMORY,
-            }
-        except (ValueError, RuntimeError) as e:
-            ret = {
-                "text": f"{server_error_msg}\n\n({e})",
-                "error_code": ErrorCode.INTERNAL_ERROR,
-            }
-        return ret
 
     @property
     def stop(self):

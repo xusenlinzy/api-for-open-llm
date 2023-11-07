@@ -1,5 +1,8 @@
 from typing import List, Tuple
 
+from openai.types.chat import ChatCompletionMessageParam
+
+from api.utils.protocol import Role
 from transformers.generation.logits_process import (
     LogitsProcessorList,
     RepetitionPenaltyLogitsProcessor,
@@ -8,17 +11,17 @@ from transformers.generation.logits_process import (
     TopPLogitsWarper,
 )
 
-from api.utils.protocol import ChatMessage, Role
 
-
-def parse_messages(messages: List[ChatMessage], split_role=Role.USER) -> Tuple[str, List[List[ChatMessage]]]:
+def parse_messages(
+    messages: List[ChatCompletionMessageParam], split_role=Role.USER
+) -> Tuple[str, List[List[ChatCompletionMessageParam]]]:
     system, rounds = "", []
     r = []
     for i, message in enumerate(messages):
-        if message.role == Role.SYSTEM:
-            system = message.content
+        if message["role"] == Role.SYSTEM:
+            system = message["content"]
             continue
-        if message.role == split_role and r:
+        if message["role"] == split_role and r:
             rounds.append(r)
             r = []
         r.append(message)

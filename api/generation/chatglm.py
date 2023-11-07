@@ -5,10 +5,11 @@ from typing import List, Union
 
 import torch
 from loguru import logger
-from transformers.generation.logits_process import LogitsProcessor
+from openai.types.chat import ChatCompletionMessageParam
 
 from api.generation.utils import apply_stopping_strings
-from api.utils.protocol import Role, ChatMessage
+from api.utils.protocol import Role
+from transformers.generation.logits_process import LogitsProcessor
 
 
 class InvalidScoreLogitsProcessor(LogitsProcessor):
@@ -77,7 +78,7 @@ def generate_stream_chatglm(
     context_len=2048,
     stream_interval=2,
 ):
-    prompt = params["prompt"]
+    prompt = params["messages"]
     temperature = float(params.get("temperature", 1.0))
     repetition_penalty = float(params.get("repetition_penalty", 1.0))
     top_p = float(params.get("top_p", 1.0))
@@ -147,7 +148,7 @@ def generate_stream_chatglm_v3(
     context_len=2048,
     stream_interval=2,
 ):
-    prompt: List[ChatMessage] = params["prompt"]
+    prompt: List[ChatCompletionMessageParam] = params["prompt"]
     functions = params["functions"]
     temperature = float(params.get("temperature", 1.0))
     repetition_penalty = float(params.get("repetition_penalty", 1.0))
@@ -225,7 +226,7 @@ def generate_stream_chatglm_v3(
     torch.cuda.empty_cache()
 
 
-def process_chatglm_messages(messages: List[ChatMessage], functions: Union[dict, List[dict]] = None) -> List[dict]:
+def process_chatglm_messages(messages: List[ChatCompletionMessageParam], functions: Union[dict, List[dict]] = None) -> List[dict]:
     _messages = messages
     messages = []
 
@@ -239,10 +240,10 @@ def process_chatglm_messages(messages: List[ChatMessage], functions: Union[dict,
         )
 
     for m in _messages:
-        role, content, func_call = m.role, m.content, m.function_call
+        role, content = m["role"], m["content"]
+        func_call = m.get("function_call", None)
         if role == Role.FUNCTION:
             messages.append({"role": "observation", "content": content})
-
         elif role == Role.ASSISTANT and func_call is not None:
             for response in content.split("<|assistant|>"):
                 metadata, sub_content = response.split("\n", maxsplit=1)
