@@ -209,3 +209,38 @@ class CompletionStreamResponse(BaseModel):
     created: int = Field(default_factory=lambda: int(time.time()))
     model: str
     choices: List[CompletionResponseStreamChoice]
+
+
+class CreateAssistantRequest(BaseModel):
+    model: str
+    name: Optional[str] = None
+    description: Optional[str] = None
+    instructions: Optional[str] = None
+    tools: Optional[List[Dict]] = Field(default_factory=list)
+    file_ids: Optional[List[str]] = Field(default_factory=list)
+    metadata: Optional[Dict[str, str]] = Field(default_factory=dict)
+
+
+class AssistantResponse(BaseModel):
+    id: str = Field(default_factory=lambda: f"asst-{secrets.token_hex(12)}")
+    object: str = "assistant"
+    created: int = Field(default_factory=lambda: int(time.time()))
+    model: str
+    name: Optional[str] = None
+    description: Optional[str] = None
+    instructions: Optional[str] = None
+    tools: Optional[List[Dict]] = Field(default_factory=list)
+    file_ids: Optional[List[str]] = Field(default_factory=list)
+    metadata: Optional[Dict[str, str]] = Field(default_factory=dict)
+
+
+class ListAssistantRequest(BaseModel):
+    limit: Optional[int] = 20
+    order: Optional[str] = "desc"
+    after: Optional[str] = None
+    before: Optional[str] = None
+
+
+class ListAssistantResponse(BaseModel):
+    object: str = "list"
+    data: List[AssistantResponse]
