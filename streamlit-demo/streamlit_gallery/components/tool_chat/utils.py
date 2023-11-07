@@ -63,3 +63,15 @@ functions = [
         },
     }
 ]
+
+
+def postprocess_text(text: str) -> str:
+    text = text.replace("\(", "$")
+    text = text.replace("\)", "$")
+    text = text.replace("\[", "$$")
+    text = text.replace("\]", "$$")
+    text = text.replace("<|assistant|>", "")
+    text = text.replace("<|observation|>", "")
+    text = text.replace("<|system|>", "")
+    text = text.replace("<|user|>", "")
+    return text.strip()

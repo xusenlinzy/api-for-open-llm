@@ -7,7 +7,7 @@ from streamlit_gallery.utils.page import page_group
 
 def main():
     from streamlit_gallery.apps import gallery
-    from streamlit_gallery.components import chat, doc_chat, sql_chat, search_chat, tool_chat
+    from streamlit_gallery.components import chat, doc_chat, sql_chat, search_chat, tool_chat, code_interpreter
 
     page = page_group("p")
 
@@ -31,6 +31,9 @@ def main():
 
             if os.getenv("TOOL_CHAT_API_BASE", ""):
                 page.item("Tool Chat", tool_chat)
+
+            if os.getenv("INTERPRETER_CHAT_API_BASE", ""):
+                page.item("Code Interpreter", code_interpreter)
 
         with st.expander("🐧 PARAMTERS", False):
             max_tokens = st.slider("MaxTokens", 20, 4096, 1024)
