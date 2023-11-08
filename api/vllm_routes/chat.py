@@ -7,7 +7,6 @@ from fastapi import APIRouter, Depends, Request, HTTPException
 from fastapi.responses import StreamingResponse
 from loguru import logger
 from openai.types.chat import (
-    CompletionCreateParams,
     ChatCompletionMessage,
     ChatCompletion,
     ChatCompletionChunk,
@@ -25,14 +24,14 @@ from api.generation.chatglm import process_response_v3
 from api.generation.qwen import parse_response
 from api.models import VLLM_ENGINE
 from api.routes.utils import check_api_key
-from api.utils.protocol import Role
+from api.utils.protocol import Role, ChatCompletionCreateParams
 from api.vllm_routes.utils import get_gen_prompt, get_model_inputs
 
 chat_router = APIRouter(prefix="/chat")
 
 
 @chat_router.post("/completions", dependencies=[Depends(check_api_key)])
-async def create_chat_completion(request: CompletionCreateParams, raw_request: Request):
+async def create_chat_completion(request: ChatCompletionCreateParams, raw_request: Request):
     """Completion API similar to OpenAI's API.
 
     See  https://platform.openai.com/docs/api-reference/chat/create
@@ -42,14 +41,13 @@ async def create_chat_completion(request: CompletionCreateParams, raw_request: R
         - function_call (Users should implement this by themselves)
         - logit_bias (to be supported by vLLM engine)
     """
-    messages = request.get("messages")
-    logger.info(f"Received chat messages: {messages}")
+    logger.info(f"Received chat messages: {request.messages}")
 
-    if not messages or messages[-1]["role"] == Role.ASSISTANT:
+    if (not request.messages) or request.messages[-1]["role"] == Role.ASSISTANT:
         raise HTTPException(status_code=400, detail="Invalid request")
 
     prompt = await get_gen_prompt(request, config.MODEL_NAME.lower())
-    request["max_tokens"] = request.get("max_tokens") or 512
+    request.max_tokens = request.max_tokens or 512
     token_ids, error_check_ret = await get_model_inputs(request, prompt, config.MODEL_NAME.lower())
     if error_check_ret is not None:
         return error_check_ret
@@ -60,27 +58,25 @@ async def create_chat_completion(request: CompletionCreateParams, raw_request: R
         stop_token_ids = VLLM_ENGINE.prompt_adapter.stop.get("token_ids", [])
         _stop = VLLM_ENGINE.prompt_adapter.stop.get("strings", [])
 
-    stop = request.get("stop") or []
-    if isinstance(stop, str):
-        stop = [stop]
+    request.stop = request.stop or []
+    if isinstance(request.stop, str):
+        request.stop = [request.stop]
 
-    functions = request.get("functions")
-    if "qwen" in config.MODEL_NAME.lower() and functions:
-        stop.append("Observation:")
-    stop = list(set(_stop + stop))
+    if "qwen" in config.MODEL_NAME.lower() and request.functions:
+        request.stop.append("Observation:")
+    request.stop = list(set(_stop + request.stop))
 
-    model_name = request.get("model")
     request_id = f"chatcmpl-{secrets.token_hex(12)}"
     try:
         sampling_params = SamplingParams(
-            n=request.get("n"),
-            presence_penalty=request.get("presence_penalty"),
-            frequency_penalty=request.get("frequency_penalty"),
-            temperature=request.get("temperature"),
-            top_p=request.get("top_p"),
-            stop=stop,
+            n=request.n,
+            presence_penalty=request.presence_penalty,
+            frequency_penalty=request.frequency_penalty,
+            temperature=request.temperature,
+            top_p=request.top_p,
+            stop=request.stop,
             stop_token_ids=stop_token_ids,
-            max_tokens=request.get("max_tokens"),
+            max_tokens=request.max_tokens,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -89,9 +85,8 @@ async def create_chat_completion(request: CompletionCreateParams, raw_request: R
         prompt if isinstance(prompt, str) else None, sampling_params, request_id, token_ids,
     )
 
-    stream = request.get("stream")
     # Streaming response
-    if stream:
+    if request.stream:
         generator = chat_completion_stream_generator(result_generator, request, request_id)
         return StreamingResponse(generator, media_type="text/event-stream")
 
@@ -111,13 +106,13 @@ async def create_chat_completion(request: CompletionCreateParams, raw_request: R
 
         finish_reason = output.finish_reason
         function_call = None
-        if request.get("functions") and "chatglm3" in config.MODEL_NAME.lower():
+        if request.functions and "chatglm3" in config.MODEL_NAME.lower():
             try:
                 function_call = process_response_v3(output.text, use_tool=True)
             except:
                 logger.warning("Failed to parse tool call")
 
-        elif request.get("functions") and "qwen" in config.MODEL_NAME.lower():
+        elif request.functions and "qwen" in config.MODEL_NAME.lower():
             res, function_call = parse_response(output.text)
             output.text = res
 
@@ -141,24 +136,24 @@ async def create_chat_completion(request: CompletionCreateParams, raw_request: R
     )
     return ChatCompletion(
         id=request_id, choices=choices, created=int(time.time()),
-        model=model_name, object="chat.completion", usage=usage
+        model=request.model, object="chat.completion", usage=usage
     )
 
 
 async def chat_completion_stream_generator(
-    result_generator, request: CompletionCreateParams, request_id: str
+    result_generator, request: ChatCompletionCreateParams, request_id: str
 ) -> Generator[str, Any, None]:
     """
     Event stream format:
     https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events#event_stream_format
     """
-    n = request.get("n")
+    n = request.n
     for i in range(n):
         # First chunk with role
-        choice = ChunkChoice(index=i, delta=ChoiceDelta(role="assistant"), finish_reason=None)
+        choice = ChunkChoice(index=i, delta=ChoiceDelta(role="assistant", content=""), finish_reason=None)
         chunk = ChatCompletionChunk(
             id=request_id, choices=[choice], created=int(time.time()),
-            model=request.get("model"), object="chat.completion.chunk",
+            model=request.model, object="chat.completion.chunk",
         )
         yield f"data: {chunk.json(exclude_unset=True, ensure_ascii=False)}\n\n"
 
@@ -173,11 +168,10 @@ async def chat_completion_stream_generator(
                 previous_texts[i] = output.text
                 previous_num_tokens[i] = len(output.token_ids)
 
-                delta = ChoiceDelta(content=delta_text, role="assistant")
-                choice = ChunkChoice(index=i, delta=delta, finish_reason=output.finish_reason)
+                choice = ChunkChoice(index=i, delta=ChoiceDelta(content=delta_text), finish_reason=output.finish_reason)
                 chunk = ChatCompletionChunk(
                     id=request_id, choices=[choice], created=int(time.time()),
-                    model=request.get("model"), object="chat.completion.chunk",
+                    model=request.model, object="chat.completion.chunk",
                 )
                 yield f"data: {chunk.json(exclude_unset=True, ensure_ascii=False)}\n\n"
 
@@ -185,7 +179,7 @@ async def chat_completion_stream_generator(
                     choice = ChunkChoice(index=i, delta=ChoiceDelta(), finish_reason="stop")
                     chunk = ChatCompletionChunk(
                         id=request_id, choices=[choice], created=int(time.time()),
-                        model=request.get("model"), object="chat.completion.chunk",
+                        model=request.model, object="chat.completion.chunk",
                     )
                     yield f"data: {chunk.json(exclude_unset=True, ensure_ascii=False)}\n\n"
 

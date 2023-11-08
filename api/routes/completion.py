@@ -8,11 +8,11 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from loguru import logger
 from openai.types.completion import Completion, CompletionChoice
-from openai.types.completion_create_params import CompletionCreateParams
 from openai.types.completion_usage import CompletionUsage
 
 from api.models import GENERATE_MDDEL
 from api.routes.utils import check_requests, create_error_response, check_api_key
+from api.utils.protocol import CompletionCreateParams
 
 completion_router = APIRouter()
 
@@ -24,11 +24,10 @@ async def create_completion(request: CompletionCreateParams, raw_request: Reques
         return error_check_ret
 
     start_time = time.time()
-    prompt = request.get("prompt")
-    if isinstance(prompt, str):
-        prompt = [prompt]
+    if isinstance(request.prompt, str):
+        request.prompt = [request.prompt]
 
-    if len(prompt) < 1:
+    if len(request.prompt) < 1:
         raise HTTPException(status_code=400, detail="Invalid request")
 
     # stop settings
@@ -37,34 +36,32 @@ async def create_completion(request: CompletionCreateParams, raw_request: Reques
         stop_token_ids = GENERATE_MDDEL.stop.get("token_ids", [])
         _stop = GENERATE_MDDEL.stop.get("strings", [])
 
-    stop = request.get("stop") or []
-    if isinstance(stop, str):
-        stop = [stop]
-    stop = list(set(_stop + stop))
+    request.stop = request.stop or []
+    if isinstance(request.stop, str):
+        request.stop = [request.stop]
+    request.stop = list(set(_stop + request.stop))
 
-    stream = request.get("stream")
-    if stream:
-        generator = generate_completion_stream_generator(request, raw_request, stop, stop_token_ids)
+    if request.stream:
+        generator = generate_completion_stream_generator(request, raw_request, stop_token_ids)
         return StreamingResponse(generator, media_type="text/event-stream")
 
     text_completions = []
-    for text in prompt:
-        gen_params = request.copy()
+    for text in request.prompt:
+        gen_params = request.dict()
         gen_params.update(
             dict(
                 prompt=text,
-                max_tokens=request.get("max_tokens", 1024),
-                stop=stop,
+                max_tokens=request.max_tokens or 256,
                 stop_token_ids=stop_token_ids,
             )
         )
-        for i in range(request.get("n")):
+        for i in range(request.n):
             content = GENERATE_MDDEL.generate_gate(gen_params)
             text_completions.append(content)
 
     choices = []
     usage = CompletionUsage(completion_tokens=0, prompt_tokens=0, total_tokens=0)
-    indexes = [i for _ in range(len(prompt)) for i in range(request.get("n"))]
+    indexes = [i for _ in range(len(request.prompt)) for i in range(request.n)]
     for content, i in zip(text_completions, indexes):
         if content["error_code"] != 0:
             return create_error_response(content["error_code"], content["text"])
@@ -85,24 +82,23 @@ async def create_completion(request: CompletionCreateParams, raw_request: Reques
     logger.info(f"consume time  = {(time.time() - start_time)}s, response = {str(choices)}")
     return Completion(
         id=f"cmpl-{secrets.token_hex(12)}", choices=choices, created=int(time.time()),
-        model=request.get("model"), object="text_completion", usage=usage
+        model=request.model, object="text_completion", usage=usage
     )
 
 
 async def generate_completion_stream_generator(
-    request: CompletionCreateParams, raw_request: Request, stop: List[str], stop_token_ids: List[int],
+    request: CompletionCreateParams, raw_request: Request, stop_token_ids: List[int],
 ):
     _id = f"cmpl-{secrets.token_hex(12)}"
     finish_stream_events = []
-    for text in request.get("prompt"):
-        for i in range(request.get("n")):
+    for text in request.prompt:
+        for i in range(request.n):
             previous_text = ""
-            gen_params = request.copy()
+            gen_params = request.dict()
             gen_params.update(
                 dict(
                     prompt=text,
-                    max_tokens=request.get("max_tokens", 1024),
-                    stop=stop,
+                    max_tokens=request.max_tokens or 256,
                     stop_token_ids=stop_token_ids,
                 )
             )
@@ -125,7 +121,7 @@ async def generate_completion_stream_generator(
                 )
                 chunk = Completion(
                     id=_id, choices=[choice], created=int(time.time()),
-                    model=request.get("model"), object="text_completion",
+                    model=request.model, object="text_completion",
                 )
 
                 if len(delta_text) == 0:

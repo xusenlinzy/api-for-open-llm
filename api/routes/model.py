@@ -22,7 +22,7 @@ available_models = ModelList(
             id=config.MODEL_NAME,
             object="model",
             created=int(time.time()),
-            owned_by="OPEN"
+            owned_by="open"
         )
     ]
 )

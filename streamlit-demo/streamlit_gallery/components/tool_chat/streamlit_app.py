@@ -1,13 +1,13 @@
 import json
 import os
 
-import openai
 import streamlit as st
+from openai import OpenAI
 
 from .utils import functions, available_functions, postprocess_text
 
 
-def chat_once(functions, message_placeholder):
+def chat_once(functions, message_placeholder, client: OpenAI):
     params = dict(
         model="chatglm3",
         messages=st.session_state.messages,
@@ -16,13 +16,13 @@ def chat_once(functions, message_placeholder):
         max_tokens=st.session_state.get("max_tokens", 512),
         temperature=st.session_state.get("temperature", 0.9),
     )
-    response = openai.ChatCompletion.create(**params)
+    response = client.chat.completions.create(**params)
 
     display = ""
     for _ in range(5):
         full_response = ""
         for chunk in response:
-            content = chunk.choices[0].delta.get("content", "")
+            content = chunk.choices[0].delta.content or ""
             full_response += content
             display += content
             message_placeholder.markdown(postprocess_text(display) + "▌")
@@ -40,7 +40,7 @@ def chat_once(functions, message_placeholder):
             elif chunk.choices[0].finish_reason == "function_call":
                 try:
                     function_call = chunk.choices[0].delta.function_call
-                    st.info(f"**Function Call Response ==>** {function_call.to_dict_recursive()}")
+                    st.info(f"**Function Call Response ==>** {function_call.dict()}")
 
                     function_to_call = available_functions[function_call.name]
                     function_args = json.loads(function_call.arguments)
@@ -67,14 +67,16 @@ def chat_once(functions, message_placeholder):
                 break
 
         params["messages"] = st.session_state.messages
-        response = openai.ChatCompletion.create(**params)
+        response = client.chat.completions.create(**params)
 
 
 def main():
     st.title("💬 Tool Chatbot")
 
-    openai.api_base = os.getenv("TOOL_CHAT_API_BASE", "http://192.168.20.59:7891/v1")
-    openai.api_key = os.getenv("API_KEY", "xxx")
+    client = OpenAI(
+        api_key=os.getenv("API_KEY"),
+        base_url=os.getenv("TOOL_CHAT_API_BASE"),
+    )
 
     if "messages" not in st.session_state:
         st.session_state.messages = []
@@ -95,7 +97,7 @@ def main():
 
         with st.chat_message("assistant"):
             message_placeholder = st.empty()
-            chat_once(functions, message_placeholder)
+            chat_once(functions, message_placeholder, client)
 
 
 if __name__ == "__main__":

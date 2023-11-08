@@ -5,5 +5,6 @@ ENV PYTHONPATH /workspace/
 COPY requirements.txt /workspace/
 COPY . /workspace
 
-RUN pip install --no-cache-dir -r /workspace/requirements.txt -i https://mirror.baidu.com/pypi/simple
-RUN pip install bitsandbytes --upgrade -i https://mirror.baidu.com/pypi/simple
+RUN pip install --no-cache-dir -r /workspace/requirements.txt -i https://mirror.baidu.com/pypi/simple && \
+    pip install bitsandbytes --upgrade -i https://mirror.baidu.com/pypi/simple && \
+    pip install openai==1.1.0 -i https://pypi.org/simple

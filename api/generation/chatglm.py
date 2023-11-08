@@ -6,10 +6,10 @@ from typing import List, Union
 import torch
 from loguru import logger
 from openai.types.chat import ChatCompletionMessageParam
+from transformers.generation.logits_process import LogitsProcessor
 
 from api.generation.utils import apply_stopping_strings
 from api.utils.protocol import Role
-from transformers.generation.logits_process import LogitsProcessor
 
 
 class InvalidScoreLogitsProcessor(LogitsProcessor):
@@ -149,7 +149,7 @@ def generate_stream_chatglm_v3(
     stream_interval=2,
 ):
     prompt: List[ChatCompletionMessageParam] = params["prompt"]
-    functions = params["functions"]
+    functions = params.get("functions", None)
     temperature = float(params.get("temperature", 1.0))
     repetition_penalty = float(params.get("repetition_penalty", 1.0))
     top_p = float(params.get("top_p", 1.0))

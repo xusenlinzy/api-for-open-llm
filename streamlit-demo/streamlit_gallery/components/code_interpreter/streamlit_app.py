@@ -1,7 +1,7 @@
 import os
 
-import openai
 import streamlit as st
+from openai import OpenAI
 
 from .utils import CodeKernel, extract_code, execute, postprocess_text
 
@@ -19,7 +19,7 @@ SYSTEM_MESSAGE = [
 ]
 
 
-def chat_once(message_placeholder):
+def chat_once(message_placeholder, client: OpenAI):
     params = dict(
         model="chatglm3",
         messages=SYSTEM_MESSAGE + st.session_state.messages,
@@ -27,13 +27,13 @@ def chat_once(message_placeholder):
         max_tokens=st.session_state.get("max_tokens", 512),
         temperature=st.session_state.get("temperature", 0.9),
     )
-    response = openai.ChatCompletion.create(**params)
+    response = client.chat.completions.create(**params)
 
     display = ""
     for _ in range(5):
         full_response = ""
         for chunk in response:
-            content = chunk.choices[0].delta.get("content", "")
+            content = chunk.choices[0].delta.content or ""
             full_response += content
             display += content
             message_placeholder.markdown(postprocess_text(display) + "▌")
@@ -86,14 +86,16 @@ def chat_once(message_placeholder):
                 break
 
         params["messages"] = st.session_state.messages
-        response = openai.ChatCompletion.create(**params)
+        response = client.chat.completions.create(**params)
 
 
 def main():
     st.title("💬 Code Interpreter")
 
-    openai.api_base = os.getenv("INTERPRETER_CHAT_API_BASE", "http://192.168.20.59:7891/v1")
-    openai.api_key = os.getenv("API_KEY", "xxx")
+    client = OpenAI(
+        api_key=os.getenv("API_KEY"),
+        base_url=os.getenv("INTERPRETER_CHAT_API_BASE"),
+    )
 
     if "messages" not in st.session_state:
         st.session_state.messages = []
@@ -114,7 +116,7 @@ def main():
 
         with st.chat_message("assistant"):
             message_placeholder = st.empty()
-            chat_once(message_placeholder)
+            chat_once(message_placeholder, client)
 
 
 if __name__ == "__main__":

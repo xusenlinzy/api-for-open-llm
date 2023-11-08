@@ -4,7 +4,6 @@ import time
 from fastapi import APIRouter, Request, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from openai.types.completion import Completion, CompletionChoice
-from openai.types.completion_create_params import CompletionCreateParams
 from openai.types.completion_usage import CompletionUsage
 from vllm.outputs import RequestOutput
 from vllm.sampling_params import SamplingParams
@@ -12,6 +11,7 @@ from vllm.sampling_params import SamplingParams
 from api.config import config
 from api.models import VLLM_ENGINE
 from api.routes.utils import check_api_key
+from api.utils.protocol import CompletionCreateParams
 from api.vllm_routes.utils import get_model_inputs
 
 completion_router = APIRouter()
@@ -31,30 +31,19 @@ async def create_completion(request: CompletionCreateParams, raw_request: Reques
           suffix)
         - logit_bias (to be supported by vLLM engine)
     """
-    prompt = request.get("prompt")
-    if isinstance(prompt, str):
-        prompt = [prompt]
-
-    if len(prompt) < 1:
-        raise HTTPException(status_code=400, detail="Invalid request")
-
-    if request.get("echo"):
+    if request.echo:
         # We do not support echo since the vLLM engine does not
         # currently support getting the logprobs of prompt tokens.
         raise HTTPException(status_code=400, detail="echo is not currently supported")
 
-    if request.get("suffix"):
+    if request.suffix:
         # The language models we currently support do not support suffix.
         raise HTTPException(status_code=400, detail="suffix is not currently supported")
 
-    request["max_tokens"] = request.get("max_tokens", 256)
+    request.max_tokens = request.max_tokens or 256
     request_id = f"cmpl-{secrets.token_hex(12)}"
 
-    if len(prompt) > 1:
-        raise HTTPException(status_code=400, detail="multiple prompts in a batch is not currently supported")
-    prompt = prompt[0]
-
-    token_ids, error_check_ret = await get_model_inputs(request, prompt, config.MODEL_NAME.lower())
+    token_ids, error_check_ret = await get_model_inputs(request, request.prompt, config.MODEL_NAME.lower())
     if error_check_ret is not None:
         return error_check_ret
 
@@ -64,35 +53,31 @@ async def create_completion(request: CompletionCreateParams, raw_request: Reques
         stop_token_ids = VLLM_ENGINE.prompt_adapter.stop.get("token_ids", [])
         _stop = VLLM_ENGINE.prompt_adapter.stop.get("strings", [])
 
-    stop = request.get("stop") or []
-    if isinstance(stop, str):
-        stop = [stop]
-    stop = list(set(_stop + stop))
+    request.stop = request.stop or []
+    if isinstance(request.stop, str):
+        request.stop = [request.stop]
+    request.stop = list(set(_stop + request.stop))
 
     try:
         sampling_params = SamplingParams(
-            n=request.get("n"),
-            presence_penalty=request.get("presence_penalty"),
-            frequency_penalty=request.get("frequency_penalty"),
-            temperature=request.get("temperature"),
-            top_p=request.get("top_p"),
-            stop=stop,
+            n=request.n,
+            presence_penalty=request.presence_penalty,
+            frequency_penalty=request.frequency_penalty,
+            temperature=request.temperature,
+            top_p=request.top_p,
+            stop=request.stop,
             stop_token_ids=stop_token_ids,
-            max_tokens=request.get("max_tokens"),
+            max_tokens=request.max_tokens,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
     result_generator = VLLM_ENGINE.generate(
-        prompt if isinstance(prompt, str) else None, sampling_params, request_id, token_ids,
+        request.prompt if isinstance(request.prompt, str) else None, sampling_params, request_id, token_ids,
     )
 
-    # Similar to the OpenAI API, when n != best_of, we do not stream the
-    # results. In addition, we do not stream the results when use beam search.
-    stream = request.get("stream")
-
     # Streaming response
-    if stream:
+    if request.stream:
         generator = generate_completion_stream_generator(result_generator, request, request_id)
         return StreamingResponse(generator, media_type="text/event-stream")
 
@@ -124,15 +109,15 @@ async def create_completion(request: CompletionCreateParams, raw_request: Reques
 
     return Completion(
         id=request_id, choices=choices, created=int(time.time()),
-        model=request.get("model"), object="text_completion", usage=usage
+        model=request.model, object="text_completion", usage=usage
     )
 
 
 async def generate_completion_stream_generator(
     result_generator, request: CompletionCreateParams, request_id: str
 ):
-    previous_texts = [""] * request.get("n")
-    previous_num_tokens = [0] * request.get("n")
+    previous_texts = [""] * request.n
+    previous_num_tokens = [0] * request.n
     async for res in result_generator:
         res: RequestOutput
         for output in res.outputs:
@@ -147,7 +132,7 @@ async def generate_completion_stream_generator(
             )
             chunk = Completion(
                 id=request_id, choices=[choice], created=int(time.time()),
-                model=request.get("model"), object="text_completion",
+                model=request.model, object="text_completion",
             )
             yield f"data: {chunk.json(exclude_unset=True, ensure_ascii=False)}\n\n"
 
@@ -157,7 +142,7 @@ async def generate_completion_stream_generator(
                 )
                 chunk = Completion(
                     id=request_id, choices=[choice], created=int(time.time()),
-                    model=request.get("model"), object="text_completion",
+                    model=request.model, object="text_completion",
                 )
                 yield f"data: {chunk.json(exclude_unset=True, ensure_ascii=False)}\n\n"
 

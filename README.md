@@ -20,6 +20,9 @@
 
 ## 📢 新闻
 
++ 【2023.11.08】 `dev` 分支已经支持 `openai=1.1.0` 版本
+
+
 + 【2023.11.03】 支持 `chatglm3` 和 `qwen` 模型的 `function call` 调用功能，同时支持流式和非流式模式, [工具使用示例](https://github.com/xusenlinzy/api-for-open-llm/tree/master/examples/chatglm3/tool_using.py), 网页 `demo` 已经集成到 [streamlit-demo](./streamlit-demo)
 
 
@@ -145,30 +148,31 @@ streamlit run streamlit_app.py
 
 ![img.png](images/demo.png)
 
-### [openai](https://github.com/openai/openai-python)
+### [openai v1.1.0](https://github.com/openai/openai-python)
 
 <details>
 <summary>👉 Chat Completions</summary>
 
 ```python
-import openai
+from openai import OpenAI
 
-openai.api_base = "http://192.168.0.xx:80/v1"
-
-# Enter any non-empty API key to pass the client library's check.
-openai.api_key = "xxx"
-
-# Enter any non-empty model name to pass the client library's check.
-completion = openai.ChatCompletion.create(
-    model="chatglm-6b",
-    messages=[
-        {"role": "user", "content": "你好"},
-    ],
-    stream=False,
+client = OpenAI(
+    api_key="EMPTY",
+    base_url="http://192.168.20.59:7891/v1/",
 )
 
-print(completion.choices[0].message.content)
-# 你好👋！我是人工智能助手 ChatGLM-6B，很高兴见到你，欢迎问我任何问题。
+# Chat completion API
+chat_completion = client.chat.completions.create(
+    messages=[
+        {
+            "role": "user",
+            "content": "你好",
+        }
+    ],
+    model="gpt-3.5-turbo",
+)
+print(chat_completion)
+# 你好👋！我是人工智能助手 ChatGLM3-6B，很高兴见到你，欢迎问我任何问题。
 ```
 
 </details>
@@ -177,17 +181,20 @@ print(completion.choices[0].message.content)
 <summary>👉 Completions</summary>
 
 ```python
-import openai
+from openai import OpenAI
 
-openai.api_base = "http://192.168.0.xx:80/v1"
+client = OpenAI(
+    api_key="EMPTY",
+    base_url="http://192.168.20.59:7891/v1/",
+)
 
-# Enter any non-empty API key to pass the client library's check.
-openai.api_key = "xxx"
 
-# Enter any non-empty model name to pass the client library's check.
-completion = openai.Completion.create(prompt="你好", model="chatglm-6b")
-
-print(completion.choices[0].text)
+# Chat completion API
+completion = client.completions.create(
+    model="gpt-3.5-turbo",
+    prompt="你好",
+)
+print(completion)
 # 你好👋！我是人工智能助手 ChatGLM-6B，很高兴见到你，欢迎问我任何问题。
 ```
 
@@ -197,82 +204,29 @@ print(completion.choices[0].text)
 <summary>👉 Embeddings</summary>
 
 ```python
-import openai
+from openai import OpenAI
 
-openai.api_base = "http://192.168.0.xx:80/v1"
+client = OpenAI(
+    api_key="EMPTY",
+    base_url="http://192.168.20.59:7891/v1/",
+)
 
-# Enter any non-empty API key to pass the client library's check.
-openai.api_key = "xxx"
 
 # compute the embedding of the text
-embedding = openai.Embedding.create(
-    input="什么是chatgpt？", 
-    model="text2vec-large-chinese"
+embedding = client.embeddings.create(
+    input="你好",
+    model="text-embedding-ada-002"
 )
+print(embedding)
 
-print(embedding['data'][0]['embedding'])
 ```
 
 </details>
 
-### [langchain](https://github.com/hwchase17/langchain)
-
-<details>
-<summary>👉 Chat Completions</summary>
-
-```python
-import os
-
-os.environ["OPENAI_API_BASE"] = "http://192.168.0.xx:80/v1"
-os.environ["OPENAI_API_KEY"] = "xxx"
-
-from langchain.chat_models import ChatOpenAI
-from langchain.schema import HumanMessage
-
-chat = ChatOpenAI()
-print(chat([HumanMessage(content="你好")]))
-# content='你好👋！我是人工智能助手 ChatGLM-6B，很高兴见到你，欢迎问我任何问题。' additional_kwargs={}
-```
-</details>
-
-<details>
-<summary>👉 Completions</summary>
-
-```python
-import os
-
-os.environ["OPENAI_API_BASE"] = "http://192.168.0.xx:80/v1"
-os.environ["OPENAI_API_KEY"] = "xxx"
-
-from langchain.llms import OpenAI
-
-llm = OpenAI()
-print(llm("你好"))
-# 你好👋！我是人工智能助手 ChatGLM-6B，很高兴见到你，欢迎问我任何问题。
-```
-
-</details>
-
-<details>
-<summary>👉 Embeddings</summary>
-
-```python
-import os
-
-os.environ["OPENAI_API_BASE"] = "http://192.168.0.xx:80/v1"
-os.environ["OPENAI_API_KEY"] = "xxx"
-
-from langchain.embeddings import OpenAIEmbeddings
-
-embeddings = OpenAIEmbeddings()
-query_result = embeddings.embed_query("什么是chatgpt？")
-print(query_result)
-```
-</details>
 
 ### 可接入的项目
 
-**通过修改上面的 `OPENAI_API_BASE` 环境变量，大部分的 `chatgpt` 应用和前后端项目都可以无缝衔接！**
+**通过修改 `OPENAI_API_BASE` 环境变量，大部分的 `chatgpt` 应用和前后端项目都可以无缝衔接！**
 
 + [ChatGPT-Next-Web: One-Click to deploy well-designed ChatGPT web UI on Vercel](https://github.com/Yidadaa/ChatGPT-Next-Web)
 

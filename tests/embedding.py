@@ -1,14 +1,14 @@
-import openai
+from openai import OpenAI
 
-openai.api_base = "http://192.168.0.53:7891/v1"
-
-# Enter any non-empty API key to pass the client library's check.
-openai.api_key = "xxx"
-
-# compute the embedding of the text
-embedding = openai.Embedding.create(
-    input="什么是chatgpt？",
-    model="m3e-base"
+client = OpenAI(
+    api_key="EMPTY",
+    base_url="http://192.168.20.59:7891/v1/",
 )
 
-print(embedding['data'][0]['embedding'])
+
+# compute the embedding of the text
+embedding = client.embeddings.create(
+    input="你好",
+    model="text-embedding-ada-002"
+)
+print(embedding)

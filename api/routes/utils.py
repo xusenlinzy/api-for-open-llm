@@ -3,12 +3,10 @@ from typing import Optional, Union
 from fastapi import Depends, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.security.http import HTTPAuthorizationCredentials, HTTPBearer
-from openai.types.chat import CompletionCreateParams as ChatCompletionCreateParams
-from openai.types.completion_create_params import CompletionCreateParams
 
 from api.config import config
 from api.utils.constants import ErrorCode
-from api.utils.protocol import ErrorResponse
+from api.utils.protocol import ChatCompletionCreateParams, CompletionCreateParams, ErrorResponse
 
 
 async def check_api_key(
@@ -41,42 +39,41 @@ def check_requests(
     request: Union[CompletionCreateParams, ChatCompletionCreateParams]
 ) -> Optional[JSONResponse]:
     # Check all params
-    if request.get("max_tokens") is not None and request.get("max_tokens") <= 0:
+    if request.max_tokens is not None and request.max_tokens <= 0:
         return create_error_response(
             ErrorCode.PARAM_OUT_OF_RANGE,
-            f"{request.get('max_tokens')} is less than the minimum of 1 - 'max_tokens'",
+            f"{request.max_tokens} is less than the minimum of 1 - 'max_tokens'",
         )
-    if request.get("n") is not None and request.get("n") <= 0:
+    if request.n is not None and request.n <= 0:
         return create_error_response(
             ErrorCode.PARAM_OUT_OF_RANGE,
-            f"{request.get('n')} is less than the minimum of 1 - 'n'",
+            f"{request.n} is less than the minimum of 1 - 'n'",
         )
-    if request.get("temperature") is not None and request.get("temperature") < 0:
+    if request.temperature is not None and request.temperature < 0:
         return create_error_response(
             ErrorCode.PARAM_OUT_OF_RANGE,
-            f"{request.get('temperature')} is less than the minimum of 0 - 'temperature'",
+            f"{request.temperature} is less than the minimum of 0 - 'temperature'",
         )
-    if request.get("temperature") is not None and request.get("temperature") > 2:
+    if request.temperature is not None and request.temperature > 2:
         return create_error_response(
             ErrorCode.PARAM_OUT_OF_RANGE,
-            f"{request.get('temperature')} is greater than the maximum of 2 - 'temperature'",
+            f"{request.temperature} is greater than the maximum of 2 - 'temperature'",
         )
-    if request.get("top_p") is not None and request.get("top_p") < 0:
+    if request.top_p is not None and request.top_p < 0:
         return create_error_response(
             ErrorCode.PARAM_OUT_OF_RANGE,
-            f"{request.get('top_p')} is less than the minimum of 0 - 'top_p'",
+            f"{request.top_p} is less than the minimum of 0 - 'top_p'",
         )
-    if request.get("top_p") is not None and request.get("top_p") > 1:
+    if request.top_p is not None and request.top_p > 1:
         return create_error_response(
             ErrorCode.PARAM_OUT_OF_RANGE,
-            f"{request.get('top_p')} is greater than the maximum of 1 - 'temperature'",
+            f"{request.top_p} is greater than the maximum of 1 - 'temperature'",
         )
-    if request.get("stop") is not None and (
-            not isinstance(request.get("stop"), str) and not isinstance(request.get("stop"), list)
+    if request.stop is not None and (
+            not isinstance(request.stop, str) and not isinstance(request.stop, list)
     ):
         return create_error_response(
             ErrorCode.PARAM_OUT_OF_RANGE,
-            f"{request.get('stop')} is not valid under any of the given schemas - 'stop'",
+            f"{request.stop} is not valid under any of the given schemas - 'stop'",
         )
-
     return None

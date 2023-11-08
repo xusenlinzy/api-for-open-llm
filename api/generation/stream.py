@@ -23,7 +23,7 @@ def generate_stream(
 ):
     # Read parameters
     prompt = params["prompt"]
-    functions = params["functions"]
+    functions = params.get("functions", None)
     temperature = float(params.get("temperature", 1.0))
     repetition_penalty = float(params.get("repetition_penalty", 1.0))
     top_p = float(params.get("top_p", 1.0))
@@ -230,7 +230,7 @@ def generate_stream_v2(
     context_len: int,
 ):
     prompt = params["prompt"]
-    functions = params["functions"]
+    functions = params.get("functions", None)
     temperature = float(params.get("temperature", 1.0))
     repetition_penalty = float(params.get("repetition_penalty", 1.0))
     top_p = float(params.get("top_p", 1.0))

@@ -2,13 +2,12 @@ import asyncio
 import json
 import secrets
 import time
-from typing import Generator, Dict, Any
+from typing import Generator, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from loguru import logger
 from openai.types.chat import (
-    CompletionCreateParams,
     ChatCompletionMessage,
     ChatCompletion,
     ChatCompletionChunk,
@@ -24,16 +23,15 @@ from api.generation.chatglm import process_response_v3
 from api.generation.qwen import parse_response
 from api.models import GENERATE_MDDEL
 from api.routes.utils import check_requests, create_error_response, check_api_key
-from api.utils.protocol import Role
+from api.utils.protocol import ChatCompletionCreateParams, Role
 
 chat_router = APIRouter(prefix="/chat")
 
 
 @chat_router.post("/completions", dependencies=[Depends(check_api_key)])
-async def create_chat_completion(request: CompletionCreateParams, raw_request: Request):
+async def create_chat_completion(request: ChatCompletionCreateParams, raw_request: Request):
     """Creates a completion for the chat message"""
-    messages = request.get("messages")
-    if (not messages) or messages[-1]["role"] == Role.ASSISTANT:
+    if (not request.messages) or request.messages[-1]["role"] == Role.ASSISTANT:
         raise HTTPException(status_code=400, detail="Invalid request")
 
     error_check_ret = check_requests(request)
@@ -46,31 +44,29 @@ async def create_chat_completion(request: CompletionCreateParams, raw_request: R
         stop_token_ids = GENERATE_MDDEL.stop.get("token_ids", [])
         _stop = GENERATE_MDDEL.stop.get("strings", [])
 
-    stop = request.get("stop") or []
-    if isinstance(stop, str):
-        stop = [stop]
+    request.stop = request.stop or []
+    if isinstance(request.stop, str):
+        request.stop = [request.stop]
 
-    functions = request.get("functions")
-    if "qwen" in config.MODEL_NAME.lower() and functions:
-        stop.append("Observation:")
-    stop = list(set(_stop + stop))
+    if "qwen" in config.MODEL_NAME.lower() and request.functions:
+        request.stop.append("Observation:")
+    request.stop = list(set(_stop + request.stop))
 
-    gen_params = request.copy()
+    gen_params = request.dict()
     gen_params.update(
         dict(
-            prompt=messages,
-            max_tokens=request.get("max_tokens", 1024),
+            prompt=request.messages,
+            max_tokens=request.max_tokens or 1024,
             echo=False,
-            stop=stop,
+            stop=request.stop,
             stop_token_ids=stop_token_ids,
         )
     )
 
     logger.debug(f"==== request ====\n{gen_params}")
 
-    stream = gen_params.get("stream")
-    if stream:
-        generator = chat_completion_stream_generator(gen_params, raw_request)
+    if request.stream:
+        generator = chat_completion_stream_generator(gen_params, request, raw_request)
         return StreamingResponse(generator, media_type="text/event-stream")
 
     choices = []
@@ -81,13 +77,13 @@ async def create_chat_completion(request: CompletionCreateParams, raw_request: R
             return create_error_response(content["error_code"], content["text"])
 
         function_call, finish_reason = None, "stop"
-        if functions and "chatglm3" in config.MODEL_NAME.lower():
+        if request.functions and "chatglm3" in config.MODEL_NAME.lower():
             try:
                 function_call = process_response_v3(content["text"], use_tool=True)
             except:
                 logger.warning("Failed to parse tool call")
 
-        elif functions and "qwen" in config.MODEL_NAME.lower():
+        elif request.functions and "qwen" in config.MODEL_NAME.lower():
             res, function_call = parse_response(content["text"])
             content["text"] = res
 
@@ -98,7 +94,7 @@ async def create_chat_completion(request: CompletionCreateParams, raw_request: R
                 role="assistant", content=content["text"], function_call=function_call
             )
         else:
-            message = ChatCompletionMessage(role="assistant", content=content["text"])
+            message = ChatCompletionMessage(role="assistant", content=content["text"].strip())
 
         choices.append(Choice(index=i, message=message, finish_reason=finish_reason))
 
@@ -108,25 +104,25 @@ async def create_chat_completion(request: CompletionCreateParams, raw_request: R
 
     return ChatCompletion(
         id=f"chatcmpl-{secrets.token_hex(12)}", choices=choices, created=int(time.time()),
-        model=request.get("model"), object="chat.completion", usage=usage
+        model=request.model, object="chat.completion", usage=usage
     )
 
 
 async def chat_completion_stream_generator(
-    gen_params: Dict[str, Any], raw_request: Request
+    gen_params, request: ChatCompletionCreateParams, raw_request: Request
 ) -> Generator[str, Any, None]:
     """
     Event stream format:
     https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events#event_stream_format
     """
     _id = f"chatcmpl-{secrets.token_hex(12)}"
-    use_tool = bool(gen_params["functions"] is not None)
-    for i in range(gen_params["n"]):
+    use_tool = bool(request.functions is not None)
+    for i in range(request.n):
         # First chunk with role
-        choice = ChunkChoice(index=i, delta=ChoiceDelta(role="assistant"), finish_reason=None)
+        choice = ChunkChoice(index=i, delta=ChoiceDelta(role="assistant", content=""), finish_reason=None)
         chunk = ChatCompletionChunk(
             id=_id, choices=[choice], created=int(time.time()),
-            model=gen_params["model"], object="chat.completion.chunk",
+            model=request.model, object="chat.completion.chunk",
         )
         yield f"data: {chunk.json(exclude_unset=True, ensure_ascii=False)}\n\n"
 
@@ -141,7 +137,7 @@ async def chat_completion_stream_generator(
                 yield "data: [DONE]\n\n"
                 return
 
-            decoded_unicode = content["text"].replace("\ufffd", "")
+            decoded_unicode = content["text"].replace("\ufffd", "").lstrip()
             delta_text = decoded_unicode[len(previous_text):]
             previous_text = decoded_unicode
 
@@ -161,21 +157,21 @@ async def chat_completion_stream_generator(
 
             if isinstance(function_call, dict) and "arguments" in function_call:
                 function_call = ChoiceDeltaFunctionCall(**function_call)
-                delta = ChoiceDelta(content=delta_text, role="assistant", function_call=function_call)
+                delta = ChoiceDelta(content=delta_text, function_call=function_call)
             else:
-                delta = ChoiceDelta(content=delta_text, role="assistant")
+                delta = ChoiceDelta(content=delta_text)
 
             choice = ChunkChoice(index=i, delta=delta, finish_reason=finish_reason)
             chunk = ChatCompletionChunk(
                 id=_id, choices=[choice], created=int(time.time()),
-                model=gen_params["model"], object="chat.completion.chunk",
+                model=request.model, object="chat.completion.chunk",
             )
             yield f"data: {chunk.json(exclude_unset=True, ensure_ascii=False)}\n\n"
 
         choice = ChunkChoice(index=i, delta=ChoiceDelta(), finish_reason="stop")
         chunk = ChatCompletionChunk(
             id=_id, choices=[choice], created=int(time.time()),
-            model=gen_params["model"], object="chat.completion.chunk",
+            model=request.model, object="chat.completion.chunk",
         )
-        yield f"data: {chunk.json(exclude_unset=True, ensure_ascii=False)}\n]\n"
+        yield f"data: {chunk.json(exclude_unset=True, ensure_ascii=False)}\n\n"
         yield "data: [DONE]\n\n"
