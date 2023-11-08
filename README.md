@@ -20,6 +20,9 @@
 
 ## 📢 新闻
 
++ 【2023.11.08】 `dev` 分支已经支持 `openai=1.1.0` 版本
+
+
 + 【2023.11.03】 支持 `chatglm3` 和 `qwen` 模型的 `function call` 调用功能，同时支持流式和非流式模式, [工具使用示例](https://github.com/xusenlinzy/api-for-open-llm/tree/master/examples/chatglm3/tool_using.py), 网页 `demo` 已经集成到 [streamlit-demo](./streamlit-demo)
 
 
