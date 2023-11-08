@@ -1,28 +1,23 @@
 # Reference: https://openai.com/blog/function-calling-and-other-api-updates
 
-import openai
+from openai import OpenAI
 from loguru import logger
 
-# To start an OpenAI-like Qwen server, use the following commands:
-#   git clone https://github.com/QwenLM/Qwen-7B;
-#   cd Qwen-7B;
-#   pip install fastapi uvicorn openai pydantic sse_starlette;
-#   python openai_api.py;
-#
-# Then configure the api_base and api_key in your client:
-openai.api_base = "http://192.168.20.59:7891/v1"
-openai.api_key = "none"
+client = OpenAI(
+    api_key="EMPTY",
+    base_url="http://192.168.20.59:7891/v1/",
+)
 
 
 def call_qwen(messages, functions=None):
     logger.info(messages)
     if functions:
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="Qwen", messages=messages, functions=functions
         )
     else:
-        response = openai.ChatCompletion.create(model="Qwen", messages=messages)
-    logger.info(response.to_dict_recursive())
+        response = client.chat.completions.create(model="Qwen", messages=messages)
+    logger.info(response.dict())
     logger.info(response.choices[0].message.content)
     return response
 
@@ -207,29 +202,6 @@ def run_test_3():
     call_qwen(messages, functions)
 
 
-def run_test_4():
-    from langchain.chat_models import ChatOpenAI
-    from langchain.agents import load_tools, initialize_agent, AgentType
-
-    llm = ChatOpenAI(
-        model_name="Qwen",
-        openai_api_base="http://192.168.20.59:7891/v1",
-        openai_api_key="none",
-        streaming=False,
-    )
-    tools = load_tools(
-        ["arxiv"],
-    )
-    agent_chain = initialize_agent(
-        tools,
-        llm,
-        agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
-        verbose=True,
-    )
-    # TODO: The performance is okay with Chinese prompts, but not so good when it comes to English.
-    agent_chain.run("查一下论文 1605.08386 的信息")
-
-
 if __name__ == "__main__":
     logger.info("### Test Case 1 - No Function Calling (普通问答、无函数调用) ###")
     run_test_1()
@@ -237,5 +209,3 @@ if __name__ == "__main__":
     run_test_2()
     logger.info("### Test Case 3 - Use GPT-Style Functions (函数调用，GPT格式) ###")
     run_test_3()
-    logger.info("### Test Case 4 - Use LangChain (接入Langchain) ###")
-    run_test_4()

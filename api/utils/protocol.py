@@ -6,7 +6,7 @@ from openai.types.chat import (
     ChatCompletionToolChoiceOptionParam,
     ChatCompletionToolParam,
 )
-from openai.types.chat.completion_create_params import FunctionCall, Function, ResponseFormat
+from openai.types.chat.completion_create_params import FunctionCall, ResponseFormat
 from pydantic import BaseModel
 
 
@@ -47,7 +47,7 @@ class ChatCompletionCreateParams(BaseModel):
     [See more information about frequency and presence penalties.](https://platform.openai.com/docs/guides/gpt/parameter-details)
     """
 
-    function_call: FunctionCall = None
+    function_call: Optional[FunctionCall] = None
     """Deprecated in favor of `tool_choice`.
 
     Controls which (if any) function is called by the model. `none` means the model
@@ -60,7 +60,7 @@ class ChatCompletionCreateParams(BaseModel):
     functions are present.
     """
 
-    functions: List[Function] = None
+    functions: Optional[List] = None
     """Deprecated in favor of `tools`.
 
     A list of functions the model may generate JSON inputs for.

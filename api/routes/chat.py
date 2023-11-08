@@ -137,7 +137,7 @@ async def chat_completion_stream_generator(
                 yield "data: [DONE]\n\n"
                 return
 
-            decoded_unicode = content["text"].replace("\ufffd", "").lstrip()
+            decoded_unicode = content["text"].replace("\ufffd", "")
             delta_text = decoded_unicode[len(previous_text):]
             previous_text = decoded_unicode
 

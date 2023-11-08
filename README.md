@@ -173,6 +173,20 @@ chat_completion = client.chat.completions.create(
 )
 print(chat_completion)
 # 你好👋！我是人工智能助手 ChatGLM3-6B，很高兴见到你，欢迎问我任何问题。
+
+
+# stream = client.chat.completions.create(
+#     messages=[
+#         {
+#             "role": "user",
+#             "content": "感冒了怎么办",
+#         }
+#     ],
+#     model="gpt-3.5-turbo",
+#     stream=True,
+# )
+# for part in stream:
+#     print(part.choices[0].delta.content or "", end="", flush=True)
 ```
 
 </details>

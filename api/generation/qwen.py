@@ -10,10 +10,10 @@ from openai.types.chat import (
     ChatCompletionUserMessageParam,
     ChatCompletionAssistantMessageParam,
 )
+from transformers import PreTrainedTokenizer
 
 from api.generation.utils import parse_messages
 from api.utils.protocol import Role
-from transformers import PreTrainedTokenizer
 
 TOOL_DESC = """{name_for_model}: Call this tool to interact with the {name_for_human} API. What is the {name_for_human} API useful for? {description_for_model} Parameters: {parameters}"""
 
@@ -186,13 +186,12 @@ def process_qwen_messages(
                 if functions:
                     content = dummy_thought["zh" if last_msg_has_zh else "en"] + content
             else:
-                f_name, f_args = func_call.name, func_call.arguments
+                f_name, f_args = func_call.get("name"), func_call.get("arguments")
                 if not content:
                     if last_msg_has_zh:
                         content = f"Thought: 我可以使用 {f_name} API。"
                     else:
                         content = f"Thought: I can use {f_name}."
-                content = f"\n{content}\nAction: {f_name}\nAction Input: {f_args}"
 
             if messages[-1]["role"] == Role.USER:
                 messages.append(
@@ -258,7 +257,7 @@ def parse_response(response):
 
     if func_name:
         function_call = {"name": func_name, "arguments": func_args}
-        return response[:i], function_call
+        return response[:k], function_call
 
     z = response.rfind("\nFinal Answer: ")
     if z >= 0:

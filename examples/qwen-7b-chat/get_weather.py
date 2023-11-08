@@ -1,13 +1,16 @@
 import json
 
-import openai
 from colorama import init, Fore
 from loguru import logger
+from openai import OpenAI
 
 init(autoreset=True)
 
-openai.api_base = "http://192.168.20.59:7891/v1"
-openai.api_key = "xxx"
+
+client = OpenAI(
+    api_key="EMPTY",
+    base_url="http://192.168.20.59:7891/v1/",
+)
 
 
 # Example dummy function hard coded to return the same weather
@@ -50,13 +53,13 @@ def run_conversation(query: str, stream=False, functions=None, max_retry=5):
     params = dict(model="qwen", messages=[{"role": "user", "content": query}], stream=stream)
     if functions:
         params["functions"] = functions
-    response = openai.ChatCompletion.create(**params)
+    response = client.chat.completions.create(**params)
 
     for _ in range(max_retry):
         if not stream:
-            if response.choices[0].message.get("function_call"):
+            if response.choices[0].message.function_call:
                 function_call = response.choices[0].message.function_call
-                logger.info(f"Function Call Response: {function_call.to_dict_recursive()}")
+                logger.info(f"Function Call Response: {function_call.dict()}")
 
                 function_to_call = available_functions[function_call.name]
                 function_args = json.loads(function_call.arguments)
@@ -83,7 +86,7 @@ def run_conversation(query: str, stream=False, functions=None, max_retry=5):
         else:
             output = ""
             for chunk in response:
-                content = chunk.choices[0].delta.get("content", "")
+                content = chunk.choices[0].delta.content or ""
                 print(Fore.BLUE + content, end="", flush=True)
                 output += content
 
@@ -94,7 +97,7 @@ def run_conversation(query: str, stream=False, functions=None, max_retry=5):
                     print("\n")
 
                     function_call = chunk.choices[0].delta.function_call
-                    logger.info(f"Function Call Response: {function_call.to_dict_recursive()}")
+                    logger.info(f"Function Call Response: {function_call.dict()}")
 
                     function_to_call = available_functions[function_call.name]
                     function_args = json.loads(function_call.arguments)
@@ -120,7 +123,7 @@ def run_conversation(query: str, stream=False, functions=None, max_retry=5):
 
                     break
 
-        response = openai.ChatCompletion.create(**params)
+        response = client.chat.completions.create(**params)
 
 
 if __name__ == "__main__":
@@ -130,4 +133,4 @@ if __name__ == "__main__":
     logger.info("\n=========== next conversation ===========")
 
     query = "波士顿天气如何？"
-    run_conversation(query, functions=functions, stream=True)
+    run_conversation(query, functions=functions, stream=False)
