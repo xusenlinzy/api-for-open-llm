@@ -1,18 +1,29 @@
-import json
 import os
 
 import openai
 import streamlit as st
 
-from .utils import functions, available_functions, postprocess_text
+from .utils import CodeKernel, extract_code, execute, postprocess_text
 
 
-def chat_once(functions, message_placeholder):
+@st.cache_resource
+def get_kernel():
+    return CodeKernel()
+
+
+SYSTEM_MESSAGE = [
+    {
+        "role": "system",
+        "content": "你是一位智能AI助手，你叫ChatGLM，你连接着一台电脑，但请注意不能联网。在使用Python解决任务时，你可以运行代码并得到结果，如果运行结果有错误，你需要尽可能对代码进行改进。你可以处理用户上传到电脑上的文件，文件默认存储路径是/mnt/data/。"
+    }
+]
+
+
+def chat_once(message_placeholder):
     params = dict(
         model="chatglm3",
-        messages=st.session_state.messages,
+        messages=SYSTEM_MESSAGE + st.session_state.messages,
         stream=True,
-        functions=functions,
         max_tokens=st.session_state.get("max_tokens", 512),
         temperature=st.session_state.get("temperature", 0.9),
     )
@@ -39,28 +50,36 @@ def chat_once(functions, message_placeholder):
 
             elif chunk.choices[0].finish_reason == "function_call":
                 try:
-                    function_call = chunk.choices[0].delta.function_call
-                    st.info(f"**Function Call Response ==>** {function_call.to_dict_recursive()}")
-
-                    function_to_call = available_functions[function_call.name]
-                    function_args = json.loads(function_call.arguments)
-                    tool_response = function_to_call(**function_args)
-                    st.info(f"**Tool Call Response ==>** {tool_response}")
+                    code = extract_code(full_response)
                 except:
                     continue
+
+                with message_placeholder:
+                    with st.spinner("Executing code..."):
+                        try:
+                            res_type, res = execute(code, get_kernel())
+                        except Exception as e:
+                            st.error(f"Error when executing code: {e}")
+                            return
+
+                if res_type == "text":
+                    res = postprocess_text(res)
+                    display += "\n" + res
+                    message_placeholder.markdown(postprocess_text(display) + "▌")
+                elif res_type == "image":
+                    st.image(res)
 
                 st.session_state.messages.append(
                     {
                         "role": "assistant",
                         "content": full_response,
-                        "function_call": function_call,
+                        "function_call": {"name": "interpreter", "arguments": ""},
                     }
                 )
                 st.session_state.messages.append(
                     {
                         "role": "function",
-                        "name": function_call.name,
-                        "content": tool_response,  # 调用函数返回结果
+                        "content": "[Image]" if res_type == "image" else res,  # 调用函数返回结果
                     }
                 )
 
@@ -71,9 +90,9 @@ def chat_once(functions, message_placeholder):
 
 
 def main():
-    st.title("💬 Tool Chatbot")
+    st.title("💬 Code Interpreter")
 
-    openai.api_base = os.getenv("TOOL_CHAT_API_BASE", "http://192.168.20.59:7891/v1")
+    openai.api_base = os.getenv("INTERPRETER_CHAT_API_BASE", "http://192.168.20.59:7891/v1")
     openai.api_key = os.getenv("API_KEY", "xxx")
 
     if "messages" not in st.session_state:
@@ -95,7 +114,7 @@ def main():
 
         with st.chat_message("assistant"):
             message_placeholder = st.empty()
-            chat_once(functions, message_placeholder)
+            chat_once(message_placeholder)
 
 
 if __name__ == "__main__":

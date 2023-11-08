@@ -93,7 +93,7 @@ async def create_chat_completion(request: ChatCompletionRequest, raw_request: Re
             res, function_call = parse_response(content["text"])
             content["text"] = res
 
-        if isinstance(function_call, dict):
+        if isinstance(function_call, dict) and "arguments" in function_call:
             finish_reason = "function_call"
             function_call = FunctionCallResponse(**function_call)
 
@@ -126,6 +126,7 @@ async def chat_completion_stream_generator(
     https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events#event_stream_format
     """
     _id = f"chatcmpl-{secrets.token_hex(12)}"
+    use_tool = bool(gen_params["functions"] is not None)
     for i in range(n):
         # First chunk with role
         choice_data = ChatCompletionResponseStreamChoice(
@@ -160,14 +161,14 @@ async def chat_completion_stream_generator(
             function_call = None
             if finish_reason == "function_call" and "chatglm3" in config.MODEL_NAME.lower():
                 try:
-                    function_call = process_response_v3(decoded_unicode, use_tool=True)
+                    function_call = process_response_v3(decoded_unicode, use_tool=use_tool)
                 except:
                     logger.warning("Failed to parse tool call")
 
             elif finish_reason == "function_call" and "qwen" in config.MODEL_NAME.lower():
                 _, function_call = parse_response(decoded_unicode)
 
-            if isinstance(function_call, dict):
+            if isinstance(function_call, dict) and "arguments" in function_call:
                 function_call = FunctionCallResponse(**function_call)
 
             delta = DeltaMessage(
