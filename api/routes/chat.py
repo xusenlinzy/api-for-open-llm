@@ -99,6 +99,7 @@ async def create_chat_completion(request: CompletionCreateParams, raw_request: R
             )
         else:
             message = ChatCompletionMessage(role="assistant", content=content["text"])
+
         choices.append(Choice(index=i, message=message, finish_reason=finish_reason))
 
         task_usage = CompletionUsage.parse_obj(content["usage"])
@@ -118,13 +119,13 @@ async def chat_completion_stream_generator(
     Event stream format:
     https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events#event_stream_format
     """
+    _id = f"chatcmpl-{secrets.token_hex(12)}"
     use_tool = bool(gen_params["functions"] is not None)
     for i in range(gen_params["n"]):
-        _id = f"chatcmpl-{secrets.token_hex(12)}"
         # First chunk with role
-        choice_data = ChunkChoice(index=i, delta=ChoiceDelta(role="assistant"), finish_reason=None)
+        choice = ChunkChoice(index=i, delta=ChoiceDelta(role="assistant"), finish_reason=None)
         chunk = ChatCompletionChunk(
-            id=_id, choices=[choice_data], created=int(time.time()),
+            id=_id, choices=[choice], created=int(time.time()),
             model=gen_params["model"], object="chat.completion.chunk",
         )
         yield f"data: {chunk.json(exclude_unset=True, ensure_ascii=False)}\n\n"
@@ -164,16 +165,16 @@ async def chat_completion_stream_generator(
             else:
                 delta = ChoiceDelta(content=delta_text, role="assistant")
 
-            choice_data = ChunkChoice(index=i, delta=delta, finish_reason=finish_reason)
+            choice = ChunkChoice(index=i, delta=delta, finish_reason=finish_reason)
             chunk = ChatCompletionChunk(
-                id=_id, choices=[choice_data], created=int(time.time()),
+                id=_id, choices=[choice], created=int(time.time()),
                 model=gen_params["model"], object="chat.completion.chunk",
             )
             yield f"data: {chunk.json(exclude_unset=True, ensure_ascii=False)}\n\n"
 
-        choice_data = ChunkChoice(index=i, delta=ChoiceDelta(), finish_reason="stop")
+        choice = ChunkChoice(index=i, delta=ChoiceDelta(), finish_reason="stop")
         chunk = ChatCompletionChunk(
-            id=_id, choices=[choice_data], created=int(time.time()),
+            id=_id, choices=[choice], created=int(time.time()),
             model=gen_params["model"], object="chat.completion.chunk",
         )
         yield f"data: {chunk.json(exclude_unset=True, ensure_ascii=False)}\n]\n"
