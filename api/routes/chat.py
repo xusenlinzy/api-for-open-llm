@@ -53,6 +53,7 @@ async def create_chat_completion(request: ChatCompletionCreateParams, raw_reques
     request.stop = list(set(_stop + request.stop))
 
     gen_params = request.dict()
+    gen_params.pop("messages")
     gen_params.update(
         dict(
             prompt=request.messages,
