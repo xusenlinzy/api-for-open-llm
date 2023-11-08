@@ -94,20 +94,12 @@ async def create_chat_completion(request: CompletionCreateParams, raw_request: R
         if isinstance(function_call, dict) and "arguments" in function_call:
             finish_reason = "function_call"
             function_call = FunctionCall(**function_call)
-
-        message = ChatCompletionMessage(
-            role="assistant",
-            content=content["text"],
-            function_call=function_call if isinstance(function_call, FunctionCall) else None,
-        )
-
-        choices.append(
-            Choice(
-                index=i,
-                message=message,
-                finish_reason=finish_reason,
+            message = ChatCompletionMessage(
+                role="assistant", content=content["text"], function_call=function_call
             )
-        )
+        else:
+            message = ChatCompletionMessage(role="assistant", content=content["text"])
+        choices.append(Choice(index=i, message=message, finish_reason=finish_reason))
 
         task_usage = CompletionUsage.parse_obj(content["usage"])
         for usage_key, usage_value in task_usage.dict().items():
@@ -130,11 +122,7 @@ async def chat_completion_stream_generator(
     for i in range(gen_params["n"]):
         _id = f"chatcmpl-{secrets.token_hex(12)}"
         # First chunk with role
-        choice_data = ChunkChoice(
-            index=i,
-            delta=ChoiceDelta(role="assistant"),
-            finish_reason=None,
-        )
+        choice_data = ChunkChoice(index=i, delta=ChoiceDelta(role="assistant"), finish_reason=None)
         chunk = ChatCompletionChunk(
             id=_id, choices=[choice_data], created=int(time.time()),
             model=gen_params["model"], object="chat.completion.chunk",
@@ -172,30 +160,18 @@ async def chat_completion_stream_generator(
 
             if isinstance(function_call, dict) and "arguments" in function_call:
                 function_call = ChoiceDeltaFunctionCall(**function_call)
+                delta = ChoiceDelta(content=delta_text, role="assistant", function_call=function_call)
+            else:
+                delta = ChoiceDelta(content=delta_text, role="assistant")
 
-            delta = ChoiceDelta(
-                content=delta_text,
-                role="assistant",
-                function_call=function_call if isinstance(function_call, ChoiceDeltaFunctionCall) else None,
-            )
-
-            choice_data = ChunkChoice(
-                index=i,
-                delta=delta,
-                finish_reason=finish_reason,
-            )
-
+            choice_data = ChunkChoice(index=i, delta=delta, finish_reason=finish_reason)
             chunk = ChatCompletionChunk(
                 id=_id, choices=[choice_data], created=int(time.time()),
                 model=gen_params["model"], object="chat.completion.chunk",
             )
             yield f"data: {chunk.json(exclude_unset=True, ensure_ascii=False)}\n\n"
 
-        choice_data = ChunkChoice(
-            index=i,
-            delta=ChoiceDelta(),
-            finish_reason="stop"
-        )
+        choice_data = ChunkChoice(index=i, delta=ChoiceDelta(), finish_reason="stop")
         chunk = ChatCompletionChunk(
             id=_id, choices=[choice_data], created=int(time.time()),
             model=gen_params["model"], object="chat.completion.chunk",

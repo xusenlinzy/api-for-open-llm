@@ -6,6 +6,9 @@ import time
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from loguru import logger
+from openai.types.completion import Completion, CompletionChoice
+from openai.types.completion_create_params import CompletionCreateParams
+from openai.types.completion_usage import CompletionUsage
 
 from api.models import GENERATE_MDDEL
 from api.routes.utils import check_requests, create_error_response, check_api_key
@@ -13,71 +16,63 @@ from api.utils.protocol import (
     CompletionRequest,
     CompletionResponseStreamChoice,
     CompletionStreamResponse,
-    UsageInfo,
 )
-from api.utils.protocol import CompletionResponse, CompletionResponseChoice
 
 completion_router = APIRouter()
 
 
 @completion_router.post("/completions", dependencies=[Depends(check_api_key)])
-async def create_completion(request: CompletionRequest, raw_request: Request):
+async def create_completion(request: CompletionCreateParams, raw_request: Request):
     error_check_ret = check_requests(request)
     if error_check_ret is not None:
         return error_check_ret
 
     start_time = time.time()
-    if isinstance(request.prompt, str):
-        if len(request.prompt) < 1:
+    prompt = request.get("prompt")
+    if isinstance(prompt, str):
+        if len(prompt) < 1:
             raise HTTPException(status_code=400, detail="Invalid request")
-        request.prompt = [request.prompt]
+        prompt = [prompt]
 
     # stop settings
-    stop, stop_token_ids = [], []
+    _stop, stop_token_ids = [], []
     if GENERATE_MDDEL.stop is not None:
         stop_token_ids = GENERATE_MDDEL.stop.get("token_ids", [])
-        stop = GENERATE_MDDEL.stop.get("strings", [])
+        _stop = GENERATE_MDDEL.stop.get("strings", [])
 
-    request.stop = request.stop or []
-    if isinstance(request.stop, str):
-        request.stop = [request.stop]
-    request.stop = list(set(stop + request.stop))
+    stop = request.get("stop") or []
+    if isinstance(stop, str):
+        stop = [stop]
+    stop = list(set(_stop + stop))
 
-    request.stop_token_ids = request.stop_token_ids or []
-    request.stop_token_ids = list(set(stop_token_ids + request.stop_token_ids))
-
-    if request.stream:
+    stream = request.get("stream")
+    if stream:
         generator = generate_completion_stream_generator(request, raw_request)
         return StreamingResponse(generator, media_type="text/event-stream")
     else:
         text_completions = []
-        for text in request.prompt:
-            gen_params = dict(
-                model=request.model,
-                prompt=text,
-                temperature=request.temperature,
-                top_p=request.top_p,
-                max_tokens=request.max_tokens or 1024,
-                echo=request.echo,
-                stream=request.stream,
-                stop_token_ids=request.stop_token_ids,
-                stop=request.stop,
-                infilling=request.infilling,
-                suffix_first=request.suffix_first,
-                repetition_penalty=request.repetition_penalty,
+        for text in prompt:
+            gen_params = request.copy()
+            gen_params.update(
+                dict(
+                    prompt=text,
+                    max_tokens=request.get("max_tokens", 1024),
+                    stop=stop,
+                    stop_token_ids=stop_token_ids,
+                )
             )
-            for i in range(request.n):
+            for i in range(request.get("n")):
                 content = GENERATE_MDDEL.generate_gate(gen_params)
                 text_completions.append(content)
 
         choices = []
-        usage = UsageInfo()
+        usage = CompletionUsage(completion_tokens=0, prompt_tokens=0, total_tokens=0)
         for i, content in enumerate(text_completions):
             if content["error_code"] != 0:
                 return create_error_response(content["error_code"], content["text"])
 
             choices.append(
-                CompletionResponseChoice(
+                CompletionChoice(
                     index=i,
                     text=content["text"],
                     logprobs=content.get("logprobs", None),
@@ -85,13 +80,14 @@ async def create_completion(request: CompletionRequest, raw_request: Request):
                 )
             )
 
-            task_usage = UsageInfo.parse_obj(content["usage"])
+            task_usage = CompletionUsage.parse_obj(content["usage"])
             for usage_key, usage_value in task_usage.dict().items():
                 setattr(usage, usage_key, getattr(usage, usage_key) + usage_value)
 
         logger.info(f"consume time  = {(time.time() - start_time)}s, response = {str(choices)}")
-        return CompletionResponse(
-            model=request.model, choices=choices, usage=UsageInfo.parse_obj(usage)
+        return Completion(
+            id=f"cmpl-{secrets.token_hex(12)}", choices=choices, created=int(time.time()),
+            model=request.get("model"), object="text_completion", usage=usage
         )
 
 
