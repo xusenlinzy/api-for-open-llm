@@ -127,23 +127,19 @@ async def generate_completion_stream_generator(
             previous_texts[i] = output.text
             previous_num_tokens[i] = len(output.token_ids)
 
-            choice = CompletionChoice(
-                index=output.index, text=delta_text, finish_reason=output.finish_reason,
-            )
+            choice = CompletionChoice(index=i, text=delta_text, finish_reason="stop")  # TODO: support for length
             chunk = Completion(
                 id=request_id, choices=[choice], created=int(time.time()),
                 model=request.model, object="text_completion",
             )
-            yield f"data: {chunk.json(exclude_unset=True, ensure_ascii=False)}\n\n"
+            yield f"data: {chunk.json(ensure_ascii=False)}\n\n"
 
             if output.finish_reason is not None:
-                choice = CompletionChoice(
-                    index=output.index, text="", finish_reason=output.finish_reason,
-                )
+                choice = CompletionChoice(index=i, text=delta_text, finish_reason="stop")  # TODO: support for length
                 chunk = Completion(
                     id=request_id, choices=[choice], created=int(time.time()),
                     model=request.model, object="text_completion",
                 )
-                yield f"data: {chunk.json(exclude_unset=True, ensure_ascii=False)}\n\n"
+                yield f"data: {chunk.json(exclude_none=True, ensure_ascii=False)}\n\n"
 
     yield "data: [DONE]\n\n"

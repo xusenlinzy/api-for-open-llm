@@ -125,7 +125,7 @@ async def chat_completion_stream_generator(
             id=_id, choices=[choice], created=int(time.time()),
             model=request.model, object="chat.completion.chunk",
         )
-        yield f"data: {chunk.json(exclude_unset=True, ensure_ascii=False)}\n\n"
+        yield f"data: {chunk.json(ensure_ascii=False)}\n\n"
 
         previous_text = ""
         for content in GENERATE_MDDEL.generate_stream_gate(gen_params):
@@ -167,12 +167,12 @@ async def chat_completion_stream_generator(
                 id=_id, choices=[choice], created=int(time.time()),
                 model=request.model, object="chat.completion.chunk",
             )
-            yield f"data: {chunk.json(exclude_unset=True, ensure_ascii=False)}\n\n"
+            yield f"data: {chunk.json(ensure_ascii=False)}\n\n"
 
         choice = ChunkChoice(index=i, delta=ChoiceDelta(), finish_reason="stop")
         chunk = ChatCompletionChunk(
             id=_id, choices=[choice], created=int(time.time()),
             model=request.model, object="chat.completion.chunk",
         )
-        yield f"data: {chunk.json(exclude_unset=True, ensure_ascii=False)}\n\n"
+        yield f"data: {chunk.json(exclude_none=True, ensure_ascii=False)}\n\n"
         yield "data: [DONE]\n\n"

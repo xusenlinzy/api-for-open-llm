@@ -155,7 +155,7 @@ async def chat_completion_stream_generator(
             id=request_id, choices=[choice], created=int(time.time()),
             model=request.model, object="chat.completion.chunk",
         )
-        yield f"data: {chunk.json(exclude_unset=True, ensure_ascii=False)}\n\n"
+        yield f"data: {chunk.json(ensure_ascii=False)}\n\n"
 
         previous_texts = [""] * n
         previous_num_tokens = [0] * n
@@ -173,7 +173,7 @@ async def chat_completion_stream_generator(
                     id=request_id, choices=[choice], created=int(time.time()),
                     model=request.model, object="chat.completion.chunk",
                 )
-                yield f"data: {chunk.json(exclude_unset=True, ensure_ascii=False)}\n\n"
+                yield f"data: {chunk.json(ensure_ascii=False)}\n\n"
 
                 if output.finish_reason is not None:
                     choice = ChunkChoice(index=i, delta=ChoiceDelta(), finish_reason="stop")
@@ -181,6 +181,6 @@ async def chat_completion_stream_generator(
                         id=request_id, choices=[choice], created=int(time.time()),
                         model=request.model, object="chat.completion.chunk",
                     )
-                    yield f"data: {chunk.json(exclude_unset=True, ensure_ascii=False)}\n\n"
+                    yield f"data: {chunk.json(exclude_none=True, ensure_ascii=False)}\n\n"
 
         yield "data: [DONE]\n\n"

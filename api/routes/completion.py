@@ -71,7 +71,7 @@ async def create_completion(request: CompletionCreateParams, raw_request: Reques
                 index=i,
                 text=content["text"],
                 logprobs=content.get("logprobs", None),
-                finish_reason=content.get("finish_reason", "stop"),
+                finish_reason="stop",  # TODO: support for length
             )
         )
 
@@ -116,9 +116,7 @@ async def generate_completion_stream_generator(
                 delta_text = decoded_unicode[len(previous_text):]
                 previous_text = decoded_unicode
 
-                choice = CompletionChoice(
-                    index=i, text=delta_text, finish_reason=content.get("finish_reason", None),
-                )
+                choice = CompletionChoice(index=i, text=delta_text, finish_reason="stop")  # TODO: support for length
                 chunk = Completion(
                     id=_id, choices=[choice], created=int(time.time()),
                     model=request.model, object="text_completion",
@@ -129,9 +127,9 @@ async def generate_completion_stream_generator(
                         finish_stream_events.append(chunk)
                     continue
 
-                yield f"data: {chunk.json(exclude_unset=True, ensure_ascii=False)}\n\n"
+                yield f"data: {chunk.json(ensure_ascii=False)}\n\n"
 
     for finish_chunk in finish_stream_events:
-        yield f"data: {finish_chunk.json(exclude_unset=True, ensure_ascii=False)}\n\n"
+        yield f"data: {finish_chunk.json(exclude_none=True, ensure_ascii=False)}\n\n"
 
     yield "data: [DONE]\n\n"

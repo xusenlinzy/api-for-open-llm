@@ -8,6 +8,5 @@ COPY . /workspace
 RUN pip install --no-cache-dir -r /workspace/requirements.txt -i https://mirror.baidu.com/pypi/simple
 RUN pip install bitsandbytes --upgrade -i https://mirror.baidu.com/pypi/simple && \
     pip install torch -U -i https://mirror.baidu.com/pypi/simple && \
-    pip install openai==1.2.0 -i https://pypi.org/simple && \
     pip install auto-gptq optimum && \
     pip uninstall transformer-engine -y

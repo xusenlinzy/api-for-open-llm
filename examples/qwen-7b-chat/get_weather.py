@@ -134,4 +134,4 @@ if __name__ == "__main__":
     logger.info("\n=========== next conversation ===========")
 
     query = "波士顿天气如何？"
-    run_conversation(query, functions=functions, stream=False)
+    run_conversation(query, functions=functions, stream=True)
