@@ -65,6 +65,6 @@ async def create_embeddings(request: EmbeddingCreateParams, model_name: str = No
     return CreateEmbeddingResponse(
         data=data,
         model=request.model,
-        object="embedding",
+        object="list",
         usage=Usage(prompt_tokens=total_tokens, total_tokens=total_tokens),
     )
