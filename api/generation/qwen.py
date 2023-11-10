@@ -5,10 +5,15 @@ from typing import List, Union
 
 from fastapi import HTTPException
 from loguru import logger
+from openai.types.chat import (
+    ChatCompletionMessageParam,
+    ChatCompletionUserMessageParam,
+    ChatCompletionAssistantMessageParam,
+)
 from transformers import PreTrainedTokenizer
 
 from api.generation.utils import parse_messages
-from api.utils.protocol import Role, ChatMessage
+from api.utils.protocol import Role
 
 TOOL_DESC = """{name_for_model}: Call this tool to interact with the {name_for_human} API. What is the {name_for_human} API useful for? {description_for_model} Parameters: {parameters}"""
 
@@ -34,7 +39,7 @@ _TEXT_COMPLETION_CMD = object()
 
 def build_qwen_chat_input(
     tokenizer: PreTrainedTokenizer,
-    messages: List[ChatMessage],
+    messages: List[ChatCompletionMessageParam],
     context_len: int = 8192,
     max_new_tokens: int = 256,
     functions: List[dict] = None,
@@ -45,8 +50,11 @@ def build_qwen_chat_input(
         return build_last_message_input(tokenizer, history)
     else:
         for q, r in history:
-            messages.extend([ChatMessage(role=Role.USER, content=q), ChatMessage(role=Role.ASSISTANT, content=r)])
-        messages.append(ChatMessage(role=Role.USER, content=query))
+            messages.extend(
+                [ChatCompletionUserMessageParam(role="user", content=q),
+                 ChatCompletionAssistantMessageParam(role="assistant", content=r)]
+            )
+        messages.append(ChatCompletionUserMessageParam(role="user", content=query))
 
     max_input_tokens = context_len - max_new_tokens
     system, rounds = parse_messages(messages)
@@ -71,10 +79,10 @@ def build_qwen_chat_input(
             if round_tokens:
                 round_tokens += nl_tokens
 
-            if message.role == Role.USER:
-                content_tokens = im_start_tokens + _tokenize_str("user", message.content) + im_end_tokens
+            if message["role"] == Role.USER:
+                content_tokens = im_start_tokens + _tokenize_str("user", message["content"]) + im_end_tokens
             else:
-                content_tokens = im_start_tokens + _tokenize_str("assistant", message.content) + im_end_tokens
+                content_tokens = im_start_tokens + _tokenize_str("assistant", message["content"]) + im_end_tokens
 
             round_tokens.extend(content_tokens)
 
@@ -88,7 +96,7 @@ def build_qwen_chat_input(
         break
 
     input_tokens = system_tokens + nl_tokens + history_tokens
-    if messages[-1].role != Role.ASSISTANT:
+    if messages[-1]["role"] != Role.ASSISTANT:
         input_tokens += nl_tokens + im_start_tokens + tokenizer.encode("assistant") + nl_tokens
     return input_tokens[-max_input_tokens:]  # truncate left
 
@@ -97,8 +105,10 @@ def check_is_qwen(model) -> bool:
     return "QWenBlock" in getattr(model, "_no_split_modules", [])
 
 
-def process_qwen_messages(messages: List[ChatMessage], functions: Union[dict, List[dict]] = None):
-    if all(m.role != Role.USER for m in messages):
+def process_qwen_messages(
+    messages: List[ChatCompletionMessageParam], functions: Union[dict, List[dict]] = None
+):
+    if all(m["role"] != Role.USER for m in messages):
         raise HTTPException(
             status_code=400,
             detail=f"Invalid request: Expecting at least one user message.",
@@ -107,8 +117,8 @@ def process_qwen_messages(messages: List[ChatMessage], functions: Union[dict, Li
     messages = deepcopy(messages)
     default_system = "You are a helpful assistant."
     system = ""
-    if messages[0].role == Role.SYSTEM:
-        system = messages.pop(0).content.lstrip("\n").rstrip()
+    if messages[0]["role"] == Role.SYSTEM:
+        system = messages.pop(0)["content"].lstrip("\n").rstrip()
         if system == default_system:
             system = ""
 
@@ -150,47 +160,48 @@ def process_qwen_messages(messages: List[ChatMessage], functions: Union[dict, Li
     _messages = messages
     messages = []
     for m_idx, m in enumerate(_messages):
-        role, content, func_call = m.role, m.content, m.function_call
+        role, content = m["role"], m["content"]
+        func_call = m.get("function_call", None)
         if content:
             content = content.lstrip("\n").rstrip()
         if role == Role.FUNCTION:
-            if (len(messages) == 0) or (messages[-1].role != Role.ASSISTANT):
+            if (len(messages) == 0) or (messages[-1]["role"] != Role.ASSISTANT):
                 raise HTTPException(
                     status_code=400,
                     detail=f"Invalid request: Expecting role assistant before role function.",
                 )
-            messages[-1].content += f"\nObservation: {content}"
+            messages[-1]["content"] += f"\nObservation: {content}"
             if m_idx == len(_messages) - 1:
-                messages[-1].content += "\nThought:"
+                messages[-1]["content"] += "\nThought:"
         elif role == Role.ASSISTANT:
             if len(messages) == 0:
                 raise HTTPException(
                     status_code=400,
                     detail=f"Invalid request: Expecting role user before role assistant.",
                 )
-            last_msg = messages[-1].content
+            last_msg = messages[-1]["content"]
             last_msg_has_zh = len(re.findall(r"[\u4e00-\u9fff]+", last_msg)) > 0
 
             if func_call is None:
                 if functions:
                     content = dummy_thought["zh" if last_msg_has_zh else "en"] + content
             else:
-                f_name, f_args = func_call.name, func_call.arguments
+                f_name, f_args = func_call.get("name"), func_call.get("arguments")
                 if not content:
                     if last_msg_has_zh:
                         content = f"Thought: 我可以使用 {f_name} API。"
                     else:
                         content = f"Thought: I can use {f_name}."
 
-            if messages[-1].role == Role.USER:
+            if messages[-1]["role"] == Role.USER:
                 messages.append(
-                    ChatMessage(role=Role.ASSISTANT, content=content.lstrip("\n").rstrip())
+                    ChatCompletionAssistantMessageParam(role="assistant", content=content.lstrip("\n").rstrip())
                 )
             else:
-                messages[-1].content += content
+                messages[-1]["content"] += content
         elif role == Role.USER:
             messages.append(
-                ChatMessage(role=Role.USER, content=content.lstrip("\n").rstrip())
+                ChatCompletionUserMessageParam(role="user", content=content.lstrip("\n").rstrip())
             )
         else:
             raise HTTPException(
@@ -198,8 +209,8 @@ def process_qwen_messages(messages: List[ChatMessage], functions: Union[dict, Li
             )
 
     query = _TEXT_COMPLETION_CMD
-    if messages[-1].role == Role.USER:
-        query = messages[-1].content
+    if messages[-1]["role"] == Role.USER:
+        query = messages[-1]["content"]
         messages = messages[:-1]
 
     if len(messages) % 2 != 0:
@@ -207,9 +218,9 @@ def process_qwen_messages(messages: List[ChatMessage], functions: Union[dict, Li
 
     history = []  # [(Q1, A1), (Q2, A2), ..., (Q_last_turn, A_last_turn)]
     for i in range(0, len(messages), 2):
-        if messages[i].role == Role.USER and messages[i + 1].role == Role.ASSISTANT:
-            usr_msg = messages[i].content.lstrip("\n").rstrip()
-            bot_msg = messages[i + 1].content.lstrip("\n").rstrip()
+        if messages[i]["role"] == Role.USER and messages[i + 1]["role"] == Role.ASSISTANT:
+            usr_msg = messages[i]["content"].lstrip("\n").rstrip()
+            bot_msg = messages[i + 1]["content"].lstrip("\n").rstrip()
             if system and (i == len(messages) - 2):
                 usr_msg = f"{system}\n\nQuestion: {usr_msg}"
                 system = ""

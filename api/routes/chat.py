@@ -1,37 +1,37 @@
 import asyncio
 import json
 import secrets
-from typing import Generator, Dict, Any
+import time
+from typing import Generator, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from loguru import logger
+from openai.types.chat import (
+    ChatCompletionMessage,
+    ChatCompletion,
+    ChatCompletionChunk,
+)
+from openai.types.chat.chat_completion import Choice
+from openai.types.chat.chat_completion_chunk import Choice as ChunkChoice
+from openai.types.chat.chat_completion_chunk import ChoiceDelta, ChoiceDeltaFunctionCall
+from openai.types.chat.chat_completion_message import FunctionCall
+from openai.types.completion_usage import CompletionUsage
 
 from api.config import config
 from api.generation.chatglm import process_response_v3
 from api.generation.qwen import parse_response
 from api.models import GENERATE_MDDEL
 from api.routes.utils import check_requests, create_error_response, check_api_key
-from api.utils.protocol import (
-    ChatCompletionRequest,
-    ChatCompletionResponse,
-    ChatCompletionResponseStreamChoice,
-    ChatCompletionStreamResponse,
-    ChatMessage,
-    ChatCompletionResponseChoice,
-    DeltaMessage,
-    UsageInfo,
-    Role,
-    FunctionCallResponse,
-)
+from api.utils.protocol import ChatCompletionCreateParams, Role
 
 chat_router = APIRouter(prefix="/chat")
 
 
 @chat_router.post("/completions", dependencies=[Depends(check_api_key)])
-async def create_chat_completion(request: ChatCompletionRequest, raw_request: Request):
+async def create_chat_completion(request: ChatCompletionCreateParams, raw_request: Request):
     """Creates a completion for the chat message"""
-    if len(request.messages) < 1 or request.messages[-1].role == Role.ASSISTANT:
+    if (not request.messages) or request.messages[-1]["role"] == Role.ASSISTANT:
         raise HTTPException(status_code=400, detail="Invalid request")
 
     error_check_ret = check_requests(request)
@@ -39,10 +39,10 @@ async def create_chat_completion(request: ChatCompletionRequest, raw_request: Re
         return error_check_ret
 
     # stop settings
-    stop, stop_token_ids = [], []
+    _stop, stop_token_ids = [], []
     if GENERATE_MDDEL.stop is not None:
         stop_token_ids = GENERATE_MDDEL.stop.get("token_ids", [])
-        stop = GENERATE_MDDEL.stop.get("strings", [])
+        _stop = GENERATE_MDDEL.stop.get("strings", [])
 
     request.stop = request.stop or []
     if isinstance(request.stop, str):
@@ -50,34 +50,29 @@ async def create_chat_completion(request: ChatCompletionRequest, raw_request: Re
 
     if "qwen" in config.MODEL_NAME.lower() and request.functions:
         request.stop.append("Observation:")
-    request.stop = list(set(stop + request.stop))
+    request.stop = list(set(_stop + request.stop))
 
-    request.stop_token_ids = request.stop_token_ids or []
-    request.stop_token_ids = list(set(stop_token_ids + request.stop_token_ids))
-
-    gen_params = dict(
-        model=request.model,
-        prompt=request.messages,
-        temperature=request.temperature,
-        top_p=request.top_p,
-        max_tokens=request.max_tokens or 1024,
-        echo=False,
-        stream=request.stream,
-        stop_token_ids=request.stop_token_ids,
-        stop=request.stop,
-        repetition_penalty=request.repetition_penalty,
-        functions=request.functions,
+    gen_params = request.dict()
+    gen_params.pop("messages")
+    gen_params.update(
+        dict(
+            prompt=request.messages,
+            max_tokens=request.max_tokens or 1024,
+            echo=False,
+            stop=request.stop,
+            stop_token_ids=stop_token_ids,
+        )
     )
 
     logger.debug(f"==== request ====\n{gen_params}")
 
     if request.stream:
-        generator = chat_completion_stream_generator(request.model, gen_params, request.n, raw_request)
+        generator = chat_completion_stream_generator(gen_params, request, raw_request)
         return StreamingResponse(generator, media_type="text/event-stream")
 
     choices = []
-    usage = UsageInfo()
-    for i in range(request.n):
+    usage = CompletionUsage(completion_tokens=0, prompt_tokens=0, total_tokens=0)
+    for i in range(gen_params.get("n", 1)):
         content = GENERATE_MDDEL.generate_gate(gen_params)
         if content["error_code"] != 0:
             return create_error_response(content["error_code"], content["text"])
@@ -95,49 +90,42 @@ async def create_chat_completion(request: ChatCompletionRequest, raw_request: Re
 
         if isinstance(function_call, dict) and "arguments" in function_call:
             finish_reason = "function_call"
-            function_call = FunctionCallResponse(**function_call)
-
-        message = ChatMessage(
-            role=Role.ASSISTANT,
-            content=content["text"],
-            function_call=function_call if isinstance(function_call, FunctionCallResponse) else None,
-        )
-
-        choices.append(
-            ChatCompletionResponseChoice(
-                index=i,
-                message=message,
-                finish_reason=finish_reason,
+            function_call = FunctionCall(**function_call)
+            message = ChatCompletionMessage(
+                role="assistant", content=content["text"], function_call=function_call
             )
-        )
+        else:
+            message = ChatCompletionMessage(role="assistant", content=content["text"].strip())
 
-        task_usage = UsageInfo.parse_obj(content["usage"])
+        choices.append(Choice(index=i, message=message, finish_reason=finish_reason))
+
+        task_usage = CompletionUsage.parse_obj(content["usage"])
         for usage_key, usage_value in task_usage.dict().items():
             setattr(usage, usage_key, getattr(usage, usage_key) + usage_value)
 
-    return ChatCompletionResponse(model=request.model, choices=choices, usage=usage)
+    return ChatCompletion(
+        id=f"chatcmpl-{secrets.token_hex(12)}", choices=choices, created=int(time.time()),
+        model=request.model, object="chat.completion", usage=usage
+    )
 
 
 async def chat_completion_stream_generator(
-    model_name: str, gen_params: Dict[str, Any], n: int, raw_request: Request
+    gen_params, request: ChatCompletionCreateParams, raw_request: Request
 ) -> Generator[str, Any, None]:
     """
     Event stream format:
     https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events#event_stream_format
     """
     _id = f"chatcmpl-{secrets.token_hex(12)}"
-    use_tool = bool(gen_params["functions"] is not None)
-    for i in range(n):
+    use_tool = bool(request.functions is not None)
+    for i in range(request.n):
         # First chunk with role
-        choice_data = ChatCompletionResponseStreamChoice(
-            index=i,
-            delta=DeltaMessage(role=Role.ASSISTANT),
-            finish_reason=None,
+        choice = ChunkChoice(index=i, delta=ChoiceDelta(role="assistant", content=""), finish_reason=None)
+        chunk = ChatCompletionChunk(
+            id=_id, choices=[choice], created=int(time.time()),
+            model=request.model, object="chat.completion.chunk",
         )
-        chunk = ChatCompletionStreamResponse(
-            id=_id, choices=[choice_data], model=model_name
-        )
-        yield f"data: {chunk.json(exclude_unset=True, ensure_ascii=False)}\n\n"
+        yield f"data: {chunk.json(ensure_ascii=False)}\n\n"
 
         previous_text = ""
         for content in GENERATE_MDDEL.generate_stream_gate(gen_params):
@@ -169,28 +157,22 @@ async def chat_completion_stream_generator(
                 _, function_call = parse_response(decoded_unicode)
 
             if isinstance(function_call, dict) and "arguments" in function_call:
-                function_call = FunctionCallResponse(**function_call)
+                function_call = ChoiceDeltaFunctionCall(**function_call)
+                delta = ChoiceDelta(content=delta_text, function_call=function_call)
+            else:
+                delta = ChoiceDelta(content=delta_text)
 
-            delta = DeltaMessage(
-                content=delta_text,
-                role=Role.ASSISTANT,
-                function_call=function_call if isinstance(function_call, FunctionCallResponse) else None,
+            choice = ChunkChoice(index=i, delta=delta, finish_reason=finish_reason)
+            chunk = ChatCompletionChunk(
+                id=_id, choices=[choice], created=int(time.time()),
+                model=request.model, object="chat.completion.chunk",
             )
+            yield f"data: {chunk.json(ensure_ascii=False)}\n\n"
 
-            choice_data = ChatCompletionResponseStreamChoice(
-                index=i,
-                delta=delta,
-                finish_reason=finish_reason,
-            )
-
-            chunk = ChatCompletionStreamResponse(id=_id, choices=[choice_data], model=model_name)
-            yield f"data: {chunk.json(exclude_unset=True, ensure_ascii=False)}\n\n"
-
-        choice_data = ChatCompletionResponseStreamChoice(
-            index=i,
-            delta=DeltaMessage(),
-            finish_reason="stop"
+        choice = ChunkChoice(index=i, delta=ChoiceDelta(), finish_reason="stop")
+        chunk = ChatCompletionChunk(
+            id=_id, choices=[choice], created=int(time.time()),
+            model=request.model, object="chat.completion.chunk",
         )
-        chunk = ChatCompletionStreamResponse(id=_id, choices=[choice_data], model=model_name)
-        yield f"data: {chunk.json(exclude_unset=True, ensure_ascii=False)}\n]\n"
+        yield f"data: {chunk.json(exclude_none=True, ensure_ascii=False)}\n\n"
         yield "data: [DONE]\n\n"

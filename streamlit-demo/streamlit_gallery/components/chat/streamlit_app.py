@@ -1,14 +1,16 @@
 import os
 
-import openai
 import streamlit as st
+from openai import OpenAI
 
 
 def main():
     st.title("💬 Chatbot")
 
-    openai.api_base = os.getenv("CHAT_API_BASE")
-    openai.api_key = os.getenv("API_KEY")
+    client = OpenAI(
+        api_key=os.getenv("API_KEY"),
+        base_url=os.getenv("CHAT_API_BASE"),
+    )
 
     if "messages" not in st.session_state:
         st.session_state.messages = []
@@ -25,7 +27,7 @@ def main():
         with st.chat_message("assistant"):
             message_placeholder = st.empty()
             full_response = ""
-            for response in openai.ChatCompletion.create(
+            for response in client.chat.completions.create(
                 model="baichuan",
                 messages=[
                     {
@@ -38,7 +40,7 @@ def main():
                 temperature=st.session_state.get("temperature", 0.9),
                 stream=True,
             ):
-                full_response += response.choices[0].delta.get("content", "")
+                full_response += response.choices[0].delta.content or ""
 
                 message_placeholder.markdown(full_response + "▌")
             message_placeholder.markdown(full_response)

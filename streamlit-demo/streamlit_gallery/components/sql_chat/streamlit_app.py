@@ -1,7 +1,7 @@
 import os
 
-import openai
 import streamlit as st
+from openai import OpenAI
 
 from .utils import query_table_names, query_table_schema, query_mysql_db, SQL_PROMPT
 
@@ -9,8 +9,10 @@ from .utils import query_table_names, query_table_schema, query_mysql_db, SQL_PR
 def main():
     st.title("💬 SQL Chatbot")
 
-    openai.api_base = os.getenv("SQL_CHAT_API_BASE")
-    openai.api_key = os.getenv("API_KEY")
+    client = OpenAI(
+        api_key=os.getenv("API_KEY"),
+        base_url=os.getenv("SQL_CHAT_API_BASE"),
+    )
 
     with st.expander("🐬 DATABASE SETTINGS", False):
         col1, col2 = st.columns(2)
@@ -66,14 +68,14 @@ def main():
             message_placeholder = st.empty()
             full_response = ""
 
-            for response in openai.Completion.create(
+            for response in client.completions.create(
                 model="sqlcoder",
                 prompt=sql_prompt or prompt,
                 stream=True,
                 temperature=0.0,
                 stop=["```"],
             ):
-                full_response += response.choices[0].text
+                full_response += response.choices[0].text or ""
                 message_placeholder.code(full_response + "▌", language="sql")
 
             message_placeholder.code(full_response, language="sql")

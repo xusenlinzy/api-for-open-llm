@@ -1,7 +1,7 @@
 from functools import lru_cache
-from typing import List, Optional, Union, Dict
+from typing import List, Optional, Dict
 
-from api.utils.protocol import ChatMessage
+from openai.types.chat import ChatCompletionMessageParam
 
 
 @lru_cache
@@ -32,14 +32,14 @@ class BaseTemplate:
 
     def apply_chat_template(
         self,
-        conversation: List[Union[Dict[str, str], ChatMessage]],
+        conversation: List[ChatCompletionMessageParam],
         add_generation_prompt: bool = True,
     ) -> str:
         """
         Converts a Conversation object or a list of dictionaries with `"role"` and `"content"` keys to a prompt.
 
         Args:
-            conversation (List[Union[Dict[str, str], ChatMessage]]): A Conversation object or list of dicts
+            conversation (List[ChatCompletionMessageParam]): A Conversation object or list of dicts
                 with "role" and "content" keys, representing the chat history so far.
             add_generation_prompt (bool, *optional*): Whether to end the prompt with the token(s) that indicate
                 the start of an assistant message. This is useful when you want to generate a response from the model.
@@ -49,10 +49,6 @@ class BaseTemplate:
         Returns:
             `str`: A prompt, which is ready to pass to the tokenizer.
         """
-
-        if isinstance(conversation[0], ChatMessage):
-            conversation = [c.dict(exclude_none=True) for c in conversation]
-
         # Compilation function uses a cache to avoid recompiling the same template
         compiled_template = _compile_jinja_template(self.template)
 

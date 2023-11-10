@@ -1,24 +1,20 @@
-import base64
-
 import numpy as np
 import tiktoken
 from fastapi import APIRouter, Depends
+from openai.types.create_embedding_response import CreateEmbeddingResponse, Usage
+from openai.types.embedding import Embedding
 
 from api.config import config
 from api.models import EMBEDDED_MODEL
 from api.routes.utils import check_api_key
-from api.utils.protocol import (
-    UsageInfo,
-    EmbeddingsResponse,
-    EmbeddingsRequest,
-)
+from api.utils.protocol import EmbeddingCreateParams
 
 embedding_router = APIRouter()
 
 
 @embedding_router.post("/embeddings", dependencies=[Depends(check_api_key)])
 @embedding_router.post("/engines/{model_name}/embeddings", dependencies=[Depends(check_api_key)])
-async def create_embeddings(request: EmbeddingsRequest, model_name: str = None):
+async def create_embeddings(request: EmbeddingCreateParams, model_name: str = None):
     """Creates embeddings for the text"""
     if request.model is None:
         request.model = model_name
@@ -44,7 +40,7 @@ async def create_embeddings(request: EmbeddingsRequest, model_name: str = None):
                 instruction = "Represent this sentence for searching relevant passages: "
             inputs = [instruction + q for q in inputs]
 
-    data, token_num = [], 0
+    data, total_tokens = [], 0
     batches = [
         inputs[i: min(i + 1024, len(inputs))]
         for i in range(0, len(inputs), 1024)
@@ -58,27 +54,17 @@ async def create_embeddings(request: EmbeddingsRequest, model_name: str = None):
             zeros = np.zeros((bs, config.EMBEDDING_SIZE - dim))
             vecs = np.c_[vecs, zeros]
 
-        if request.encoding_format == "base64":
-            vecs = [base64.b64encode(v.tobytes()).decode("utf-8") for v in vecs]
-        else:
-            vecs = vecs.tolist()
+        vecs = vecs.tolist()
+        for i, embed in enumerate(vecs):
+            data.append(
+                Embedding(index=num_batch * 1024 + i, embedding=embed, object="embedding")
+            )
 
-        data += [
-            {
-                "object": "embedding",
-                "embedding": emb,
-                "index": num_batch * 1024 + i,
-            }
-            for i, emb in enumerate(vecs)
-        ]
-        token_num += token_num
+        total_tokens += token_num
 
-    return EmbeddingsResponse(
+    return CreateEmbeddingResponse(
         data=data,
         model=request.model,
-        usage=UsageInfo(
-            prompt_tokens=token_num,
-            total_tokens=token_num,
-            completion_tokens=None,
-        ),
-    ).dict(exclude_none=True)
+        object="list",
+        usage=Usage(prompt_tokens=total_tokens, total_tokens=total_tokens),
+    )

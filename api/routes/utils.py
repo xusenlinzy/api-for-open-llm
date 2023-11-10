@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Union
 
 from fastapi import Depends, HTTPException
 from fastapi.responses import JSONResponse
@@ -6,7 +6,7 @@ from fastapi.security.http import HTTPAuthorizationCredentials, HTTPBearer
 
 from api.config import config
 from api.utils.constants import ErrorCode
-from api.utils.protocol import ErrorResponse
+from api.utils.protocol import ChatCompletionCreateParams, CompletionCreateParams, ErrorResponse
 
 
 async def check_api_key(
@@ -35,7 +35,9 @@ def create_error_response(code: int, message: str) -> JSONResponse:
     return JSONResponse(ErrorResponse(message=message, code=code).dict(), status_code=500)
 
 
-def check_requests(request) -> Optional[JSONResponse]:
+def check_requests(
+    request: Union[CompletionCreateParams, ChatCompletionCreateParams]
+) -> Optional[JSONResponse]:
     # Check all params
     if request.max_tokens is not None and request.max_tokens <= 0:
         return create_error_response(
@@ -74,5 +76,4 @@ def check_requests(request) -> Optional[JSONResponse]:
             ErrorCode.PARAM_OUT_OF_RANGE,
             f"{request.stop} is not valid under any of the given schemas - 'stop'",
         )
-
     return None

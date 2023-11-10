@@ -1,40 +1,38 @@
-import openai
+from openai import OpenAI
 
-# Modify OpenAI's API key and API base to use vLLM's API server.
-openai.api_key = "EMPTY"
-openai.api_base = "http://192.168.0.53:7891/v1"
+client = OpenAI(
+    api_key="EMPTY",
+    base_url="http://192.168.20.59:7891/v1/",
+)
+
 
 # List models API
-models = openai.Model.list()
-print("Models:", models)
+models = client.models.list()
+print(models.dict())
 
-model = models["data"][0]["id"]
 
 # Chat completion API
-chat_completion = openai.ChatCompletion.create(
-    model=model,
+chat_completion = client.chat.completions.create(
     messages=[
         {
             "role": "user",
-            "content": "感冒了怎么办"
-        },
-    ]
+            "content": "感冒了怎么办",
+        }
+    ],
+    model="gpt-3.5-turbo",
 )
-
-print("Chat completion results:")
 print(chat_completion)
 
-chat_completion = openai.ChatCompletion.create(
-    model=model,
+
+stream = client.chat.completions.create(
     messages=[
         {
             "role": "user",
-            "content": "感冒了怎么办"
-        },
+            "content": "感冒了怎么办",
+        }
     ],
-    stream=True
+    model="gpt-3.5-turbo",
+    stream=True,
 )
-
-print("Chat completion streaming results:")
-for c in chat_completion:
-    print(c.choices[0].delta.get("content", ""))
+for part in stream:
+    print(part.choices[0].delta.content or "", end="", flush=True)
