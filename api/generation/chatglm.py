@@ -41,7 +41,11 @@ def process_response(response):
 def process_response_v3(output: str, use_tool: bool = False) -> Union[str, dict]:
     content = ""
     for response in output.split("<|assistant|>"):
-        metadata, content = response.split("\n", maxsplit=1)
+        if "\n" in response:
+            metadata, content = response.split("\n", maxsplit=1)
+        else:
+            metadata, content = "", response
+
         if not metadata.strip():
             content = content.strip()
             content = content.replace("[[训练时间]]", "2023年")
@@ -241,12 +245,14 @@ def process_chatglm_messages(messages: List[ChatCompletionMessageParam], functio
 
     for m in _messages:
         role, content = m["role"], m["content"]
-        func_call = m.get("function_call", None)
         if role == Role.FUNCTION:
             messages.append({"role": "observation", "content": content})
-        elif role == Role.ASSISTANT and func_call is not None:
+        elif role == Role.ASSISTANT:
             for response in content.split("<|assistant|>"):
-                metadata, sub_content = response.split("\n", maxsplit=1)
+                if "\n" in response:
+                    metadata, sub_content = response.split("\n", maxsplit=1)
+                else:
+                    metadata, sub_content = "", response
                 messages.append({"role": role, "metadata": metadata, "content": sub_content.strip()})
         else:
             messages.append({"role": role, "content": content})
