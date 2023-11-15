@@ -82,7 +82,7 @@ def generate_stream_chatglm(
     context_len=2048,
     stream_interval=2,
 ):
-    prompt = params["messages"]
+    prompt = params["prompt"]
     temperature = float(params.get("temperature", 1.0))
     repetition_penalty = float(params.get("repetition_penalty", 1.0))
     top_p = float(params.get("top_p", 1.0))

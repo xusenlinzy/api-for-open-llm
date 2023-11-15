@@ -1,4 +1,4 @@
-openai==1.2.0
+openai>=1.2.3
 bitsandbytes
 fastapi==0.95.1
 typing-inspect==0.8.0
