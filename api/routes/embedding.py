@@ -39,7 +39,7 @@ async def create_embeddings(request: EmbeddingCreateParams, model_name: str = No
                 instruction = "为这个句子生成表示以用于检索相关文章："
             elif "en" in config.EMBEDDING_NAME.lower():
                 instruction = "Represent this sentence for searching relevant passages: "
-            request.inputs = [instruction + q for q in request.input]
+            request.input = [instruction + q for q in request.input]
 
     data, total_tokens = [], 0
     batches = [
