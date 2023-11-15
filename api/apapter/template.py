@@ -896,6 +896,38 @@ class ZephyrTemplate(BaseTemplate):
         )
 
 
+class HuatuoTemplate(BaseTemplate):
+
+    name = "huatuo"
+    allow_models = ["huatuo"]
+    system_prompt = "一位用户和智能医疗大模型HuatuoGPT之间的对话。对于用户的医疗问诊，HuatuoGPT给出准确的、详细的、温暖的指导建议。对于用户的指令问题，HuatuoGPT给出有益的、详细的、有礼貌的回答。"
+    stop = {
+        "strings": ["<reserved_102>", "<reserved_103>", "<病人>"],
+        "token_ids": [195, 196],
+    }
+
+    @property
+    def template(self):
+        return (
+            "{% set found_item = false %}"
+            "{% for message in messages %}"
+            "{% if message['role'] == 'system' %}"
+            "{% set found_item = true %}"
+            "{% endif %}"
+            "{% endfor %}"
+            "{% if not found_item %}"
+            "{{ system_prompt }}"
+            "{% endif %}"
+            "{% for message in messages %}"
+            "{% if message['role'] == 'user' %}"
+            "{{ '<病人>：' + message['content'] + ' <HuatuoGPT>：' }}"
+            "{% elif message['role'] == 'assistant' %}"
+            "{{ message['content'] + '</s>' }}"
+            "{% endif %}"
+            "{% endfor %}"
+        )
+
+
 register_prompt_adapter(AlpacaTemplate)
 register_prompt_adapter(AquilaChatTemplate)
 register_prompt_adapter(BaiChuanTemplate)
@@ -908,6 +940,7 @@ register_prompt_adapter(ChineseAlpaca2Template)
 register_prompt_adapter(DeepseekTemplate)
 register_prompt_adapter(FireflyTemplate)
 register_prompt_adapter(FireflyForQwenTemplate)
+register_prompt_adapter(HuatuoTemplate)
 register_prompt_adapter(InternLMTemplate)
 register_prompt_adapter(Llama2Template)
 register_prompt_adapter(MossTemplate)
