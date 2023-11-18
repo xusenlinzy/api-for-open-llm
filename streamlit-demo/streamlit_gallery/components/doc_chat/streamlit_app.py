@@ -2,7 +2,8 @@ import os
 import shutil
 from pathlib import Path
 
-import openai
+from openai import OpenAI
+
 import streamlit as st
 from langchain.embeddings import OpenAIEmbeddings
 
@@ -15,6 +16,11 @@ def main():
 
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
     os.makedirs(VECTOR_STORE_PATH, exist_ok=True)
+
+    client = OpenAI(
+        api_key=os.getenv("API_KEY"),
+        base_url=os.getenv("CHAT_API_BASE"),
+    )
 
     @st.cache_resource
     def load_doc_server():
@@ -51,8 +57,6 @@ def main():
 
     st.title("💬 Document Chatbot")
 
-    openai.api_base = os.getenv("CHAT_API_BASE")
-    openai.api_key = os.getenv("API_KEY")
 
     with st.expander("📚‍ FILES", False):
         file = st.file_uploader("Upload file", accept_multiple_files=False)
@@ -128,8 +132,8 @@ def main():
                 temperature=st.session_state.get("temperature", 0.9),
             )
 
-            for response in openai.ChatCompletion.create(**pyload):
-                full_response += response.choices[0].delta.get("content", "")
+            for response in client.chat.completions.create(**pyload):
+                full_response += response.choices[0].delta.content or ""
                 message_placeholder.markdown(full_response + "▌")
 
             message_placeholder.markdown(full_response)

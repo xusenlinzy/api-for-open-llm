@@ -6,7 +6,11 @@ pip install -r requirements.txt
 streamlit run streamlit_app.py
 ```
 
-**环境变量配置见 [.env](.env)**
+**环境变量配置见 [.env.example](.env.example)**
+使用时
+```
+cp .env.example .env
+```
 
 ## 代码解释器（基于 ChatGLM3 模型）【测试版本】
 
