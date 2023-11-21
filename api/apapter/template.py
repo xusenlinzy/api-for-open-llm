@@ -928,6 +928,29 @@ class HuatuoTemplate(BaseTemplate):
         )
 
 
+class OrionStarTemplate(BaseTemplate):
+    """ https://huggingface.co/OrionStarAI/OrionStar-Yi-34B-Chat/blob/fc0420da8cd5ea5b8f36760c1b14e0a718447e1f/generation_utils.py#L5 """
+
+    name = "orionstar"
+    allow_models = ["orionstar"]
+    stop = {
+        "strings": ["<|endoftext|>"],
+    }
+
+    @property
+    def template(self):
+        return (
+            "{{ '<|startoftext|>' }}"
+            "{% for message in messages %}"
+            "{% if message['role'] == 'user' %}"
+            "{{ 'Human: ' + message['content'] + '\\n\\nAssistant: <|endoftext|>' }}"
+            "{% elif message['role'] == 'assistant' %}"
+            "{{ message['content'] + '<|endoftext|>' }}"
+            "{% endif %}"
+            "{% endfor %}"
+        )
+
+
 register_prompt_adapter(AlpacaTemplate)
 register_prompt_adapter(AquilaChatTemplate)
 register_prompt_adapter(BaiChuanTemplate)
@@ -946,6 +969,7 @@ register_prompt_adapter(Llama2Template)
 register_prompt_adapter(MossTemplate)
 register_prompt_adapter(OctopackTemplate)
 register_prompt_adapter(OpenBuddyTemplate)
+register_prompt_adapter(OrionStarTemplate)
 register_prompt_adapter(PhindTemplate)
 register_prompt_adapter(PhoenixTemplate)
 register_prompt_adapter(QwenTemplate)
@@ -963,5 +987,5 @@ if __name__ == '__main__':
         {"role": "assistant", "content": "I'm doing great. How can I help you today?"},
         {"role": "user", "content": "I'd like to show off how chat templating works!"},
     ]
-    template = get_prompt_adapter(prompt_name="zephyr")
+    template = get_prompt_adapter(prompt_name="orionstar")
     print(template.apply_chat_template(chat))
