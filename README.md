@@ -288,3 +288,8 @@ DISABLE_PROVIDER_CONFIG_VALIDATION: 'true'
 + [LangChain: Building applications with LLMs through composability](https://github.com/hwchase17/langchain)
 
 + [ChuanhuChatgpt](https://github.com/GaiZhenbiao/ChuanhuChatGPT)
+
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=xusenlinzy/api-for-open-llm&type=Date)](https://star-history.com/#xusenlinzy/api-for-open-llm&Date)
