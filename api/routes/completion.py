@@ -1,49 +1,65 @@
-import asyncio
 import json
 import secrets
 import time
-from typing import List
+from functools import partial
+from typing import List, Iterator, Generator, Any
 
+import anyio
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import StreamingResponse
 from loguru import logger
 from openai.types.completion import Completion, CompletionChoice
 from openai.types.completion_usage import CompletionUsage
+from sse_starlette import EventSourceResponse
+from starlette.concurrency import run_in_threadpool
 
-from api.models import GENERATE_MDDEL
-from api.routes.utils import check_requests, create_error_response, check_api_key
 from api.utils.protocol import CompletionCreateParams
+from api.utils.request import (
+    handle_request,
+    create_error_response,
+    check_api_key,
+    get_engine,
+    get_event_publisher,
+)
 
 completion_router = APIRouter()
 
 
 @completion_router.post("/completions", dependencies=[Depends(check_api_key)])
-async def create_completion(request: CompletionCreateParams, raw_request: Request):
-    error_check_ret = check_requests(request)
-    if error_check_ret is not None:
-        return error_check_ret
-
-    start_time = time.time()
+async def create_completion(
+    request: CompletionCreateParams,
+    raw_request: Request,
+    engine=Depends(get_engine),
+):
     if isinstance(request.prompt, str):
         request.prompt = [request.prompt]
 
     if len(request.prompt) < 1:
         raise HTTPException(status_code=400, detail="Invalid request")
 
-    # stop settings
-    _stop, stop_token_ids = [], []
-    if GENERATE_MDDEL.stop is not None:
-        stop_token_ids = GENERATE_MDDEL.stop.get("token_ids", [])
-        _stop = GENERATE_MDDEL.stop.get("strings", [])
+    request, stop_token_ids = await handle_request(request, engine.stop, chat=False)
+    request.max_tokens = request.max_tokens or 128
 
-    request.stop = request.stop or []
-    if isinstance(request.stop, str):
-        request.stop = [request.stop]
-    request.stop = list(set(_stop + request.stop))
-
+    start_time = time.time()
     if request.stream:
-        generator = generate_completion_stream_generator(request, raw_request, stop_token_ids)
-        return StreamingResponse(generator, media_type="text/event-stream")
+        generator = await run_in_threadpool(generate_completion_stream_generator, engine, request, stop_token_ids)
+        first_response = await run_in_threadpool(next, generator)
+
+        # If no exception was raised from first_response, we can assume that
+        # the iterator is valid and we can use it to stream the response.
+        def iterator() -> Iterator:
+            yield first_response
+            yield from generator
+
+        send_chan, recv_chan = anyio.create_memory_object_stream(10)
+        return EventSourceResponse(
+            recv_chan,
+            data_sender_callable=partial(
+                get_event_publisher,
+                request=raw_request,
+                inner_send_chan=send_chan,
+                iterator=iterator(),
+            ),
+        )
 
     text_completions = []
     for text in request.prompt:
@@ -51,12 +67,11 @@ async def create_completion(request: CompletionCreateParams, raw_request: Reques
         gen_params.update(
             dict(
                 prompt=text,
-                max_tokens=request.max_tokens or 256,
                 stop_token_ids=stop_token_ids,
             )
         )
         for i in range(request.n):
-            content = GENERATE_MDDEL.generate_gate(gen_params)
+            content = await run_in_threadpool(engine.generate_gate, gen_params)
             text_completions.append(content)
 
     choices = []
@@ -86,9 +101,9 @@ async def create_completion(request: CompletionCreateParams, raw_request: Reques
     )
 
 
-async def generate_completion_stream_generator(
-    request: CompletionCreateParams, raw_request: Request, stop_token_ids: List[int],
-):
+def generate_completion_stream_generator(
+    engine, request: CompletionCreateParams, stop_token_ids: List[int],
+) -> Generator[str, Any, None]:
     _id = f"cmpl-{secrets.token_hex(12)}"
     finish_stream_events = []
     for text in request.prompt:
@@ -98,18 +113,12 @@ async def generate_completion_stream_generator(
             gen_params.update(
                 dict(
                     prompt=text,
-                    max_tokens=request.max_tokens or 256,
                     stop_token_ids=stop_token_ids,
                 )
             )
-            for content in GENERATE_MDDEL.generate_stream_gate(gen_params):
-                if await raw_request.is_disconnected():
-                    asyncio.current_task().cancel()
-                    return
-
+            for content in engine.generate_stream_gate(gen_params):
                 if content["error_code"] != 0:
-                    yield f"data: {json.dumps(content, ensure_ascii=False)}\n\n"
-                    yield "data: [DONE]\n\n"
+                    yield json.dumps(content, ensure_ascii=False)
                     return
 
                 decoded_unicode = content["text"].replace("\ufffd", "")
@@ -127,9 +136,7 @@ async def generate_completion_stream_generator(
                         finish_stream_events.append(chunk)
                     continue
 
-                yield f"data: {chunk.json(ensure_ascii=False)}\n\n"
+                yield chunk.json(ensure_ascii=False)
 
     for finish_chunk in finish_stream_events:
-        yield f"data: {finish_chunk.json(exclude_none=True, ensure_ascii=False)}\n\n"
-
-    yield "data: [DONE]\n\n"
+        yield finish_chunk.json(exclude_none=True, ensure_ascii=False)

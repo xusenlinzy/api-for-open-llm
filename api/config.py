@@ -1,136 +1,246 @@
+import multiprocessing
 import os
-
+from typing import Optional, Dict, List, Literal, Union
+import json
 import dotenv
 from loguru import logger
+from pydantic import BaseModel, Field
 
 dotenv.load_dotenv()
 
 
-DEFAULTS = {
-    'HOST': '0.0.0.0',
-    'PORT': 8000,
+def get_bool_env(key, default="false"):
+    return os.environ.get(key, default).lower() == "true"
 
-    # support for model
-    'MODEL_NAME': '',
-    'MODEL_PATH': '',
-    'ADAPTER_MODEL_PATH': '',
-    'RESIZE_EMBEDDINGS': 'False',
 
-    # support for device
-    'DEVICE': 'cuda',
-    'DEVICE_MAP': "",
-    'GPUS': '',
-    'NUM_GPUs': 1,
+def get_env(key, default):
+    val = os.environ.get(key, "")
+    return val if val else default
 
-    # support for embeddings
-    'ONLY_EMBEDDING': 'False',
-    'EMBEDDING_NAME': '',
-    'EMBEDDING_SIZE': '',
-    'EMBEDDING_DEVICE': 'cuda',
 
-    # support for quantize
-    'QUANTIZE': 16,
-    'LOAD_IN_8BIT': 'False',
-    'LOAD_IN_4BIT': 'False',
-    'USING_PTUNING_V2': 'False',
+class Settings(BaseModel):
+    """ Settings class. """
 
-    # support for model input
-    'CONTEXT_LEN': '',
-    'STREAM_INTERVERL': 2,
-    'PROMPT_NAME': '',
+    host: Optional[str] = Field(
+        default=get_env("HOST", "0.0.0.0"),
+        description="Listen address.",
+    )
+    port: Optional[int] = Field(
+        default=int(get_env("PORT", 8000)),
+        description="Listen port.",
+    )
+    api_prefix: Optional[str] = Field(
+        default=get_env("API_PREFIX", "/v1"),
+        description="API prefix.",
+    )
+    engine: Optional[str] = Field(
+        default=get_env("ENGINE", "default"),
+        description="Choices are ['default', 'vllm', 'llama.cpp'].",
+    )
 
-    'PATCH_TYPE': '',
-    'ALPHA': 'auto',
+    # model related
+    model_name: Optional[str] = Field(
+        default=get_env("MODEL_NAME", None),
+        description="The name of the model to use for generating completions."
+    )
+    model_path: Optional[str] = Field(
+        default=get_env("MODEL_PATH", None),
+        description="The path to the model to use for generating completions."
+    )
+    adapter_model_path: Optional[str] = Field(
+        default=get_env("ADAPTER_MODEL_PATH", None),
+        description="Path to a LoRA file to apply to the model."
+    )
+    resize_embeddings: Optional[bool] = Field(
+        default=get_bool_env("RESIZE_EMBEDDINGS"),
+        description="Whether to resize embeddings."
+    )
+    dtype: Optional[str] = Field(
+        default=get_env("DTYPE", "half"),
+        description="Precision dtype."
+    )
 
-    'API_PREFIX': '/v1',
+    # device related
+    device: Optional[str] = Field(
+        default=get_env("DEVICE", "cuda"),
+        description="Device to load the model."
+    )
+    device_map: Optional[Union[str, Dict]] = Field(
+        default=get_env("DEVICE_MAP", None),
+        description="Device map to load the model."
+    )
+    gpus: Optional[str] = Field(
+        default=get_env("GPUS", None),
+        description="Specify which gpus to load the model."
+    )
+    num_gpus: Optional[int] = Field(
+        default=int(get_env("NUM_GPUs", 1)),
+        ge=0,
+        description="How many gpus to load the model."
+    )
 
-    # support for vllm
-    'USE_VLLM': 'False',
-    'TRUST_REMOTE_CODE': "False",
-    'TOKENIZE_MODE': "auto",
-    'TENSOR_PARALLEL_SIZE': 1,
-    'DTYPE': "half",
-    "GPU_MEMORY_UTILIZATION": 0.9,
-    "MAX_NUM_BATCHED_TOKENS": "",
-    "MAX_NUM_SEQS": 256,
-    "QUANTIZATION_METHOD": "",
+    # embedding related
+    only_embedding: Optional[bool] = Field(
+        default=get_bool_env("ONLY_EMBEDDING"),
+        description="Whether to launch embedding server only."
+    )
+    embedding_name: Optional[str] = Field(
+        default=get_env("EMBEDDING_NAME", None),
+        description="The path to the model to use for generating embeddings."
+    )
+    embedding_size: Optional[int] = Field(
+        default=int(get_env("EMBEDDING_SIZE", -1)),
+        description="The embedding size to use for generating embeddings."
+    )
+    embedding_device: Optional[str] = Field(
+        default=get_env("EMBEDDING_DEVICE", "cuda"),
+        description="Device to load the model."
+    )
+
+    # quantize related
+    quantize: Optional[int] = Field(
+        default=int(get_env("QUANTIZE", 16)),
+        description="Quantize level for model."
+    )
+    load_in_8bit: Optional[bool] = Field(
+        default=get_bool_env("LOAD_IN_8BIT"),
+        description="Whether to load the model in 8 bit."
+    )
+    load_in_4bit: Optional[bool] = Field(
+        default=get_bool_env("LOAD_IN_4BIT"),
+        description="Whether to load the model in 4 bit."
+    )
+    using_ptuning_v2: Optional[bool] = Field(
+        default=get_bool_env("USING_PTUNING_V2"),
+        description="Whether to load the model using ptuning_v2."
+    )
+
+    # context related
+    context_length: Optional[int] = Field(
+        default=int(get_env("CONTEXT_LEN", -1)),
+        ge=-1,
+        description="Context length for generating completions."
+    )
+    stream_interverl: Optional[int] = Field(
+        default=int(get_env("STREAM_INTERVERL", 2)),
+        ge=1,
+        description="Stream interverl for generating completions."
+    )
+    chat_template: Optional[str] = Field(
+        default=get_env("PROMPT_NAME", None),
+        description="Chat template for generating completions."
+    )
+    patch_type: Optional[str] = Field(
+        default=get_env("PATCH_TYPE", None),
+        description="Patch type for generating completions."
+    )
+    alpha: Optional[Union[str, float]] = Field(
+        default=get_env("ALPHA", "auto"),
+        description="Alpha for generating completions."
+    )
+
+    # vllm related
+    trust_remote_code: Optional[bool] = Field(
+        default=get_bool_env("TRUST_REMOTE_CODE"),
+        description="Whether to use remote code."
+    )
+    tokenize_mode: Optional[str] = Field(
+        default=get_env("TOKENIZE_MODE", "auto"),
+        description="Tokenize mode for vllm server."
+    )
+    tensor_parallel_size: Optional[int] = Field(
+        default=int(get_env("TENSOR_PARALLEL_SIZE", 1)),
+        ge=1,
+        description="Tensor parallel size for vllm server."
+    )
+    gpu_memory_utilization: Optional[float] = Field(
+        default=float(get_env("GPU_MEMORY_UTILIZATION", 0.9)),
+        description="GPU memory utilization for vllm server."
+    )
+    max_num_batched_tokens: Optional[int] = Field(
+        default=int(get_env("MAX_NUM_BATCHED_TOKENS", -1)),
+        ge=-1,
+        description="Max num batched tokens for vllm server."
+    )
+    max_num_seqs: Optional[int] = Field(
+        default=int(get_env("MAX_NUM_SEQS", 256)),
+        ge=1,
+        description="Max num seqs for vllm server."
+    )
+    quantization_method: Optional[str] = Field(
+        default=get_env("QUANTIZATION_METHOD", None),
+        description="Quantization method for vllm server."
+    )
 
     # support for transformers.TextIteratorStreamer
-    'USE_STREAMER_V2': 'False',
+    use_streamer_v2: Optional[bool] = Field(
+        default=get_bool_env("USE_STREAMER_V2"),
+        description="Support for transformers.TextIteratorStreamer."
+    )
 
     # support for api key check
-    'API_KEYS': '',
+    api_keys: Optional[List[str]] = Field(
+        default=get_env("API_KEYS", "").split(",") if get_env("API_KEYS", "") else None,
+        description="Support for api key check."
+    )
 
-    'ACTIVATE_INFERENCE': 'True',
-}
+    activate_inference: Optional[bool] = Field(
+        default=get_bool_env("ACTIVATE_INFERENCE", "true"),
+        description="Whether to activate inference."
+    )
+    interrupt_requests: Optional[bool] = Field(
+        default=get_bool_env("INTERRUPT_REQUESTS", "true"),
+        description="Whether to interrupt requests when a new request is received.",
+    )
 
-
-def get_env(key):
-    return os.environ.get(key, DEFAULTS.get(key))
-
-
-def get_bool_env(key):
-    return get_env(key).lower() == 'true'
-
-
-class Config:
-    """ Configuration class. """
-
-    def __init__(self):
-        self.HOST = get_env('HOST')
-        self.PORT = int(get_env('PORT'))
-
-        self.MODEL_NAME = get_env('MODEL_NAME')
-        self.MODEL_PATH = get_env('MODEL_PATH')
-        self.ADAPTER_MODEL_PATH = get_env('ADAPTER_MODEL_PATH') if get_env('ADAPTER_MODEL_PATH') else None
-        self.RESIZE_EMBEDDINGS = get_bool_env('RESIZE_EMBEDDINGS')
-
-        self.DEVICE = get_env('DEVICE')
-        self.DEVICE_MAP = get_env('DEVICE_MAP') if get_env('DEVICE_MAP') else None
-        self.GPUS = get_env('GPUS')
-        self.NUM_GPUs = int(get_env('NUM_GPUs'))
-
-        self.ONLY_EMBEDDING = get_bool_env('ONLY_EMBEDDING')
-        self.EMBEDDING_NAME = get_env('EMBEDDING_NAME') if get_env('EMBEDDING_NAME') else None
-        self.EMBEDDING_SIZE = int(get_env('EMBEDDING_SIZE')) if get_env('EMBEDDING_SIZE') else None
-        self.EMBEDDING_DEVICE = get_env('EMBEDDING_DEVICE')
-
-        self.QUANTIZE = int(get_env('QUANTIZE'))
-        self.LOAD_IN_8BIT = get_bool_env('LOAD_IN_8BIT')
-        self.LOAD_IN_4BIT = get_bool_env('LOAD_IN_4BIT')
-        self.USING_PTUNING_V2 = get_bool_env('USING_PTUNING_V2')
-
-        self.CONTEXT_LEN = int(get_env('CONTEXT_LEN')) if get_env('CONTEXT_LEN') else None
-        self.STREAM_INTERVERL = int(get_env('STREAM_INTERVERL'))
-        self.PROMPT_NAME = get_env('PROMPT_NAME') if get_env('PROMPT_NAME') else None
-
-        self.PATCH_TYPE = get_env('PATCH_TYPE') if get_env('PATCH_TYPE') else None
-        self.ALPHA = get_env('ALPHA')
-
-        self.API_PREFIX = get_env('API_PREFIX')
-
-        self.USE_VLLM = get_bool_env('USE_VLLM')
-        self.TRUST_REMOTE_CODE = get_bool_env('TRUST_REMOTE_CODE')
-        self.TOKENIZE_MODE = get_env('TOKENIZE_MODE')
-        self.TENSOR_PARALLEL_SIZE = int(get_env('TENSOR_PARALLEL_SIZE'))
-        self.DTYPE = get_env('DTYPE')
-        self.GPU_MEMORY_UTILIZATION = float(get_env('GPU_MEMORY_UTILIZATION'))
-        self.MAX_NUM_BATCHED_TOKENS = int(get_env('MAX_NUM_BATCHED_TOKENS')) if get_env('MAX_NUM_BATCHED_TOKENS') else None
-        self.MAX_NUM_SEQS = int(get_env('MAX_NUM_SEQS'))
-        self.QUANTIZATION_METHOD = get_env('QUANTIZATION_METHOD') if get_env('QUANTIZATION_METHOD') else None
-
-        self.USE_STREAMER_V2 = get_bool_env('USE_STREAMER_V2')
-
-        self.API_KEYS = get_env('API_KEYS').split(',') if get_env('API_KEYS') else None
-
-        self.ACTIVATE_INFERENCE = get_bool_env('ACTIVATE_INFERENCE')
+    # support for llama.cpp
+    n_gpu_layers: Optional[int] = Field(
+        default=int(get_env("N_GPU_LAYERS", 0)),
+        ge=-1,
+        description="The number of layers to put on the GPU. The rest will be on the CPU. Set -1 to move all to GPU.",
+    )
+    main_gpu: Optional[int] = Field(
+        default=int(get_env("MAIN_GPU", 0)),
+        ge=0,
+        description="Main GPU to use.",
+    )
+    tensor_split: Optional[List[float]] = Field(
+        default=float(get_env("TENSOR_SPLIT", None)) if get_env("TENSOR_SPLIT", None) else None,
+        description="Split layers across multiple GPUs in proportion.",
+    )
+    n_batch: Optional[int] = Field(
+        default=int(get_env("N_BATCH", 512)),
+        ge=1,
+        description="The batch size to use per eval."
+    )
+    n_threads: Optional[int] = Field(
+        default=int(get_env("N_THREADS", max(multiprocessing.cpu_count() // 2, 1))),
+        ge=1,
+        description="The number of threads to use.",
+    )
+    n_threads_batch: Optional[int] = Field(
+        default=int(get_env("N_THREADS_BATCH", max(multiprocessing.cpu_count() // 2, 1))),
+        ge=0,
+        description="The number of threads to use when batch processing.",
+    )
+    rope_scaling_type: Optional[int] = Field(
+        default=int(get_env("ROPE_SCALING_TYPE", -1))
+    )
+    rope_freq_base: Optional[float] = Field(
+        default=float(get_env("ROPE_FREQ_BASE", 0.0)),
+        description="RoPE base frequency"
+    )
+    rope_freq_scale: Optional[float] = Field(
+        default=float(get_env("ROPE_FREQ_SCALE", 0.0)),
+        description="RoPE frequency scaling factor",
+    )
 
 
-config = Config()
-logger.debug(f"Config: {config.__dict__}")
-if config.GPUS:
-    if len(config.GPUS.split(",")) < config.NUM_GPUs:
+SETTINGS = Settings()
+logger.debug(f"SETTINGS: {json.dumps(SETTINGS.dict(), ensure_ascii=False, indent=4)}")
+if SETTINGS.gpus:
+    if len(SETTINGS.gpus.split(",")) < SETTINGS.num_gpus:
         raise ValueError(
-            f"Larger --num_gpus ({config.NUM_GPUs}) than --gpus {config.GPUS}!"
+            f"Larger --num_gpus ({SETTINGS.num_gpus}) than --gpus {SETTINGS.gpus}!"
         )
-    os.environ["CUDA_VISIBLE_DEVICES"] = config.GPUS
+    os.environ["CUDA_VISIBLE_DEVICES"] = SETTINGS.gpus

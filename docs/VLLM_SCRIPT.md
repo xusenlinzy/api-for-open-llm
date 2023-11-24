@@ -128,6 +128,7 @@ Qwen/Qwen-7B-Chat:
 ```shell
 MODEL_NAME=qwen
 MODEL_PATH=Qwen/Qwen-7B-Chat # 模型所在路径，若使用docker，则为在容器内的路径
+ENGINE=vllm
 ```
 
 ### InternLM
@@ -137,6 +138,7 @@ internlm-chat-7b:
 ```shell
 MODEL_NAME=internlm
 MODEL_PATH=internlm/internlm-chat-7b
+ENGINE=vllm
 ```
 
 ### Baichuan-13b-chat
@@ -147,6 +149,7 @@ baichuan-inc/Baichuan-13B-Chat:
 MODEL_NAME=baichuan-13b-chat
 MODEL_PATH=baichuan-inc/Baichuan-13B-Chat
 TENSOR_PARALLEL_SIZE=2
+ENGINE=vllm
 ```
 
 ### SQLCODER
@@ -157,6 +160,7 @@ defog/sqlcoder:
 MODEL_NAME=starcode
 MODEL_PATH=defog/sqlcoder
 TENSOR_PARALLEL_SIZE=2
+ENGINE=vllm
 ```
 
 ### CODE-LLAMA
@@ -171,6 +175,7 @@ codellama/CodeLlama-7b-Instruct-hf
 ```shell
 MODEL_NAME=code-llama
 MODEL_PATH=codellama/CodeLlama-7b-Instruct-hf
+ENGINE=vllm
 ```
 
 ### Xwin-LM
@@ -181,4 +186,5 @@ Xwin-LM/Xwin-LM-7B-V0.1
 MODEL_NAME=xwin-7b
 MODEL_PATH=Xwin-LM/Xwin-LM-7B-V0.1
 PROMPT_NAME=vicuna
+ENGINE=vllm
 ```

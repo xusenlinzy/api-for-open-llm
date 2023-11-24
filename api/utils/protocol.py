@@ -114,7 +114,7 @@ class ChatCompletionCreateParams(BaseModel):
     `system_fingerprint` response parameter to monitor changes in the backend.
     """
 
-    stop: Union[Optional[str], List[str], None]
+    stop: Optional[Union[str, List[str]]] = None
     """Up to 4 sequences where the API will stop generating further tokens."""
 
     temperature: Optional[float] = 0.9
@@ -281,7 +281,7 @@ class CompletionCreateParams(BaseModel):
     response parameter to monitor changes in the backend.
     """
 
-    stop: Union[Optional[str], List[str], None]
+    stop: Optional[Union[str, List[str]]] = None
     """Up to 4 sequences where the API will stop generating further tokens.
 
     The returned text will not contain the stop sequence.

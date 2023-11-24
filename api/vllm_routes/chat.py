@@ -1,10 +1,9 @@
 import secrets
 import time
-from typing import Any
-from typing import Generator
+from functools import partial
 
+import anyio
 from fastapi import APIRouter, Depends, Request, HTTPException
-from fastapi.responses import StreamingResponse
 from loguru import logger
 from openai.types.chat import (
     ChatCompletionMessage,
@@ -16,22 +15,31 @@ from openai.types.chat.chat_completion_chunk import Choice as ChunkChoice
 from openai.types.chat.chat_completion_chunk import ChoiceDelta
 from openai.types.chat.chat_completion_message import FunctionCall
 from openai.types.completion_usage import CompletionUsage
+from sse_starlette import EventSourceResponse
 from vllm.outputs import RequestOutput
 from vllm.sampling_params import SamplingParams
 
-from api.config import config
+from api.config import SETTINGS
 from api.generation.chatglm import process_response_v3
 from api.generation.qwen import parse_response
-from api.models import VLLM_ENGINE
-from api.routes.utils import check_api_key
 from api.utils.protocol import Role, ChatCompletionCreateParams
+from api.utils.request import check_api_key
+from api.utils.request import (
+    handle_request,
+    get_engine,
+    get_event_publisher,
+)
 from api.vllm_routes.utils import get_gen_prompt, get_model_inputs
 
 chat_router = APIRouter(prefix="/chat")
 
 
 @chat_router.post("/completions", dependencies=[Depends(check_api_key)])
-async def create_chat_completion(request: ChatCompletionCreateParams, raw_request: Request):
+async def create_chat_completion(
+    request: ChatCompletionCreateParams,
+    raw_request: Request,
+    engine=Depends(get_engine),
+):
     """Completion API similar to OpenAI's API.
 
     See  https://platform.openai.com/docs/api-reference/chat/create
@@ -46,25 +54,13 @@ async def create_chat_completion(request: ChatCompletionCreateParams, raw_reques
     if (not request.messages) or request.messages[-1]["role"] == Role.ASSISTANT:
         raise HTTPException(status_code=400, detail="Invalid request")
 
-    prompt = await get_gen_prompt(request, config.MODEL_NAME.lower())
+    prompt = await get_gen_prompt(engine, request, SETTINGS.model_name.lower())
+    request, stop_token_ids = await handle_request(request, engine.prompt_adapter.stop)
+
     request.max_tokens = request.max_tokens or 512
-    token_ids, error_check_ret = await get_model_inputs(request, prompt, config.MODEL_NAME.lower())
+    token_ids, error_check_ret = await get_model_inputs(engine, request, prompt, SETTINGS.model_name.lower())
     if error_check_ret is not None:
         return error_check_ret
-
-    # stop settings
-    _stop, stop_token_ids = [], []
-    if VLLM_ENGINE.prompt_adapter.stop is not None:
-        stop_token_ids = VLLM_ENGINE.prompt_adapter.stop.get("token_ids", [])
-        _stop = VLLM_ENGINE.prompt_adapter.stop.get("strings", [])
-
-    request.stop = request.stop or []
-    if isinstance(request.stop, str):
-        request.stop = [request.stop]
-
-    if "qwen" in config.MODEL_NAME.lower() and request.functions:
-        request.stop.append("Observation:")
-    request.stop = list(set(_stop + request.stop))
 
     request_id = f"chatcmpl-{secrets.token_hex(12)}"
     try:
@@ -81,21 +77,30 @@ async def create_chat_completion(request: ChatCompletionCreateParams, raw_reques
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    result_generator = VLLM_ENGINE.generate(
+    result_generator = engine.generate(
         prompt if isinstance(prompt, str) else None, sampling_params, request_id, token_ids,
     )
 
     # Streaming response
     if request.stream:
         generator = chat_completion_stream_generator(result_generator, request, request_id)
-        return StreamingResponse(generator, media_type="text/event-stream")
+        send_chan, recv_chan = anyio.create_memory_object_stream(10)
+        return EventSourceResponse(
+            recv_chan,
+            data_sender_callable=partial(
+                get_event_publisher,
+                request=raw_request,
+                inner_send_chan=send_chan,
+                iterator=generator,
+            ),
+        )
 
     # Non-streaming response
     final_res: RequestOutput = None
     async for res in result_generator:
         if await raw_request.is_disconnected():
             # Abort the request if the client disconnects.
-            await VLLM_ENGINE.abort(request_id)
+            await engine.abort(request_id)
             return
         final_res = res
 
@@ -106,13 +111,13 @@ async def create_chat_completion(request: ChatCompletionCreateParams, raw_reques
 
         finish_reason = output.finish_reason
         function_call = None
-        if request.functions and "chatglm3" in config.MODEL_NAME.lower():
+        if request.functions and "chatglm3" in SETTINGS.model_name.lower():
             try:
                 function_call = process_response_v3(output.text, use_tool=True)
             except:
                 logger.warning("Failed to parse tool call")
 
-        elif request.functions and "qwen" in config.MODEL_NAME.lower():
+        elif request.functions and "qwen" in SETTINGS.model_name.lower():
             res, function_call = parse_response(output.text)
             output.text = res
 
@@ -142,7 +147,7 @@ async def create_chat_completion(request: ChatCompletionCreateParams, raw_reques
 
 async def chat_completion_stream_generator(
     result_generator, request: ChatCompletionCreateParams, request_id: str
-) -> Generator[str, Any, None]:
+):
     """
     Event stream format:
     https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events#event_stream_format
@@ -155,7 +160,7 @@ async def chat_completion_stream_generator(
             id=request_id, choices=[choice], created=int(time.time()),
             model=request.model, object="chat.completion.chunk",
         )
-        yield f"data: {chunk.json(ensure_ascii=False)}\n\n"
+        yield chunk.json(ensure_ascii=False)
 
         previous_texts = [""] * n
         previous_num_tokens = [0] * n
@@ -173,7 +178,7 @@ async def chat_completion_stream_generator(
                     id=request_id, choices=[choice], created=int(time.time()),
                     model=request.model, object="chat.completion.chunk",
                 )
-                yield f"data: {chunk.json(ensure_ascii=False)}\n\n"
+                yield chunk.json(ensure_ascii=False)
 
                 if output.finish_reason is not None:
                     choice = ChunkChoice(index=i, delta=ChoiceDelta(), finish_reason="stop")
@@ -181,6 +186,4 @@ async def chat_completion_stream_generator(
                         id=request_id, choices=[choice], created=int(time.time()),
                         model=request.model, object="chat.completion.chunk",
                     )
-                    yield f"data: {chunk.json(exclude_none=True, ensure_ascii=False)}\n\n"
-
-        yield "data: [DONE]\n\n"
+                    yield chunk.json(exclude_none=True, ensure_ascii=False)

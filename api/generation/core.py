@@ -4,6 +4,7 @@ from typing import Optional, List, Union
 import torch
 from loguru import logger
 from openai.types.chat import ChatCompletionMessageParam
+from transformers import PreTrainedModel, PreTrainedTokenizer
 
 from api.apapter import get_prompt_adapter
 from api.generation.baichuan import check_is_baichuan
@@ -13,7 +14,6 @@ from api.generation.stream import generate_stream, generate_stream_v2
 from api.generation.utils import get_context_length
 from api.generation.xverse import check_is_xverse
 from api.utils.constants import ErrorCode
-from transformers import PreTrainedModel, PreTrainedTokenizer
 
 server_error_msg = (
     "**NETWORK ERROR DUE TO HIGH TRAFFIC. PLEASE REGENERATE OR REFRESH THIS PAGE.**"
@@ -41,11 +41,13 @@ class ModelServer:
         self.stream_interval = stream_interval
         self.context_len = context_len
 
+        self.use_streamer_v2 = use_streamer_v2
         self.construct_prompt = True
         self.generate_stream_func = generate_stream
         if "chatglm3" in self.model_name:
             logger.info("Using ChatGLM3 Model for Chat!")
             self.generate_stream_func = generate_stream_chatglm_v3
+            self.use_streamer_v2 = False
             self.construct_prompt = False if self.prompt_name is None else True
         else:
             if check_is_chatglm(self.model):
@@ -63,7 +65,6 @@ class ModelServer:
                 self.construct_prompt = False if self.prompt_name is None else True
 
         self.prompt_adapter = get_prompt_adapter(self.model_name, prompt_name=self.prompt_name)
-        self.use_streamer_v2 = use_streamer_v2
 
         if self.context_len is None:
             self.context_len = get_context_length(self.model.config)

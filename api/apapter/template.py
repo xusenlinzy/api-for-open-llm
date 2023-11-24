@@ -222,7 +222,7 @@ class ChatglmTemplate(BaseTemplate):
 class Chatglm2Template(BaseTemplate):
 
     name = "chatglm2"
-    allow_models = ["chatglm2-6b"]
+    allow_models = ["chatglm2"]
 
     def match(self, name) -> bool:
         return name == "chatglm2"
@@ -254,6 +254,38 @@ class Chatglm2Template(BaseTemplate):
             "{{ '[Round ' ~ idx ~ ']\\n\\n' + '问：' + message['content'] + '\\n\\n' + '答：' }}"
             "{% elif message['role'] == 'assistant' %}"
             "{{ message['content'] + '\\n\\n' }}"
+            "{% endif %}"
+            "{% endfor %}"
+        )
+
+
+class Chatglm3Template(BaseTemplate):
+
+    name = "chatglm3"
+    allow_models = ["chatglm3"]
+    stop = {
+        "strings": ["<|user|>", "<|observation|>", "</s>", "<|observation|>"],
+        "token_ids": [64795, 64797, 2],
+    }
+
+    def match(self, name) -> bool:
+        return name == "chatglm3"
+
+    @property
+    def template(self):
+        """
+        The reference for this chat template is [this code
+        snippet](https://huggingface.co/THUDM/chatglm3-6b/blob/main/modeling_chatglm.py)
+        in the original repository.
+        """
+        return (
+            "{% for message in messages %}"
+            "{% if message['role'] == 'system' %}"
+            "{{ '<|system|>\\n' + message['content'] }}"
+            "{% elif message['role'] == 'user' %}"
+            "{{ '<|user|>\\n' + message['content'] + '<|assistant|>' }}"
+            "{% elif message['role'] == 'assistant' %}"
+            "{{ '\\n' + message['content'] }}"
             "{% endif %}"
             "{% endfor %}"
         )
@@ -319,13 +351,9 @@ class PhoenixTemplate(BaseTemplate):
         snippet](https://github.com/FreedomIntelligence/LLMZoo) in the original repository.
         """
         return (
-            "{% set found_item = false %}"
-            "{% for message in messages %}"
-            "{% if message['role'] == 'system' %}"
-            "{% set found_item = true %}"
-            "{% endif %}"
-            "{% endfor %}"
-            "{% if not found_item %}"
+            "{% if messages[0]['role'] == 'system' %}"
+            "{{ messages[0]['content'] }}"
+            "{% else %}"
             "{{ system_prompt }}"
             "{% endif %}"
             "{% for message in messages %}"
@@ -363,13 +391,9 @@ class AlpacaTemplate(BaseTemplate):
         ### Response:
         """
         return (
-            "{% set found_item = false %}"
-            "{% for message in messages %}"
-            "{% if message['role'] == 'system' %}"
-            "{% set found_item = true %}"
-            "{% endif %}"
-            "{% endfor %}"
-            "{% if not found_item %}"
+            "{% if messages[0]['role'] == 'system' %}"
+            "{{ messages[0]['content'] }}"
+            "{% else %}"
             "{{ system_prompt }}"
             "{% endif %}"
             "{% for message in messages %}"
@@ -484,13 +508,9 @@ Buddy strictly refuses to discuss harmful, political, NSFW, illegal, abusive, of
         Assistant:
         """
         return (
-            "{% set found_item = false %}"
-            "{% for message in messages %}"
-            "{% if message['role'] == 'system' %}"
-            "{% set found_item = true %}"
-            "{% endif %}"
-            "{% endfor %}"
-            "{% if not found_item %}"
+            "{% if messages[0]['role'] == 'system' %}"
+            "{{ messages[0]['content'] }}"
+            "{% else %}"
             "{{ system_prompt + '\\n' }}"
             "{% endif %}"
             "{% for message in messages %}"
@@ -731,13 +751,9 @@ class VicunaTemplate(BaseTemplate):
         USER: {Prompt} ASSISTANT: {Answer}</s>USER: {Prompt} ASSISTANT:
         """
         return (
-            "{% set found_item = false %}"
-            "{% for message in messages %}"
-            "{% if message['role'] == 'system' %}"
-            "{% set found_item = true %}"
-            "{% endif %}"
-            "{% endfor %}"
-            "{% if not found_item %}"
+            "{% if messages[0]['role'] == 'system' %}"
+            "{{ messages[0]['content'] }}"
+            "{% else %}"
             "{{ system_prompt }}"
             "{% endif %}"
             "{% for message in messages %}"
@@ -763,13 +779,9 @@ class XuanYuanTemplate(BaseTemplate):
         Human: {Prompt} Assistant: {Answer}</s>Human: {Prompt} Assistant:
         """
         return (
-            "{% set found_item = false %}"
-            "{% for message in messages %}"
-            "{% if message['role'] == 'system' %}"
-            "{% set found_item = true %}"
-            "{% endif %}"
-            "{% endfor %}"
-            "{% if not found_item %}"
+            "{% if messages[0]['role'] == 'system' %}"
+            "{{ messages[0]['content'] }}"
+            "{% else %}"
             "{{ system_prompt }}"
             "{% endif %}"
             "{% for message in messages %}"
@@ -794,13 +806,9 @@ class PhindTemplate(BaseTemplate):
     @property
     def template(self):
         return (
-            "{% set found_item = false %}"
-            "{% for message in messages %}"
-            "{% if message['role'] == 'system' %}"
-            "{% set found_item = true %}"
-            "{% endif %}"
-            "{% endfor %}"
-            "{% if not found_item %}"
+            "{% if messages[0]['role'] == 'system' %}"
+            "{{ messages[0]['content'] }}"
+            "{% else %}"
             "{{ system_prompt }}"
             "{% endif %}"
             "{% for message in messages %}"
@@ -829,19 +837,13 @@ class DeepseekTemplate(BaseTemplate):
     @property
     def template(self):
         return (
-            "{% set found_item = false %}"
-            "{% for message in messages %}"
-            "{% if message['role'] == 'system' %}"
-            "{% set found_item = true %}"
-            "{% endif %}"
-            "{% endfor %}"
-            "{% if not found_item %}"
+            "{% if messages[0]['role'] == 'system' %}"
+            "{{ messages[0]['content'] }}"
+            "{% else %}"
             "{{ system_prompt }}"
             "{% endif %}"
             "{% for message in messages %}"
-            "{% if message['role'] == 'system' %}"
-            "{{ message['content'] }}"
-            "{% elif message['role'] == 'user' %}"
+            "{% if message['role'] == 'user' %}"
             "{{ '### Instruction:\\n' + message['content'] + '\\n' + '### Response:\\n' }}"
             "{% elif message['role'] == 'assistant' %}"
             "{{ message['content'] + '\\n<|EOT|>\\n' }}"
@@ -909,17 +911,15 @@ class HuatuoTemplate(BaseTemplate):
     @property
     def template(self):
         return (
-            "{% set found_item = false %}"
-            "{% for message in messages %}"
-            "{% if message['role'] == 'system' %}"
-            "{% set found_item = true %}"
-            "{% endif %}"
-            "{% endfor %}"
-            "{% if not found_item %}"
+            "{% if messages[0]['role'] == 'system' %}"
+            "{{ messages[0]['content'] }}"
+            "{% else %}"
             "{{ system_prompt }}"
             "{% endif %}"
             "{% for message in messages %}"
-            "{% if message['role'] == 'user' %}"
+            "{% if message['role'] == 'system' %}"
+            "{{ message['content'] }}"
+            "{% elif message['role'] == 'user' %}"
             "{{ '<病人>：' + message['content'] + ' <HuatuoGPT>：' }}"
             "{% elif message['role'] == 'assistant' %}"
             "{{ message['content'] + '</s>' }}"
@@ -951,6 +951,27 @@ class OrionStarTemplate(BaseTemplate):
         )
 
 
+class YiAITemplate(BaseTemplate):
+    """ https://huggingface.co/01-ai/Yi-34B-Chat/blob/main/tokenizer_config.json """
+
+    name = "yi"
+    allow_models = ["yi"]
+    stop = {
+        "strings": ["<|im_end|>"],
+    }
+
+    @property
+    def template(self):
+        return (
+            "{% for message in messages %}"
+            "{{ '<|im_start|>' + message['role'] + '\\n' + message['content'] + '<|im_end|>' + '\\n' }}"
+            "{% endfor %}"
+            "{% if add_generation_prompt %}"
+            "{{ '<|im_start|>assistant\\n' }}"
+            "{% endif %}"
+        )
+
+
 register_prompt_adapter(AlpacaTemplate)
 register_prompt_adapter(AquilaChatTemplate)
 register_prompt_adapter(BaiChuanTemplate)
@@ -959,6 +980,7 @@ register_prompt_adapter(BelleTemplate)
 register_prompt_adapter(BlueLMTemplate)
 register_prompt_adapter(ChatglmTemplate)
 register_prompt_adapter(Chatglm2Template)
+register_prompt_adapter(Chatglm3Template)
 register_prompt_adapter(ChineseAlpaca2Template)
 register_prompt_adapter(DeepseekTemplate)
 register_prompt_adapter(FireflyTemplate)
@@ -977,6 +999,7 @@ register_prompt_adapter(StarChatTemplate)
 register_prompt_adapter(VicunaTemplate)
 register_prompt_adapter(XuanYuanTemplate)
 register_prompt_adapter(XverseTemplate)
+register_prompt_adapter(YiAITemplate)
 register_prompt_adapter(ZephyrTemplate)
 register_prompt_adapter(BaseTemplate)
 
@@ -987,5 +1010,5 @@ if __name__ == '__main__':
         {"role": "assistant", "content": "I'm doing great. How can I help you today?"},
         {"role": "user", "content": "I'd like to show off how chat templating works!"},
     ]
-    template = get_prompt_adapter(prompt_name="orionstar")
+    template = get_prompt_adapter(prompt_name="yi")
     print(template.apply_chat_template(chat))

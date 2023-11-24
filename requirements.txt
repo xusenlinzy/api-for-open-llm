@@ -9,11 +9,12 @@ tenacity
 sentencepiece
 tiktoken
 loguru
-transformers==4.33.2
+transformers>=4.31.0,<4.35.0
 peft>=0.4.0
 accelerate>=0.20.3
-triton
 sentence-transformers
 transformers_stream_generator
 cpm_kernels
 einops
+sse-starlette>=1.6.1
+starlette-context>=0.3.6,<0.4

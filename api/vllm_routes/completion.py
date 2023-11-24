@@ -1,24 +1,34 @@
 import secrets
 import time
+from functools import partial
 
+import anyio
 from fastapi import APIRouter, Request, Depends, HTTPException
-from fastapi.responses import StreamingResponse
 from openai.types.completion import Completion, CompletionChoice
 from openai.types.completion_usage import CompletionUsage
+from sse_starlette import EventSourceResponse
 from vllm.outputs import RequestOutput
 from vllm.sampling_params import SamplingParams
 
-from api.config import config
-from api.models import VLLM_ENGINE
-from api.routes.utils import check_api_key
+from api.config import SETTINGS
 from api.utils.protocol import CompletionCreateParams
+from api.utils.request import (
+    handle_request,
+    get_engine,
+    get_event_publisher,
+    check_api_key
+)
 from api.vllm_routes.utils import get_model_inputs
 
 completion_router = APIRouter()
 
 
 @completion_router.post("/completions", dependencies=[Depends(check_api_key)])
-async def create_completion(request: CompletionCreateParams, raw_request: Request):
+async def create_completion(
+    request: CompletionCreateParams,
+    raw_request: Request,
+    engine=Depends(get_engine),
+):
     """Completion API similar to OpenAI's API.
 
     See https://platform.openai.com/docs/api-reference/completions/create
@@ -40,23 +50,14 @@ async def create_completion(request: CompletionCreateParams, raw_request: Reques
         # The language models we currently support do not support suffix.
         raise HTTPException(status_code=400, detail="suffix is not currently supported")
 
-    request.max_tokens = request.max_tokens or 256
+    request.max_tokens = request.max_tokens or 128
     request_id = f"cmpl-{secrets.token_hex(12)}"
 
-    token_ids, error_check_ret = await get_model_inputs(request, request.prompt, config.MODEL_NAME.lower())
+    token_ids, error_check_ret = await get_model_inputs(engine, request, request.prompt, SETTINGS.model_name.lower())
     if error_check_ret is not None:
         return error_check_ret
 
-    # stop settings
-    _stop, stop_token_ids = [], []
-    if VLLM_ENGINE.prompt_adapter.stop is not None:
-        stop_token_ids = VLLM_ENGINE.prompt_adapter.stop.get("token_ids", [])
-        _stop = VLLM_ENGINE.prompt_adapter.stop.get("strings", [])
-
-    request.stop = request.stop or []
-    if isinstance(request.stop, str):
-        request.stop = [request.stop]
-    request.stop = list(set(_stop + request.stop))
+    request, stop_token_ids = await handle_request(request, engine.prompt_adapter.stop, chat=False)
 
     try:
         sampling_params = SamplingParams(
@@ -72,21 +73,30 @@ async def create_completion(request: CompletionCreateParams, raw_request: Reques
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    result_generator = VLLM_ENGINE.generate(
+    result_generator = engine.generate(
         request.prompt if isinstance(request.prompt, str) else None, sampling_params, request_id, token_ids,
     )
 
     # Streaming response
     if request.stream:
         generator = generate_completion_stream_generator(result_generator, request, request_id)
-        return StreamingResponse(generator, media_type="text/event-stream")
+        send_chan, recv_chan = anyio.create_memory_object_stream(10)
+        return EventSourceResponse(
+            recv_chan,
+            data_sender_callable=partial(
+                get_event_publisher,
+                request=raw_request,
+                inner_send_chan=send_chan,
+                iterator=generator,
+            ),
+        )
 
     # Non-streaming response
     final_res: RequestOutput = None
     async for res in result_generator:
         if await raw_request.is_disconnected():
             # Abort the request if the client disconnects.
-            await VLLM_ENGINE.abort(request_id)
+            await engine.abort(request_id)
             return
         final_res = res
         
@@ -132,7 +142,7 @@ async def generate_completion_stream_generator(
                 id=request_id, choices=[choice], created=int(time.time()),
                 model=request.model, object="text_completion",
             )
-            yield f"data: {chunk.json(ensure_ascii=False)}\n\n"
+            yield chunk.json(ensure_ascii=False)
 
             if output.finish_reason is not None:
                 choice = CompletionChoice(index=i, text=delta_text, finish_reason="stop")  # TODO: support for length
@@ -140,6 +150,4 @@ async def generate_completion_stream_generator(
                     id=request_id, choices=[choice], created=int(time.time()),
                     model=request.model, object="text_completion",
                 )
-                yield f"data: {chunk.json(exclude_none=True, ensure_ascii=False)}\n\n"
-
-    yield "data: [DONE]\n\n"
+                yield chunk.json(exclude_none=True, ensure_ascii=False)

@@ -2,10 +2,10 @@ import asyncio
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sentence_transformers import SentenceTransformer
+from loguru import logger
 
 from api.apapter import get_prompt_adapter
-from api.config import config
+from api.config import SETTINGS
 
 
 def create_app():
@@ -21,9 +21,11 @@ def create_app():
     return app
 
 
-def create_embedding_model() -> SentenceTransformer:
+def create_embedding_model():
     """ get embedding model from sentence-transformers. """
-    return SentenceTransformer(config.EMBEDDING_NAME, device=config.EMBEDDING_DEVICE)
+    from sentence_transformers import SentenceTransformer
+
+    return SentenceTransformer(SETTINGS.embedding_name, device=SETTINGS.embedding_device)
 
 
 def create_generate_model():
@@ -31,48 +33,47 @@ def create_generate_model():
     from api.generation import ModelServer
     from api.apapter.model import load_model
 
-    if config.PATCH_TYPE == "attention":
+    if SETTINGS.patch_type == "attention":
         from api.utils.patches import apply_attention_patch
 
         apply_attention_patch(use_memory_efficient_attention=True)
-    if config.PATCH_TYPE == "ntk":
+    if SETTINGS.patch_type == "ntk":
         from api.utils.patches import apply_ntk_scaling_patch
 
-        apply_ntk_scaling_patch(config.ALPHA)
+        apply_ntk_scaling_patch(SETTINGS.alpha)
+
+    include = {
+        "model_name", "quantize", "device", "device_map", "num_gpus",
+        "load_in_8bit", "load_in_4bit", "using_ptuning_v2", "dtype", "resize_embeddings"
+    }
+    kwargs = SETTINGS.dict(include=include)
 
     model, tokenizer = load_model(
-        config.MODEL_NAME,
-        model_name_or_path=config.MODEL_PATH,
-        adapter_model=config.ADAPTER_MODEL_PATH,
-        quantize=config.QUANTIZE,
-        device=config.DEVICE,
-        device_map=config.DEVICE_MAP,
-        num_gpus=config.NUM_GPUs,
-        load_in_8bit=config.LOAD_IN_8BIT,
-        load_in_4bit=config.LOAD_IN_4BIT,
-        use_ptuning_v2=config.USING_PTUNING_V2,
-        dtype=config.DTYPE,
-        resize_embeddings=config.RESIZE_EMBEDDINGS,
+        model_name_or_path=SETTINGS.model_path,
+        adapter_model=SETTINGS.adapter_model_path,
+        **kwargs,
     )
+
+    logger.info("Using default engine")
 
     return ModelServer(
         model,
         tokenizer,
-        config.DEVICE,
-        model_name=config.MODEL_NAME,
-        context_len=config.CONTEXT_LEN,
-        stream_interval=config.STREAM_INTERVERL,
-        prompt_name=config.PROMPT_NAME,
-        use_streamer_v2=config.USE_STREAMER_V2,
+        SETTINGS.device,
+        model_name=SETTINGS.model_name,
+        context_len=SETTINGS.context_length if SETTINGS.context_length > 0 else None,
+        stream_interval=SETTINGS.stream_interverl,
+        prompt_name=SETTINGS.chat_template,
+        use_streamer_v2=SETTINGS.use_streamer_v2,
     )
 
 
 def get_context_len(model_config) -> int:
     """ fix for model max length. """
-    if "qwen" in config.MODEL_NAME.lower():
-        max_model_len = config.CONTEXT_LEN or 8192
+    if "qwen" in SETTINGS.model_name.lower():
+        max_model_len = SETTINGS.context_length if SETTINGS.context_length > 0 else 8192
     else:
-        max_model_len = config.CONTEXT_LEN or model_config.max_model_len
+        max_model_len = model_config.max_model_len
     return max_model_len
 
 
@@ -85,17 +86,17 @@ def create_vllm_engine():
     except ImportError:
         return None
 
+    include = {
+        "tokenizer_mode", "trust_remote_code", "tensor_parallel_size",
+        "dtype", "gpu_memory_utilization", "max_num_seqs",
+    }
+    kwargs = SETTINGS.dict(include=include)
     engine_args = AsyncEngineArgs(
-        model=config.MODEL_PATH,
-        tokenizer_mode=config.TOKENIZE_MODE,
-        trust_remote_code=config.TRUST_REMOTE_CODE,
-        dtype=config.DTYPE,
-        tensor_parallel_size=config.TENSOR_PARALLEL_SIZE,
-        gpu_memory_utilization=config.GPU_MEMORY_UTILIZATION,
-        max_num_batched_tokens=config.MAX_NUM_BATCHED_TOKENS,
-        max_num_seqs=config.MAX_NUM_SEQS,
-        max_model_len=config.CONTEXT_LEN,
-        quantization=config.QUANTIZATION_METHOD,
+        model=SETTINGS.model_path,
+        max_num_batched_tokens=SETTINGS.max_num_batched_tokens if SETTINGS.max_num_batched_tokens > 0 else None,
+        max_model_len=SETTINGS.context_length if SETTINGS.context_length > 0 else None,
+        quantization=SETTINGS.quantization_method,
+        **kwargs,
     )
     engine = AsyncLLMEngine.from_engine_args(engine_args)
 
@@ -108,13 +109,44 @@ def create_vllm_engine():
 
     # prompt adapter for constructing model inputs
     engine.prompt_adapter = get_prompt_adapter(
-        config.MODEL_NAME.lower(),
-        prompt_name=config.PROMPT_NAME.lower() if config.PROMPT_NAME else None
+        SETTINGS.model_name.lower(),
+        prompt_name=SETTINGS.chat_template.lower() if SETTINGS.chat_template else None
     )
 
     engine_model_config = asyncio.run(engine.get_model_config())
     engine.engine.scheduler_config.max_model_len = get_context_len(engine_model_config)
     engine.max_model_len = get_context_len(engine_model_config)
+
+    logger.info("Using vllm engine")
+
+    return engine
+
+
+def create_llama_cpp_engine():
+    """ get llama.cpp generate engine for chat or completion. """
+    try:
+        from llama_cpp import Llama
+    except ImportError:
+        return None
+
+    include = {
+        "n_gpu_layers", "main_gpu", "tensor_split", "n_batch", "n_threads",
+        "n_threads_batch", "rope_scaling_type", "rope_freq_base", "rope_freq_scale"
+    }
+    kwargs = SETTINGS.dict(include=include)
+    engine = Llama(
+        model_path=SETTINGS.model_path,
+        n_ctx=SETTINGS.context_length if SETTINGS.context_length > 0 else 2048,
+        **kwargs,
+    )
+
+    # prompt adapter for constructing model inputs
+    engine.prompt_adapter = get_prompt_adapter(
+        SETTINGS.model_name.lower(),
+        prompt_name=SETTINGS.chat_template.lower() if SETTINGS.chat_template else None
+    )
+
+    logger.info("Using llama.cpp engine")
 
     return engine
 
@@ -123,16 +155,17 @@ def create_vllm_engine():
 app = create_app()
 
 # model for embedding
-EMBEDDED_MODEL = create_embedding_model() if (config.EMBEDDING_NAME and config.ACTIVATE_INFERENCE) else None
+EMBEDDED_MODEL = create_embedding_model() if (SETTINGS.embedding_name and SETTINGS.activate_inference) else None
 
 # model for transformers generate
-if config.ONLY_EMBEDDING:
-    GENERATE_MDDEL = None
-    VLLM_ENGINE = None
-else:
-    GENERATE_MDDEL = create_generate_model() if (not config.USE_VLLM and config.ACTIVATE_INFERENCE) else None
-    # model for vllm generate
-    VLLM_ENGINE = create_vllm_engine() if (config.USE_VLLM and config.ACTIVATE_INFERENCE) else None
+GENERATE_ENGINE = None
+if (not SETTINGS.only_embedding) and SETTINGS.activate_inference:
+    if SETTINGS.engine == "default":
+        GENERATE_ENGINE = create_generate_model()
+    elif SETTINGS.engine == "vllm":
+        GENERATE_ENGINE = create_vllm_engine()
+    elif SETTINGS.engine == "llama.cpp":
+        GENERATE_ENGINE = create_llama_cpp_engine()
 
 # model names for special processing
-EXCLUDE_MODELS = ["baichuan-13b", "qwen"]
+EXCLUDE_MODELS = ["baichuan-13b", "baichuan2-13b", "qwen", "chatglm3"]

@@ -1,11 +1,11 @@
-import asyncio
 import json
 import secrets
 import time
-from typing import Generator, Any
+from functools import partial
+from typing import Generator, Any, Iterator
 
-from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import StreamingResponse
+import anyio
+from fastapi import APIRouter, Depends, Request, HTTPException
 from loguru import logger
 from openai.types.chat import (
     ChatCompletionMessage,
@@ -17,49 +17,42 @@ from openai.types.chat.chat_completion_chunk import Choice as ChunkChoice
 from openai.types.chat.chat_completion_chunk import ChoiceDelta, ChoiceDeltaFunctionCall
 from openai.types.chat.chat_completion_message import FunctionCall
 from openai.types.completion_usage import CompletionUsage
+from sse_starlette import EventSourceResponse
+from starlette.concurrency import run_in_threadpool
 
-from api.config import config
+from api.config import SETTINGS
 from api.generation.chatglm import process_response_v3
 from api.generation.qwen import parse_response
-from api.models import GENERATE_MDDEL
-from api.routes.utils import check_requests, create_error_response, check_api_key
 from api.utils.protocol import ChatCompletionCreateParams, Role
+from api.utils.request import (
+    handle_request,
+    create_error_response,
+    check_api_key,
+    get_engine,
+    get_event_publisher,
+)
 
 chat_router = APIRouter(prefix="/chat")
 
 
 @chat_router.post("/completions", dependencies=[Depends(check_api_key)])
-async def create_chat_completion(request: ChatCompletionCreateParams, raw_request: Request):
+async def create_chat_completion(
+    request: ChatCompletionCreateParams,
+    raw_request: Request,
+    engine=Depends(get_engine),
+):
     """Creates a completion for the chat message"""
     if (not request.messages) or request.messages[-1]["role"] == Role.ASSISTANT:
         raise HTTPException(status_code=400, detail="Invalid request")
 
-    error_check_ret = check_requests(request)
-    if error_check_ret is not None:
-        return error_check_ret
+    request, stop_token_ids = await handle_request(request, engine.stop)
+    request.max_tokens = request.max_tokens or 1024
 
-    # stop settings
-    _stop, stop_token_ids = [], []
-    if GENERATE_MDDEL.stop is not None:
-        stop_token_ids = GENERATE_MDDEL.stop.get("token_ids", [])
-        _stop = GENERATE_MDDEL.stop.get("strings", [])
-
-    request.stop = request.stop or []
-    if isinstance(request.stop, str):
-        request.stop = [request.stop]
-
-    if "qwen" in config.MODEL_NAME.lower() and request.functions:
-        request.stop.append("Observation:")
-    request.stop = list(set(_stop + request.stop))
-
-    gen_params = request.dict()
-    gen_params.pop("messages")
+    gen_params = request.dict(exclude={"messages"})
     gen_params.update(
         dict(
             prompt=request.messages,
-            max_tokens=request.max_tokens or 1024,
             echo=False,
-            stop=request.stop,
             stop_token_ids=stop_token_ids,
         )
     )
@@ -67,24 +60,41 @@ async def create_chat_completion(request: ChatCompletionCreateParams, raw_reques
     logger.debug(f"==== request ====\n{gen_params}")
 
     if request.stream:
-        generator = chat_completion_stream_generator(gen_params, request, raw_request)
-        return StreamingResponse(generator, media_type="text/event-stream")
+        generator = await run_in_threadpool(chat_completion_stream_generator, engine, gen_params, request)
+        first_response = await run_in_threadpool(next, generator)
+
+        # If no exception was raised from first_response, we can assume that
+        # the iterator is valid and we can use it to stream the response.
+        def iterator() -> Iterator:
+            yield first_response
+            yield from generator
+
+        send_chan, recv_chan = anyio.create_memory_object_stream(10)
+        return EventSourceResponse(
+            recv_chan,
+            data_sender_callable=partial(
+                get_event_publisher,
+                request=raw_request,
+                inner_send_chan=send_chan,
+                iterator=iterator(),
+            ),
+        )
 
     choices = []
     usage = CompletionUsage(completion_tokens=0, prompt_tokens=0, total_tokens=0)
     for i in range(gen_params.get("n", 1)):
-        content = GENERATE_MDDEL.generate_gate(gen_params)
+        content = await run_in_threadpool(engine.generate_gate, gen_params)
         if content["error_code"] != 0:
             return create_error_response(content["error_code"], content["text"])
 
         function_call, finish_reason = None, "stop"
-        if request.functions and "chatglm3" in config.MODEL_NAME.lower():
+        if request.functions and "chatglm3" in SETTINGS.model_name.lower():
             try:
                 function_call = process_response_v3(content["text"], use_tool=True)
             except:
                 logger.warning("Failed to parse tool call")
 
-        elif request.functions and "qwen" in config.MODEL_NAME.lower():
+        elif request.functions and "qwen" in SETTINGS.model_name.lower():
             res, function_call = parse_response(content["text"])
             content["text"] = res
 
@@ -109,8 +119,8 @@ async def create_chat_completion(request: ChatCompletionCreateParams, raw_reques
     )
 
 
-async def chat_completion_stream_generator(
-    gen_params, request: ChatCompletionCreateParams, raw_request: Request
+def chat_completion_stream_generator(
+    engine, gen_params, request: ChatCompletionCreateParams,
 ) -> Generator[str, Any, None]:
     """
     Event stream format:
@@ -125,17 +135,12 @@ async def chat_completion_stream_generator(
             id=_id, choices=[choice], created=int(time.time()),
             model=request.model, object="chat.completion.chunk",
         )
-        yield f"data: {chunk.json(ensure_ascii=False)}\n\n"
+        yield chunk.json(ensure_ascii=False)
 
         previous_text = ""
-        for content in GENERATE_MDDEL.generate_stream_gate(gen_params):
-            if await raw_request.is_disconnected():
-                asyncio.current_task().cancel()
-                return
-
+        for content in engine.generate_stream_gate(gen_params):
             if content["error_code"] != 0:
-                yield f"data: {json.dumps(content, ensure_ascii=False)}\n\n"
-                yield "data: [DONE]\n\n"
+                yield json.dumps(content, ensure_ascii=False)
                 return
 
             decoded_unicode = content["text"].replace("\ufffd", "")
@@ -147,13 +152,13 @@ async def chat_completion_stream_generator(
                 continue
 
             function_call = None
-            if finish_reason == "function_call" and "chatglm3" in config.MODEL_NAME.lower():
+            if finish_reason == "function_call" and "chatglm3" in SETTINGS.model_name.lower():
                 try:
                     function_call = process_response_v3(decoded_unicode, use_tool=use_tool)
                 except:
                     logger.warning("Failed to parse tool call")
 
-            elif finish_reason == "function_call" and "qwen" in config.MODEL_NAME.lower():
+            elif finish_reason == "function_call" and "qwen" in SETTINGS.model_name.lower():
                 _, function_call = parse_response(decoded_unicode)
 
             if isinstance(function_call, dict) and "arguments" in function_call:
@@ -167,12 +172,11 @@ async def chat_completion_stream_generator(
                 id=_id, choices=[choice], created=int(time.time()),
                 model=request.model, object="chat.completion.chunk",
             )
-            yield f"data: {chunk.json(ensure_ascii=False)}\n\n"
+            yield chunk.json(ensure_ascii=False)
 
         choice = ChunkChoice(index=i, delta=ChoiceDelta(), finish_reason="stop")
         chunk = ChatCompletionChunk(
             id=_id, choices=[choice], created=int(time.time()),
             model=request.model, object="chat.completion.chunk",
         )
-        yield f"data: {chunk.json(exclude_none=True, ensure_ascii=False)}\n\n"
-        yield "data: [DONE]\n\n"
+        yield chunk.json(exclude_none=True, ensure_ascii=False)

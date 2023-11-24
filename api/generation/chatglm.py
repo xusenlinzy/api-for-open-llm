@@ -152,7 +152,7 @@ def generate_stream_chatglm_v3(
     context_len=2048,
     stream_interval=2,
 ):
-    prompt: List[ChatCompletionMessageParam] = params["prompt"]
+    prompt: Union[List[ChatCompletionMessageParam], str] = params["prompt"]
     functions = params.get("functions", None)
     temperature = float(params.get("temperature", 1.0))
     repetition_penalty = float(params.get("repetition_penalty", 1.0))
@@ -160,13 +160,17 @@ def generate_stream_chatglm_v3(
     max_new_tokens = int(params.get("max_tokens", 256))
     echo = params.get("echo", True)
 
-    messages = process_chatglm_messages(prompt, functions=functions)
-    if functions:
-        logger.debug(f"==== Messages with tools ====\n{messages}")
+    if isinstance(prompt, list):
+        messages = process_chatglm_messages(prompt, functions=functions)
+        if functions:
+            logger.debug(f"==== Messages with tools ====\n{messages}")
 
-    query, role = messages[-1]["content"], messages[-1]["role"]
+        query, role = messages[-1]["content"], messages[-1]["role"]
 
-    inputs = tokenizer.build_chat_input(query, history=messages[:-1], role=role)
+        inputs = tokenizer.build_chat_input(query, history=messages[:-1], role=role)
+    else:
+        inputs = tokenizer([prompt], return_tensors="pt")
+
     inputs = inputs.to(model.device)
     input_echo_len = len(inputs["input_ids"][0])
 

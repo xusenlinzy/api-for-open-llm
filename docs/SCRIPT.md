@@ -417,3 +417,14 @@ MODEL_NAME=llama2
 MODEL_PATH=Duxiaoman-DI/XuanYuan-70B-Chat
 PROMPT_NAME=xuanyuan
 ```
+
+### Yi-Chat
+
+01-ai/Yi-34B-Chat
+
+```shell
+MODEL_NAME=yi-chat
+MODEL_PATH=01-ai/Yi-34B-Chat
+PROMPT_NAME=yi
+DEVICE_MAP=auto
+```

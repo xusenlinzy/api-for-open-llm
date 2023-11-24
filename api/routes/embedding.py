@@ -5,10 +5,10 @@ import tiktoken
 from fastapi import APIRouter, Depends
 from openai.types.create_embedding_response import Usage
 
-from api.config import config
+from api.config import SETTINGS
 from api.models import EMBEDDED_MODEL
-from api.routes.utils import check_api_key
 from api.utils.protocol import EmbeddingCreateParams, Embedding, CreateEmbeddingResponse
+from api.utils.request import check_api_key
 
 embedding_router = APIRouter()
 
@@ -33,11 +33,11 @@ async def create_embeddings(request: EmbeddingCreateParams, model_name: str = No
 
     # https://huggingface.co/BAAI/bge-large-zh
     if EMBEDDED_MODEL is not None:
-        if "bge" in config.EMBEDDING_NAME.lower():
+        if "bge" in SETTINGS.embedding_name.lower():
             instruction = ""
-            if "zh" in config.EMBEDDING_NAME.lower():
+            if "zh" in SETTINGS.embedding_name.lower():
                 instruction = "为这个句子生成表示以用于检索相关文章："
-            elif "en" in config.EMBEDDING_NAME.lower():
+            elif "en" in SETTINGS.embedding_name.lower():
                 instruction = "Represent this sentence for searching relevant passages: "
             request.input = [instruction + q for q in request.input]
 
@@ -50,8 +50,8 @@ async def create_embeddings(request: EmbeddingCreateParams, model_name: str = No
         vecs = EMBEDDED_MODEL.encode(batch, normalize_embeddings=True)
 
         bs, dim = vecs.shape
-        if config.EMBEDDING_SIZE is not None and config.EMBEDDING_SIZE > dim:
-            zeros = np.zeros((bs, config.EMBEDDING_SIZE - dim))
+        if SETTINGS.embedding_size > dim:
+            zeros = np.zeros((bs, SETTINGS.embedding_size - dim))
             vecs = np.c_[vecs, zeros]
 
         if request.encoding_format == "base64":

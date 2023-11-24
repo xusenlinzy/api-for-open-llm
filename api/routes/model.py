@@ -5,8 +5,8 @@ from fastapi import APIRouter, Depends
 from openai.types.model import Model
 from pydantic import BaseModel
 
-from api.config import config
-from api.routes.utils import check_api_key
+from api.config import SETTINGS
+from api.utils.request import check_api_key
 
 model_router = APIRouter()
 
@@ -19,7 +19,7 @@ class ModelList(BaseModel):
 available_models = ModelList(
     data=[
         Model(
-            id=config.MODEL_NAME,
+            id=SETTINGS.model_name,
             object="model",
             created=int(time.time()),
             owned_by="open"
