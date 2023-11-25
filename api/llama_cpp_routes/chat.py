@@ -13,7 +13,7 @@ from api.utils.protocol import Role, ChatCompletionCreateParams
 from api.utils.request import (
     handle_request,
     check_api_key,
-    get_engine,
+    get_llama_cpp_engine,
     get_event_publisher,
 )
 
@@ -24,7 +24,7 @@ chat_router = APIRouter(prefix="/chat")
 async def create_chat_completion(
     request: ChatCompletionCreateParams,
     raw_request: Request,
-    engine=Depends(get_engine),
+    engine=Depends(get_llama_cpp_engine),
 ):
     logger.info(f"Received chat messages: {request.messages}")
 
@@ -39,7 +39,7 @@ async def create_chat_completion(
         "temperature", "temperature", "top_p", "stream", "stop",
         "max_tokens", "presence_penalty", "frequency_penalty", "model"
     }
-    kwargs = request.dict(include=include)
+    kwargs = request.model_dump(include=include)
     iterator_or_completion = await run_in_threadpool(engine.create_completion, prompt, **kwargs)
 
     _id = f"chatcmpl-{secrets.token_hex(12)}"

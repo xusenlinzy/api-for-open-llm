@@ -12,7 +12,7 @@ from api.utils.protocol import CompletionCreateParams
 from api.utils.request import (
     handle_request,
     check_api_key,
-    get_engine,
+    get_llama_cpp_engine,
     get_event_publisher,
 )
 
@@ -23,7 +23,7 @@ completion_router = APIRouter()
 async def create_completion(
     request: CompletionCreateParams,
     raw_request: Request,
-    engine=Depends(get_engine),
+    engine=Depends(get_llama_cpp_engine),
 ):
     """Completion API similar to OpenAI's API.
 
@@ -53,7 +53,7 @@ async def create_completion(
     request.max_tokens = request.max_tokens or 256
     request, stop_token_ids = await handle_request(request, engine.prompt_adapter.stop)
 
-    gen_kwargs = request.dict(exclude={"n", "user", "best_of"})
+    gen_kwargs = request.model_dump(exclude={"n", "user", "best_of"})
     iterator_or_completion = await run_in_threadpool(engine, **gen_kwargs)
 
     if isinstance(iterator_or_completion, Iterator):
@@ -61,7 +61,7 @@ async def create_completion(
         first_response = await run_in_threadpool(next, iterator_or_completion)
 
         # If no exception was raised from first_response, we can assume that
-        # the iterator is valid and we can use it to stream the response.
+        # the iterator is valid, and we can use it to stream the response.
         def iterator() -> Iterator[llama_cpp.ChatCompletionChunk]:
             yield json.dumps(first_response, ensure_ascii=False)
             for part in iterator_or_completion:

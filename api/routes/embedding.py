@@ -4,18 +4,22 @@ import numpy as np
 import tiktoken
 from fastapi import APIRouter, Depends
 from openai.types.create_embedding_response import Usage
+from sentence_transformers import SentenceTransformer
 
 from api.config import SETTINGS
-from api.models import EMBEDDED_MODEL
 from api.utils.protocol import EmbeddingCreateParams, Embedding, CreateEmbeddingResponse
-from api.utils.request import check_api_key
+from api.utils.request import check_api_key, get_embedding_engine
 
 embedding_router = APIRouter()
 
 
 @embedding_router.post("/embeddings", dependencies=[Depends(check_api_key)])
 @embedding_router.post("/engines/{model_name}/embeddings", dependencies=[Depends(check_api_key)])
-async def create_embeddings(request: EmbeddingCreateParams, model_name: str = None):
+async def create_embeddings(
+    request: EmbeddingCreateParams,
+    model_name: str = None,
+    engine: SentenceTransformer = Depends(get_embedding_engine),
+):
     """Creates embeddings for the text"""
     if request.model is None:
         request.model = model_name
@@ -32,7 +36,7 @@ async def create_embeddings(request: EmbeddingCreateParams, model_name: str = No
             request.input = [decoding.decode(text) for text in request.input]
 
     # https://huggingface.co/BAAI/bge-large-zh
-    if EMBEDDED_MODEL is not None:
+    if engine is not None:
         if "bge" in SETTINGS.embedding_name.lower():
             instruction = ""
             if "zh" in SETTINGS.embedding_name.lower():
@@ -47,7 +51,7 @@ async def create_embeddings(request: EmbeddingCreateParams, model_name: str = No
     ]
     for num_batch, batch in enumerate(batches):
         token_num = sum([len(i) for i in batch])
-        vecs = EMBEDDED_MODEL.encode(batch, normalize_embeddings=True)
+        vecs = engine.encode(batch, normalize_embeddings=True)
 
         bs, dim = vecs.shape
         if SETTINGS.embedding_size > dim:

@@ -1,12 +1,14 @@
 import multiprocessing
 import os
-from typing import Optional, Dict, List, Literal, Union
-import json
+from typing import Optional, Dict, List, Union
+
 import dotenv
 from loguru import logger
 from pydantic import BaseModel, Field
 
 dotenv.load_dotenv()
+# Disable warning for model_name settings
+BaseModel.model_config["protected_namespaces"] = ()
 
 
 def get_bool_env(key, default="false"):
@@ -237,7 +239,7 @@ class Settings(BaseModel):
 
 
 SETTINGS = Settings()
-logger.debug(f"SETTINGS: {json.dumps(SETTINGS.dict(), ensure_ascii=False, indent=4)}")
+logger.debug(f"SETTINGS: {SETTINGS.model_dump_json(indent=4)}")
 if SETTINGS.gpus:
     if len(SETTINGS.gpus.split(",")) < SETTINGS.num_gpus:
         raise ValueError(

@@ -8,7 +8,7 @@ from api.apapter import get_prompt_adapter
 from api.config import SETTINGS
 
 
-def create_app():
+def create_app() -> FastAPI:
     """ create fastapi app server """
     app = FastAPI()
     app.add_middleware(
@@ -46,7 +46,7 @@ def create_generate_model():
         "model_name", "quantize", "device", "device_map", "num_gpus",
         "load_in_8bit", "load_in_4bit", "using_ptuning_v2", "dtype", "resize_embeddings"
     }
-    kwargs = SETTINGS.dict(include=include)
+    kwargs = SETTINGS.model_dump(include=include)
 
     model, tokenizer = load_model(
         model_name_or_path=SETTINGS.model_path,
@@ -90,7 +90,7 @@ def create_vllm_engine():
         "tokenizer_mode", "trust_remote_code", "tensor_parallel_size",
         "dtype", "gpu_memory_utilization", "max_num_seqs",
     }
-    kwargs = SETTINGS.dict(include=include)
+    kwargs = SETTINGS.model_dump(include=include)
     engine_args = AsyncEngineArgs(
         model=SETTINGS.model_path,
         max_num_batched_tokens=SETTINGS.max_num_batched_tokens if SETTINGS.max_num_batched_tokens > 0 else None,
@@ -133,7 +133,7 @@ def create_llama_cpp_engine():
         "n_gpu_layers", "main_gpu", "tensor_split", "n_batch", "n_threads",
         "n_threads_batch", "rope_scaling_type", "rope_freq_base", "rope_freq_scale"
     }
-    kwargs = SETTINGS.dict(include=include)
+    kwargs = SETTINGS.model_dump(include=include)
     engine = Llama(
         model_path=SETTINGS.model_path,
         n_ctx=SETTINGS.context_length if SETTINGS.context_length > 0 else 2048,

@@ -1,6 +1,7 @@
 import secrets
 import time
 from functools import partial
+from typing import AsyncGenerator
 
 import anyio
 from fastapi import APIRouter, Request, Depends, HTTPException
@@ -125,7 +126,7 @@ async def create_completion(
 
 async def generate_completion_stream_generator(
     result_generator, request: CompletionCreateParams, request_id: str
-):
+) -> AsyncGenerator:
     previous_texts = [""] * request.n
     previous_num_tokens = [0] * request.n
     async for res in result_generator:
@@ -142,7 +143,7 @@ async def generate_completion_stream_generator(
                 id=request_id, choices=[choice], created=int(time.time()),
                 model=request.model, object="text_completion",
             )
-            yield chunk.json(ensure_ascii=False)
+            yield chunk.model_dump_json()
 
             if output.finish_reason is not None:
                 choice = CompletionChoice(index=i, text=delta_text, finish_reason="stop")  # TODO: support for length
@@ -150,4 +151,4 @@ async def generate_completion_stream_generator(
                     id=request_id, choices=[choice], created=int(time.time()),
                     model=request.model, object="text_completion",
                 )
-                yield chunk.json(exclude_none=True, ensure_ascii=False)
+                yield chunk.model_dump_json(exclude_none=True)

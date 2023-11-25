@@ -48,7 +48,7 @@ async def create_chat_completion(
     request, stop_token_ids = await handle_request(request, engine.stop)
     request.max_tokens = request.max_tokens or 1024
 
-    gen_params = request.dict(exclude={"messages"})
+    gen_params = request.model_dump(exclude={"messages"})
     gen_params.update(
         dict(
             prompt=request.messages,
@@ -64,7 +64,7 @@ async def create_chat_completion(
         first_response = await run_in_threadpool(next, generator)
 
         # If no exception was raised from first_response, we can assume that
-        # the iterator is valid and we can use it to stream the response.
+        # the iterator is valid, and we can use it to stream the response.
         def iterator() -> Iterator:
             yield first_response
             yield from generator
@@ -109,8 +109,8 @@ async def create_chat_completion(
 
         choices.append(Choice(index=i, message=message, finish_reason=finish_reason))
 
-        task_usage = CompletionUsage.parse_obj(content["usage"])
-        for usage_key, usage_value in task_usage.dict().items():
+        task_usage = CompletionUsage.model_validate(content["usage"])
+        for usage_key, usage_value in task_usage.model_dump().items():
             setattr(usage, usage_key, getattr(usage, usage_key) + usage_value)
 
     return ChatCompletion(
@@ -135,7 +135,7 @@ def chat_completion_stream_generator(
             id=_id, choices=[choice], created=int(time.time()),
             model=request.model, object="chat.completion.chunk",
         )
-        yield chunk.json(ensure_ascii=False)
+        yield chunk.model_dump_json()
 
         previous_text = ""
         for content in engine.generate_stream_gate(gen_params):
@@ -172,11 +172,11 @@ def chat_completion_stream_generator(
                 id=_id, choices=[choice], created=int(time.time()),
                 model=request.model, object="chat.completion.chunk",
             )
-            yield chunk.json(ensure_ascii=False)
+            yield chunk.model_dump_json()
 
         choice = ChunkChoice(index=i, delta=ChoiceDelta(), finish_reason="stop")
         chunk = ChatCompletionChunk(
             id=_id, choices=[choice], created=int(time.time()),
             model=request.model, object="chat.completion.chunk",
         )
-        yield chunk.json(exclude_none=True, ensure_ascii=False)
+        yield chunk.model_dump_json(exclude_none=True)

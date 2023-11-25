@@ -1,5 +1,12 @@
 from threading import Lock
-from typing import Optional, Union, Iterator, Dict, Any, AsyncIterator
+from typing import (
+    Optional,
+    Union,
+    Iterator,
+    Dict,
+    Any,
+    AsyncIterator,
+)
 
 import anyio
 from anyio.streams.memory import MemoryObjectSendStream
@@ -10,7 +17,7 @@ from loguru import logger
 from starlette.concurrency import iterate_in_threadpool
 
 from api.config import SETTINGS
-from api.models import GENERATE_ENGINE
+from api.models import GENERATE_ENGINE, EMBEDDED_MODEL
 from api.utils.constants import ErrorCode
 from api.utils.protocol import (
     ChatCompletionCreateParams,
@@ -45,7 +52,7 @@ async def check_api_key(
 
 
 def create_error_response(code: int, message: str) -> JSONResponse:
-    return JSONResponse(ErrorResponse(message=message, code=code).dict(), status_code=500)
+    return JSONResponse(ErrorResponse(message=message, code=code).model_dump(), status_code=500)
 
 
 async def handle_request(
@@ -118,7 +125,7 @@ def check_requests(request: Union[CompletionCreateParams, ChatCompletionCreatePa
     return None
 
 
-def get_engine():
+def get_llama_cpp_engine():
     # NOTE: This double lock allows the currently streaming model to
     # check if any other requests are pending in the same thread and cancel
     # the stream if so.
@@ -135,6 +142,14 @@ def get_engine():
     finally:
         if release_outer_lock:
             llama_outer_lock.release()
+
+
+def get_engine():
+    yield GENERATE_ENGINE
+
+
+def get_embedding_engine():
+    yield EMBEDDED_MODEL
 
 
 async def get_event_publisher(

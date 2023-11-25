@@ -1,6 +1,7 @@
 import secrets
 import time
 from functools import partial
+from typing import AsyncGenerator
 
 import anyio
 from fastapi import APIRouter, Depends, Request, HTTPException
@@ -147,7 +148,7 @@ async def create_chat_completion(
 
 async def chat_completion_stream_generator(
     result_generator, request: ChatCompletionCreateParams, request_id: str
-):
+) -> AsyncGenerator:
     """
     Event stream format:
     https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events#event_stream_format
@@ -160,7 +161,7 @@ async def chat_completion_stream_generator(
             id=request_id, choices=[choice], created=int(time.time()),
             model=request.model, object="chat.completion.chunk",
         )
-        yield chunk.json(ensure_ascii=False)
+        yield chunk.model_dump_json()
 
         previous_texts = [""] * n
         previous_num_tokens = [0] * n
@@ -178,7 +179,7 @@ async def chat_completion_stream_generator(
                     id=request_id, choices=[choice], created=int(time.time()),
                     model=request.model, object="chat.completion.chunk",
                 )
-                yield chunk.json(ensure_ascii=False)
+                yield chunk.model_dump_json()
 
                 if output.finish_reason is not None:
                     choice = ChunkChoice(index=i, delta=ChoiceDelta(), finish_reason="stop")
@@ -186,4 +187,4 @@ async def chat_completion_stream_generator(
                         id=request_id, choices=[choice], created=int(time.time()),
                         model=request.model, object="chat.completion.chunk",
                     )
-                    yield chunk.json(exclude_none=True, ensure_ascii=False)
+                    yield chunk.model_dump_json(exclude_none=True)
