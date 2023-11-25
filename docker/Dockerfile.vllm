@@ -5,9 +5,9 @@ ENV PYTHONPATH /workspace/
 COPY requirements.txt /workspace/
 COPY . /workspace
 
-RUN pip install --no-cache-dir -r /workspace/requirements.txt
-RUN pip install bitsandbytes --upgrade -i https://mirror.baidu.com/pypi/simple && \
-    pip install torch==2.0.1 -i https://mirror.baidu.com/pypi/simple && \
-    pip install xformers --no-deps -i https://mirror.baidu.com/pypi/simple && \
-    pip install vllm==0.2.0 -i https://mirror.baidu.com/pypi/simple && \
+RUN pip install --no-cache-dir -r /workspace/requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+RUN pip install bitsandbytes --upgrade -i https://pypi.tuna.tsinghua.edu.cn/simple && \
+    pip install torch==2.0.1 -i https://pypi.tuna.tsinghua.edu.cn/simple && \
+    pip install xformers --no-deps -i https://pypi.tuna.tsinghua.edu.cn/simple && \
+    pip install vllm==0.2.0 -i https://pypi.tuna.tsinghua.edu.cn/simple && \
     pip uninstall transformer-engine -y

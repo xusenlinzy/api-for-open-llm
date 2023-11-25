@@ -1,5 +1,6 @@
 openai>=1.2.3
 bitsandbytes
+pydantic>=2.5.2
 fastapi>=0.104.1
 python-dotenv==1.0.0
 uvicorn
