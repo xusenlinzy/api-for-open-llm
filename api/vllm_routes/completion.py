@@ -1,11 +1,12 @@
 import secrets
 import time
 from functools import partial
-from typing import AsyncGenerator
+from typing import AsyncGenerator, List, Dict
 
 import anyio
 from fastapi import APIRouter, Request, Depends, HTTPException
-from openai.types.completion import Completion, CompletionChoice
+from openai.types.completion import Completion
+from openai.types.completion_choice import CompletionChoice, Logprobs
 from openai.types.completion_usage import CompletionUsage
 from sse_starlette import EventSourceResponse
 from vllm.outputs import RequestOutput
@@ -80,7 +81,7 @@ async def create_completion(
 
     # Streaming response
     if request.stream:
-        generator = generate_completion_stream_generator(result_generator, request, request_id)
+        generator = generate_completion_stream_generator(result_generator, request, request_id, engine.engine.tokenizer)
         send_chan, recv_chan = anyio.create_memory_object_stream(10)
         return EventSourceResponse(
             recv_chan,
@@ -105,8 +106,14 @@ async def create_completion(
     choices = []
     for output in final_res.outputs:
         output.text = output.text.replace("�", "")
+        logprobs = None
+        if request.logprobs is not None:
+            logprobs = create_logprobs(engine.engine.tokenizer, output.token_ids, output.logprobs)
         choice = CompletionChoice(
-            index=output.index, text=output.text, finish_reason=output.finish_reason,
+            index=output.index,
+            text=output.text,
+            finish_reason=output.finish_reason,
+            logprobs=logprobs,
         )
         choices.append(choice)
 
@@ -124,8 +131,36 @@ async def create_completion(
     )
 
 
+def create_logprobs(
+    tokenizer,
+    token_ids: List[int],
+    id_logprobs: List[Dict[int, float]],
+    initial_text_offset: int = 0
+) -> Logprobs:
+    """Create OpenAI-style logprobs."""
+    logprobs = Logprobs(text_offset=[], token_logprobs=[], tokens=[], top_logprobs=[])
+    last_token_len = 0
+    for token_id, id_logprob in zip(token_ids, id_logprobs):
+        token = tokenizer.convert_ids_to_tokens(token_id)
+        logprobs.tokens.append(token)
+        logprobs.token_logprobs.append(id_logprob[token_id])
+        if len(logprobs.text_offset) == 0:
+            logprobs.text_offset.append(initial_text_offset)
+        else:
+            logprobs.text_offset.append(logprobs.text_offset[-1] + last_token_len)
+        last_token_len = len(token)
+
+        logprobs.top_logprobs.append(
+            {
+                tokenizer.convert_ids_to_tokens(i): p
+                for i, p in id_logprob.items()
+            }
+        )
+    return logprobs
+
+
 async def generate_completion_stream_generator(
-    result_generator, request: CompletionCreateParams, request_id: str
+    result_generator, request: CompletionCreateParams, request_id: str, tokenizer,
 ) -> AsyncGenerator:
     previous_texts = [""] * request.n
     previous_num_tokens = [0] * request.n
@@ -135,10 +170,22 @@ async def generate_completion_stream_generator(
             i = output.index
             output.text = output.text.replace("�", "")
             delta_text = output.text[len(previous_texts[i]):]
+
+            if request.logprobs is not None:
+                logprobs = create_logprobs(
+                    tokenizer,
+                    output.token_ids[previous_num_tokens[i]:],
+                    output.logprobs[previous_num_tokens[i]:],
+                    len(previous_texts[i]))
+            else:
+                logprobs = None
+
             previous_texts[i] = output.text
             previous_num_tokens[i] = len(output.token_ids)
 
-            choice = CompletionChoice(index=i, text=delta_text, finish_reason="stop")  # TODO: support for length
+            choice = CompletionChoice(
+                index=i, text=delta_text, finish_reason="stop", logprobs=logprobs,
+            )  # TODO: support for length
             chunk = Completion(
                 id=request_id, choices=[choice], created=int(time.time()),
                 model=request.model, object="text_completion",
@@ -146,7 +193,13 @@ async def generate_completion_stream_generator(
             yield chunk.model_dump_json()
 
             if output.finish_reason is not None:
-                choice = CompletionChoice(index=i, text=delta_text, finish_reason="stop")  # TODO: support for length
+                if request.logprobs is not None:
+                    logprobs = Logprobs(text_offset=[], token_logprobs=[], tokens=[], top_logprobs=[])
+                else:
+                    logprobs = None
+                choice = CompletionChoice(
+                    index=i, text=delta_text, finish_reason="stop", logprobs=logprobs,
+                )  # TODO: support for length
                 chunk = Completion(
                     id=request_id, choices=[choice], created=int(time.time()),
                     model=request.model, object="text_completion",

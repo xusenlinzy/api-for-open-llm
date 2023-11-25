@@ -125,7 +125,12 @@ def generate_completion_stream_generator(
                 delta_text = decoded_unicode[len(previous_text):]
                 previous_text = decoded_unicode
 
-                choice = CompletionChoice(index=i, text=delta_text, finish_reason="stop")  # TODO: support for length
+                choice = CompletionChoice(
+                    index=i,
+                    text=delta_text,
+                    finish_reason="stop",  # TODO: support for length
+                    logprobs=None,
+                )
                 chunk = Completion(
                     id=_id, choices=[choice], created=int(time.time()),
                     model=request.model, object="text_completion",
