@@ -1,7 +1,7 @@
 # Reference: https://openai.com/blog/function-calling-and-other-api-updates
 
-from openai import OpenAI
 from loguru import logger
+from openai import OpenAI
 
 client = OpenAI(
     api_key="EMPTY",
@@ -17,7 +17,7 @@ def call_qwen(messages, functions=None):
         )
     else:
         response = client.chat.completions.create(model="Qwen", messages=messages)
-    logger.info(response.dict())
+    logger.info(response.model_dump())
     logger.info(response.choices[0].message.content)
     return response
 

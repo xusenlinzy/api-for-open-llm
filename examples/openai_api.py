@@ -3,9 +3,9 @@ from typing import Optional
 from fastapi import Depends, HTTPException
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
 from fastapi.security.http import HTTPAuthorizationCredentials, HTTPBearer
 from openai import AsyncOpenAI
+from sse_starlette import EventSourceResponse
 
 from api.utils.protocol import ChatCompletionCreateParams, CompletionCreateParams, EmbeddingCreateParams
 
@@ -90,15 +90,15 @@ async def create_chat_completion(request: ChatCompletionCreateParams):
         base_url=MODEL_LIST["chat"][model]["base_url"],
     )
     request.model = "gpt-3.5-turbo"
-    response = await client.chat.completions.create(**request.dict(exclude_none=True))
+    response = await client.chat.completions.create(**request.model_dump(exclude_none=True))
 
     async def chat_completion_stream_generator():
         async for chunk in response:
-            yield f"data: {chunk.json(ensure_ascii=False)}\n\n"
-        yield "data: [DONE]\n\n"
+            yield chunk.model_dump_json()
+        yield "[DONE]"
 
     if request.stream:
-        return StreamingResponse(chat_completion_stream_generator(), media_type="text/event-stream")
+        return EventSourceResponse(chat_completion_stream_generator())
 
     return response
 
@@ -114,15 +114,15 @@ async def create_completion(request: CompletionCreateParams):
         base_url=MODEL_LIST["completion"][model]["base_url"],
     )
     request.model = "gpt-3.5-turbo"
-    response = await client.completions.create(**request.dict(exclude_none=True))
+    response = await client.completions.create(**request.model_dump(exclude_none=True))
 
     async def generate_completion_stream_generator():
         async for chunk in response:
-            yield f"data: {chunk.json(ensure_ascii=False)}\n\n"
-        yield "data: [DONE]\n\n"
+            yield chunk.model_dump_json()
+        yield "[DONE]"
 
     if request.stream:
-        return StreamingResponse(generate_completion_stream_generator(), media_type="text/event-stream")
+        return EventSourceResponse(generate_completion_stream_generator())
 
     return response
 
@@ -133,7 +133,7 @@ async def create_embeddings(request: EmbeddingCreateParams):
         api_key=MODEL_LIST["embedding"]["api_key"],
         base_url=MODEL_LIST["embedding"]["base_url"],
     )
-    embeddings = await client.embeddings.create(**request.dict(exclude_none=True))
+    embeddings = await client.embeddings.create(**request.model_dump(exclude_none=True))
     return embeddings
 
 

@@ -40,7 +40,7 @@ def chat_once(functions, message_placeholder, client: OpenAI):
             elif chunk.choices[0].finish_reason == "function_call":
                 try:
                     function_call = chunk.choices[0].delta.function_call
-                    st.info(f"**Function Call Response ==>** {function_call.dict()}")
+                    st.info(f"**Function Call Response ==>** {function_call.model_dump()}")
 
                     function_to_call = available_functions[function_call.name]
                     function_args = json.loads(function_call.arguments)

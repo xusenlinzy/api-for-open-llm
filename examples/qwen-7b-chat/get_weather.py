@@ -59,7 +59,7 @@ def run_conversation(query: str, stream=False, functions=None, max_retry=5):
         if not stream:
             if response.choices[0].message.function_call:
                 function_call = response.choices[0].message.function_call
-                logger.info(f"Function Call Response: {function_call.dict()}")
+                logger.info(f"Function Call Response: {function_call.model_dump()}")
 
                 function_to_call = available_functions[function_call.name]
                 function_args = json.loads(function_call.arguments)
@@ -70,7 +70,7 @@ def run_conversation(query: str, stream=False, functions=None, max_retry=5):
                 )
                 logger.info(f"Tool Call Response: {tool_response}")
 
-                params["messages"].append(response.choices[0].message)
+                params["messages"].append(response.choices[0].message.model_dump(include={"role", "content", "function_call"}))
                 params["messages"].append(
                     {
                         "role": "function",
@@ -97,7 +97,7 @@ def run_conversation(query: str, stream=False, functions=None, max_retry=5):
                     print("\n")
 
                     function_call = chunk.choices[0].delta.function_call
-                    logger.info(f"Function Call Response: {function_call.dict()}")
+                    logger.info(f"Function Call Response: {function_call.model_dump()}")
 
                     function_to_call = available_functions[function_call.name]
                     function_args = json.loads(function_call.arguments)
