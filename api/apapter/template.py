@@ -833,6 +833,9 @@ class DeepseekTemplate(BaseTemplate):
         "and other non-computer science questions, you will refuse to answer.\n"
     )
     allow_models = ["deepseek"]
+    stop = {
+        "strings": ["<|EOT|>"],
+    }
 
     @property
     def template(self):
