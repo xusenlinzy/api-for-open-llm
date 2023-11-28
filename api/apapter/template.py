@@ -264,7 +264,7 @@ class Chatglm3Template(BaseTemplate):
     name = "chatglm3"
     allow_models = ["chatglm3"]
     stop = {
-        "strings": ["<|user|>", "<|observation|>", "</s>", "<|observation|>"],
+        "strings": ["<|user|>", "</s>", "<|observation|>"],
         "token_ids": [64795, 64797, 2],
     }
 
@@ -957,7 +957,8 @@ class YiAITemplate(BaseTemplate):
     name = "yi"
     allow_models = ["yi"]
     stop = {
-        "strings": ["<|im_end|>"],
+        "strings": ["<|endoftext|>", "<|im_end|>"],
+        "token_ids": [2, 6, 7, 8],  # "<|endoftext|>", "<|im_start|>", "<|im_end|>", "<|im_sep|>"
     }
 
     @property

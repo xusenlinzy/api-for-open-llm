@@ -1,3 +1,4 @@
+import json
 from threading import Lock
 from typing import (
     Optional,
@@ -14,10 +15,10 @@ from fastapi import Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastapi.security.http import HTTPAuthorizationCredentials, HTTPBearer
 from loguru import logger
+from pydantic import BaseModel
 from starlette.concurrency import iterate_in_threadpool
 
 from api.config import SETTINGS
-from api.models import GENERATE_ENGINE, EMBEDDED_MODEL
 from api.utils.constants import ErrorCode
 from api.utils.protocol import (
     ChatCompletionCreateParams,
@@ -57,7 +58,7 @@ def create_error_response(code: int, message: str) -> JSONResponse:
 
 async def handle_request(
     request: Union[CompletionCreateParams, ChatCompletionCreateParams],
-    stop: Dict[str, Any],
+    stop: Dict[str, Any] = None,
     chat: bool = True,
 ):
     error_check_ret = check_requests(request)
@@ -125,33 +126,6 @@ def check_requests(request: Union[CompletionCreateParams, ChatCompletionCreatePa
     return None
 
 
-def get_llama_cpp_engine():
-    # NOTE: This double lock allows the currently streaming model to
-    # check if any other requests are pending in the same thread and cancel
-    # the stream if so.
-    llama_outer_lock.acquire()
-    release_outer_lock = True
-    try:
-        llama_inner_lock.acquire()
-        try:
-            llama_outer_lock.release()
-            release_outer_lock = False
-            yield GENERATE_ENGINE
-        finally:
-            llama_inner_lock.release()
-    finally:
-        if release_outer_lock:
-            llama_outer_lock.release()
-
-
-def get_engine():
-    yield GENERATE_ENGINE
-
-
-def get_embedding_engine():
-    yield EMBEDDED_MODEL
-
-
 async def get_event_publisher(
     request: Request,
     inner_send_chan: MemoryObjectSendStream,
@@ -161,15 +135,25 @@ async def get_event_publisher(
         try:
             if SETTINGS.engine != "vllm":
                 async for chunk in iterate_in_threadpool(iterator):
+                    if isinstance(chunk, BaseModel):
+                        chunk = chunk.model_dump_json()
+                    elif isinstance(chunk, dict):
+                        chunk = json.dumps(chunk, ensure_ascii=False)
+
                     await inner_send_chan.send(dict(data=chunk))
+
                     if await request.is_disconnected():
                         raise anyio.get_cancelled_exc_class()()
+
                     if SETTINGS.interrupt_requests and llama_outer_lock.locked():
                         await inner_send_chan.send(dict(data="[DONE]"))
                         raise anyio.get_cancelled_exc_class()()
             else:
                 async for chunk in iterator:
+                    chunk = chunk.model_dump_json()
                     await inner_send_chan.send(dict(data=chunk))
+                    if await request.is_disconnected():
+                        raise anyio.get_cancelled_exc_class()()
             await inner_send_chan.send(dict(data="[DONE]"))
         except anyio.get_cancelled_exc_class() as e:
             logger.info("disconnected")

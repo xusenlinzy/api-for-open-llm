@@ -1,8 +1,6 @@
 from typing import List, Tuple
 
 from openai.types.chat import ChatCompletionMessageParam
-
-from api.utils.protocol import Role
 from transformers.generation.logits_process import (
     LogitsProcessorList,
     RepetitionPenaltyLogitsProcessor,
@@ -10,6 +8,8 @@ from transformers.generation.logits_process import (
     TopKLogitsWarper,
     TopPLogitsWarper,
 )
+
+from api.utils.protocol import Role
 
 
 def parse_messages(

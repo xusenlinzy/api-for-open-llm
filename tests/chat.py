@@ -8,7 +8,7 @@ client = OpenAI(
 
 # List models API
 models = client.models.list()
-print(models.dict())
+print(models.model_dump())
 
 
 # Chat completion API

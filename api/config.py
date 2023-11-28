@@ -123,11 +123,6 @@ class Settings(BaseModel):
         ge=-1,
         description="Context length for generating completions."
     )
-    stream_interverl: Optional[int] = Field(
-        default=int(get_env("STREAM_INTERVERL", 2)),
-        ge=1,
-        description="Stream interverl for generating completions."
-    )
     chat_template: Optional[str] = Field(
         default=get_env("PROMPT_NAME", None),
         description="Chat template for generating completions."

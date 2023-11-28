@@ -1,5 +1,3 @@
-import json
-import secrets
 from functools import partial
 from typing import Iterator
 
@@ -9,11 +7,11 @@ from loguru import logger
 from sse_starlette import EventSourceResponse
 from starlette.concurrency import run_in_threadpool
 
+from api.llama_cpp_routes.utils import get_llama_cpp_engine
 from api.utils.protocol import Role, ChatCompletionCreateParams
 from api.utils.request import (
     handle_request,
     check_api_key,
-    get_llama_cpp_engine,
     get_event_publisher,
 )
 
@@ -31,87 +29,38 @@ async def create_chat_completion(
     if (not request.messages) or request.messages[-1]["role"] == Role.ASSISTANT:
         raise HTTPException(status_code=400, detail="Invalid request")
 
-    request, stop_token_ids = await handle_request(request, engine.prompt_adapter.stop)
+    request, stop_token_ids = await handle_request(request, engine.stop)
     request.max_tokens = request.max_tokens or 512
 
-    prompt = engine.prompt_adapter.apply_chat_template(request.messages)
+    prompt = engine.apply_chat_template(request.messages)
     include = {
         "temperature", "temperature", "top_p", "stream", "stop",
         "max_tokens", "presence_penalty", "frequency_penalty", "model"
     }
     kwargs = request.model_dump(include=include)
-    iterator_or_completion = await run_in_threadpool(engine.create_completion, prompt, **kwargs)
+    logger.debug(f"==== request ====\n{kwargs}")
 
-    _id = f"chatcmpl-{secrets.token_hex(12)}"
+    iterator_or_completion = await run_in_threadpool(engine.create_chat_completion, prompt, **kwargs)
 
-    if not request.stream:
-        completion = iterator_or_completion
-        return {
-            "id": _id,
-            "object": "chat.completion",
-            "created": completion["created"],
-            "model": request.model,
-            "choices": [
-                {
-                    "index": 0,
-                    "message": {
-                        "role": "assistant",
-                        "content": completion["choices"][0]["text"],
-                    },
-                    "finish_reason": completion["choices"][0]["finish_reason"],
-                }
-            ],
-            "usage": completion["usage"],
-        }
+    if isinstance(iterator_or_completion, Iterator):
+        # It's easier to ask for forgiveness than permission
+        first_response = await run_in_threadpool(next, iterator_or_completion)
 
-    def iterator() -> Iterator:
-        for i, chunk in enumerate(iterator_or_completion):
-            if i == 0:
-                yield json.dumps(
-                    {
-                        "id": _id,
-                        "model": request.model,
-                        "created": chunk["created"],
-                        "object": "chat.completion.chunk",
-                        "choices": [
-                            {
-                                "index": 0,
-                                "delta": {
-                                    "role": "assistant",
-                                },
-                                "finish_reason": None,
-                            }
-                        ],
-                    },
-                    ensure_ascii=False,
-                )
-            yield json.dumps(
-                {
-                    "id": _id,
-                    "model": request.model,
-                    "created": chunk["created"],
-                    "object": "chat.completion.chunk",
-                    "choices": [
-                        {
-                            "index": 0,
-                            "delta": {
-                                "content": chunk["choices"][0]["text"],
-                            }
-                            if chunk["choices"][0]["finish_reason"] is None else {},
-                            "finish_reason": chunk["choices"][0]["finish_reason"],
-                        }
-                    ],
-                },
-                ensure_ascii=False,
-            )
+        # If no exception was raised from first_response, we can assume that
+        # the iterator is valid, and we can use it to stream the response.
+        def iterator() -> Iterator:
+            yield first_response
+            yield from iterator_or_completion
 
-    send_chan, recv_chan = anyio.create_memory_object_stream(10)
-    return EventSourceResponse(
-        recv_chan,
-        data_sender_callable=partial(
-            get_event_publisher,
-            request=raw_request,
-            inner_send_chan=send_chan,
-            iterator=iterator(),
-        ),
-    )
+        send_chan, recv_chan = anyio.create_memory_object_stream(10)
+        return EventSourceResponse(
+            recv_chan,
+            data_sender_callable=partial(
+                get_event_publisher,
+                request=raw_request,
+                inner_send_chan=send_chan,
+                iterator=iterator(),
+            ),
+        )
+    else:
+        return iterator_or_completion

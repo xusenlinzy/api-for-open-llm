@@ -1,10 +1,7 @@
-import asyncio
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 
-from api.apapter import get_prompt_adapter
 from api.config import SETTINGS
 
 
@@ -30,7 +27,7 @@ def create_embedding_model():
 
 def create_generate_model():
     """ get generate model for chat or completion. """
-    from api.generation import ModelServer
+    from api.core.default import DefaultEngine
     from api.apapter.model import load_model
 
     if SETTINGS.patch_type == "attention":
@@ -56,25 +53,15 @@ def create_generate_model():
 
     logger.info("Using default engine")
 
-    return ModelServer(
+    return DefaultEngine(
         model,
         tokenizer,
         SETTINGS.device,
         model_name=SETTINGS.model_name,
         context_len=SETTINGS.context_length if SETTINGS.context_length > 0 else None,
-        stream_interval=SETTINGS.stream_interverl,
         prompt_name=SETTINGS.chat_template,
         use_streamer_v2=SETTINGS.use_streamer_v2,
     )
-
-
-def get_context_len(model_config) -> int:
-    """ fix for model max length. """
-    if "qwen" in SETTINGS.model_name.lower():
-        max_model_len = SETTINGS.context_length if SETTINGS.context_length > 0 else 8192
-    else:
-        max_model_len = model_config.max_model_len
-    return max_model_len
 
 
 def create_vllm_engine():
@@ -83,6 +70,7 @@ def create_vllm_engine():
         from vllm.engine.arg_utils import AsyncEngineArgs
         from vllm.engine.async_llm_engine import AsyncLLMEngine
         from vllm.transformers_utils.tokenizer import get_tokenizer
+        from api.core.vllm_engine import VllmEngine
     except ImportError:
         return None
 
@@ -101,31 +89,28 @@ def create_vllm_engine():
     engine = AsyncLLMEngine.from_engine_args(engine_args)
 
     # A separate tokenizer to map token IDs to strings.
-    engine.engine.tokenizer = get_tokenizer(
+    tokenizer = get_tokenizer(
         engine_args.tokenizer,
         tokenizer_mode=engine_args.tokenizer_mode,
         trust_remote_code=True,
     )
 
-    # prompt adapter for constructing model inputs
-    engine.prompt_adapter = get_prompt_adapter(
-        SETTINGS.model_name.lower(),
-        prompt_name=SETTINGS.chat_template.lower() if SETTINGS.chat_template else None
-    )
-
-    engine_model_config = asyncio.run(engine.get_model_config())
-    engine.engine.scheduler_config.max_model_len = get_context_len(engine_model_config)
-    engine.max_model_len = get_context_len(engine_model_config)
-
     logger.info("Using vllm engine")
 
-    return engine
+    return VllmEngine(
+        engine,
+        tokenizer,
+        SETTINGS.model_name,
+        SETTINGS.chat_template,
+        SETTINGS.context_length,
+    )
 
 
 def create_llama_cpp_engine():
     """ get llama.cpp generate engine for chat or completion. """
     try:
         from llama_cpp import Llama
+        from api.core.llama_cpp import LlamaCppEngine
     except ImportError:
         return None
 
@@ -140,15 +125,9 @@ def create_llama_cpp_engine():
         **kwargs,
     )
 
-    # prompt adapter for constructing model inputs
-    engine.prompt_adapter = get_prompt_adapter(
-        SETTINGS.model_name.lower(),
-        prompt_name=SETTINGS.chat_template.lower() if SETTINGS.chat_template else None
-    )
-
     logger.info("Using llama.cpp engine")
 
-    return engine
+    return LlamaCppEngine(engine, SETTINGS.model_name, SETTINGS.chat_template)
 
 
 # fastapi app
@@ -158,7 +137,6 @@ app = create_app()
 EMBEDDED_MODEL = create_embedding_model() if (SETTINGS.embedding_name and SETTINGS.activate_inference) else None
 
 # model for transformers generate
-GENERATE_ENGINE = None
 if (not SETTINGS.only_embedding) and SETTINGS.activate_inference:
     if SETTINGS.engine == "default":
         GENERATE_ENGINE = create_generate_model()
@@ -166,6 +144,8 @@ if (not SETTINGS.only_embedding) and SETTINGS.activate_inference:
         GENERATE_ENGINE = create_vllm_engine()
     elif SETTINGS.engine == "llama.cpp":
         GENERATE_ENGINE = create_llama_cpp_engine()
+else:
+    GENERATE_ENGINE = None
 
 # model names for special processing
 EXCLUDE_MODELS = ["baichuan-13b", "baichuan2-13b", "qwen", "chatglm3"]

@@ -1,34 +1,41 @@
 import gc
+import time
+import uuid
 from threading import Thread
 from types import MethodType
-from typing import Iterable
+from typing import Iterable, Dict, Any
 
 import torch
-from transformers import TextIteratorStreamer, PreTrainedModel
+from transformers import (
+    TextIteratorStreamer,
+    PreTrainedModel,
+    PreTrainedTokenizer,
+)
 
-from api.generation.baichuan import check_is_baichuan, build_baichuan_chat_input
-from api.generation.qwen import check_is_qwen, build_qwen_chat_input
-from api.generation.utils import prepare_logits_processor, is_partial_stop, apply_stopping_strings
-from api.generation.xverse import check_is_xverse, build_xverse_chat_input
+from api.generation.qwen import check_is_qwen
+from api.generation.utils import (
+    prepare_logits_processor,
+    is_partial_stop,
+    apply_stopping_strings,
+)
 
 
 @torch.inference_mode()
 def generate_stream(
-    model,
-    tokenizer,
-    params,
-    device: str,
-    context_len: int,
-    stream_interval: int = 2,
+    model: PreTrainedModel,
+    tokenizer: PreTrainedTokenizer,
+    params: Dict[str, Any],
 ):
     # Read parameters
-    prompt = params["prompt"]
-    functions = params.get("functions", None)
+    input_ids = params["inputs"]
+    prompt = params.get("prompt", None)
+    model_name = params.get("model", "llm")
     temperature = float(params.get("temperature", 1.0))
     repetition_penalty = float(params.get("repetition_penalty", 1.0))
     top_p = float(params.get("top_p", 1.0))
     top_k = int(params.get("top_k", -1))  # -1 means disable
     max_new_tokens = int(params.get("max_tokens", 256))
+    logprobs = params.get("logprobs", None)
     echo = bool(params.get("echo", True))
     stop_str = params.get("stop", None)
 
@@ -36,40 +43,14 @@ def generate_stream(
     if tokenizer.eos_token_id not in stop_token_ids:
         stop_token_ids.append(tokenizer.eos_token_id)
 
-    infilling = params.get("infilling", False)
-    suffix_first = params.get("suffix_first", False)
-
     logits_processor = prepare_logits_processor(
         temperature, repetition_penalty, top_p, top_k
     )
 
-    if isinstance(prompt, list) and check_is_baichuan(model):
-        input_ids = build_baichuan_chat_input(tokenizer, prompt, context_len, max_new_tokens)
-    elif isinstance(prompt, list) and check_is_qwen(model):
-        input_ids = build_qwen_chat_input(tokenizer, prompt, context_len, max_new_tokens, functions)
-        stop_token_ids.extend([tokenizer.im_end_id, tokenizer.im_start_id])
-    elif isinstance(prompt, list) and check_is_xverse(model):
-        input_ids = build_xverse_chat_input(tokenizer, prompt, context_len, max_new_tokens)
-    else:
-        if infilling:
-            input_ids = tokenizer(prompt, suffix_first=suffix_first).input_ids
-            stop_token_ids.append(tokenizer.eot_id)
-        else:
-            if check_is_qwen(model):
-                input_ids = tokenizer(prompt, allowed_special="all", disallowed_special=()).input_ids
-            else:
-                input_ids = tokenizer(prompt).input_ids
-
-        if model.config.is_encoder_decoder:
-            max_src_len = context_len
-        else:  # truncate
-            max_src_len = context_len - max_new_tokens - 1
-
-        input_ids = input_ids[-max_src_len:]
-
     output_ids = list(input_ids)
     input_echo_len = len(input_ids)
 
+    device = model.device
     if model.config.is_encoder_decoder:
         encoder_output = model.encoder(
             input_ids=torch.as_tensor([input_ids], device=device)
@@ -79,9 +60,14 @@ def generate_stream(
             dtype=torch.int64,
             device=device,
         )
+    else:
+        start_ids = torch.as_tensor([input_ids], device=device)
 
-    past_key_values = None
-    sent_interrupt = False
+    past_key_values, sent_interrupt = None, False
+    token_logprobs = [None]  # The first token has no logprobs.
+    completion_id: str = f"cmpl-{str(uuid.uuid4())}"
+    created: int = int(time.time())
+    previous_text = ""
     for i in range(max_new_tokens):
         if i == 0:  # prefill
             if model.config.is_encoder_decoder:
@@ -95,6 +81,17 @@ def generate_stream(
                 out = model(torch.as_tensor([input_ids], device=device), use_cache=True)
                 logits = out.logits
             past_key_values = out.past_key_values
+
+            if logprobs is not None:
+                # Prefull logprobs for the prompt.
+                shift_input_ids = start_ids[..., 1:].contiguous()
+                shift_logits = logits[..., :-1, :].contiguous()
+                shift_logits = torch.log_softmax(shift_logits, dim=-1).tolist()
+                for label_id, logit in zip(
+                    shift_input_ids[0].tolist(), shift_logits[0]
+                ):
+                    token_logprobs.append(logit[label_id])
+
         else:  # decoding
             if model.config.is_encoder_decoder:
                 out = model.decoder(
@@ -144,16 +141,22 @@ def generate_stream(
         token = tokens[0]
         output_ids.append(token)
 
+        if logprobs is not None:
+            # Cannot use last_token_logits because logprobs is based on raw logits.
+            token_logprobs.append(
+                torch.log_softmax(logits[0, -1, :], dim=-1)[token].tolist()
+            )
+
         if token in stop_token_ids:
             stopped = True
         else:
             stopped = False
 
         # Yield the output tokens
-        if i % stream_interval == 0 or i == max_new_tokens - 1 or stopped:
+        if i % 2 == 0 or i == max_new_tokens - 1 or stopped:
             if echo:
                 tmp_output_ids = output_ids
-                rfind_start = len(prompt) if isinstance(prompt, str) else 0
+                rfind_start = len(prompt)
             else:
                 tmp_output_ids = output_ids[input_echo_len:]
                 rfind_start = 0
@@ -164,6 +167,25 @@ def generate_stream(
                 spaces_between_special_tokens=False,
                 clean_up_tokenization_spaces=True,
             )
+
+            ret_logprobs = None
+            if logprobs is not None:
+                ret_logprobs = {
+                    "text_offset": [],
+                    "tokens": [
+                        tokenizer.decode(token)
+                        for token in (
+                            output_ids if echo else output_ids[input_echo_len:]
+                        )
+                    ],
+                    "token_logprobs": token_logprobs if echo else token_logprobs[input_echo_len:],
+                    "top_logprobs": [{}] * len(token_logprobs if echo else token_logprobs[input_echo_len:]),
+                }
+                # Compute text_offset
+                curr_pos = 0
+                for text in ret_logprobs["tokens"]:
+                    ret_logprobs["text_offset"].append(curr_pos)
+                    curr_pos += len(text)
 
             partially_stopped, finish_reason = False, None
             if stop_str:
@@ -192,27 +214,42 @@ def generate_stream(
 
             # Prevent yielding partial stop sequence
             if not partially_stopped:
+                delta_text = output[len(previous_text):]
+                previous_text = output
+
                 yield {
+                    "id": completion_id,
+                    "object": "text_completion",
+                    "created": created,
+                    "model": model_name,
+                    "delta": delta_text,
                     "text": output,
+                    "logprobs": ret_logprobs,
+                    "finish_reason": finish_reason,
                     "usage": {
                         "prompt_tokens": input_echo_len,
                         "completion_tokens": i,
                         "total_tokens": input_echo_len + i,
                     },
-                    "finish_reason": finish_reason,
                 }
 
         if stopped:
             break
 
     yield {
+        "id": completion_id,
+        "object": "text_completion",
+        "created": created,
+        "model": model_name,
+        "delta": "",
         "text": output,
+        "logprobs": ret_logprobs,
+        "finish_reason": "stop",
         "usage": {
             "prompt_tokens": input_echo_len,
             "completion_tokens": i,
             "total_tokens": input_echo_len + i,
         },
-        "finish_reason": "stop",
     }
 
     # Clean
@@ -223,14 +260,13 @@ def generate_stream(
 
 @torch.inference_mode()
 def generate_stream_v2(
-    model,
-    tokenizer,
-    params,
-    device: str,
-    context_len: int,
+    model: PreTrainedModel,
+    tokenizer: PreTrainedTokenizer,
+    params: Dict[str, Any],
 ):
-    prompt = params["prompt"]
+    input_ids = params["inputs"]
     functions = params.get("functions", None)
+    model_name = params.get("model", "llm")
     temperature = float(params.get("temperature", 1.0))
     repetition_penalty = float(params.get("repetition_penalty", 1.0))
     top_p = float(params.get("top_p", 1.0))
@@ -240,34 +276,10 @@ def generate_stream_v2(
     stop_token_ids = params.get("stop_token_ids", None) or []
     if tokenizer.eos_token_id not in stop_token_ids:
         stop_token_ids.append(tokenizer.eos_token_id)
-
     stop_strings = params.get("stop", [])
-    infilling = params.get("infilling", False)
-    suffix_first = params.get("suffix_first", False)
-
-    if isinstance(prompt, list) and check_is_baichuan(model):
-        input_ids = build_baichuan_chat_input(tokenizer, prompt, context_len, max_new_tokens)
-    elif isinstance(prompt, list) and check_is_qwen(model):
-        input_ids = build_qwen_chat_input(tokenizer, prompt, context_len, max_new_tokens, functions)
-    elif isinstance(prompt, list) and check_is_xverse(model):
-        input_ids = build_xverse_chat_input(tokenizer, prompt, context_len, max_new_tokens)
-    else:
-        if infilling:
-            input_ids = tokenizer(prompt, suffix_first=suffix_first).input_ids
-        else:
-            if check_is_qwen(model):
-                input_ids = tokenizer(prompt, allowed_special="all", disallowed_special=()).input_ids
-            else:
-                input_ids = tokenizer(prompt).input_ids
-
-        if model.config.is_encoder_decoder:
-            max_src_len = context_len
-        else:  # truncate
-            max_src_len = context_len - max_new_tokens - 1
-        input_ids = input_ids[-max_src_len:]
 
     input_echo_len = len(input_ids)
-
+    device = model.device
     generation_kwargs = dict(
         input_ids=torch.tensor([input_ids], device=device),
         do_sample=True,
@@ -294,33 +306,49 @@ def generate_stream_v2(
     thread.start()
 
     generated_text, func_call_found = "", False
+    completion_id: str = f"cmpl-{str(uuid.uuid4())}"
+    created: int = int(time.time())
+    previous_text = ""
     for i, new_text in enumerate(streamer):
         generated_text += new_text
         if functions:
             _, func_call_found = apply_stopping_strings(generated_text, ["Observation:"])
         generated_text, stop_found = apply_stopping_strings(generated_text, stop_strings)
 
+        delta_text = generated_text[len(previous_text):]
+        previous_text = generated_text
+
         yield {
+            "id": completion_id,
+            "object": "text_completion",
+            "created": created,
+            "model": model_name,
+            "delta": delta_text,
             "text": generated_text,
+            "logprobs": None,
+            "finish_reason": "function_call" if func_call_found else None,
             "usage": {
                 "prompt_tokens": input_echo_len,
                 "completion_tokens": i,
                 "total_tokens": input_echo_len + i,
             },
-            "finish_reason": "function_call" if func_call_found else None,
-            "error_code": 0,
         }
 
         if stop_found:
             break
 
     yield {
+        "id": completion_id,
+        "object": "text_completion",
+        "created": created,
+        "model": model_name,
+        "delta": "",
         "text": generated_text,
+        "logprobs": None,
+        "finish_reason": "stop",
         "usage": {
             "prompt_tokens": input_echo_len,
             "completion_tokens": i,
             "total_tokens": input_echo_len + i,
         },
-        "finish_reason": "stop",
-        "error_code": 0,
     }

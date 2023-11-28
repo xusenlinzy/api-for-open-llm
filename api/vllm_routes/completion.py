@@ -1,28 +1,36 @@
-import secrets
 import time
+import uuid
 from functools import partial
-from typing import AsyncGenerator, List, Dict
+from typing import (
+    List,
+    Dict,
+    Any,
+    AsyncIterator,
+)
 
 import anyio
-from fastapi import APIRouter, Request, Depends, HTTPException
+from fastapi import APIRouter, Depends
+from fastapi import HTTPException, Request
+from loguru import logger
 from openai.types.completion import Completion
 from openai.types.completion_choice import CompletionChoice, Logprobs
 from openai.types.completion_usage import CompletionUsage
 from sse_starlette import EventSourceResponse
 from vllm.outputs import RequestOutput
-from vllm.sampling_params import SamplingParams
 
-from api.config import SETTINGS
+from api.models import GENERATE_ENGINE
 from api.utils.protocol import CompletionCreateParams
 from api.utils.request import (
     handle_request,
-    get_engine,
     get_event_publisher,
     check_api_key
 )
-from api.vllm_routes.utils import get_model_inputs
 
 completion_router = APIRouter()
+
+
+def get_engine():
+    yield GENERATE_ENGINE
 
 
 @completion_router.post("/completions", dependencies=[Depends(check_api_key)])
@@ -53,35 +61,17 @@ async def create_completion(
         raise HTTPException(status_code=400, detail="suffix is not currently supported")
 
     request.max_tokens = request.max_tokens or 128
-    request_id = f"cmpl-{secrets.token_hex(12)}"
-
-    token_ids, error_check_ret = await get_model_inputs(engine, request, request.prompt, SETTINGS.model_name.lower())
-    if error_check_ret is not None:
-        return error_check_ret
-
     request, stop_token_ids = await handle_request(request, engine.prompt_adapter.stop, chat=False)
 
-    try:
-        sampling_params = SamplingParams(
-            n=request.n,
-            presence_penalty=request.presence_penalty,
-            frequency_penalty=request.frequency_penalty,
-            temperature=request.temperature,
-            top_p=request.top_p,
-            stop=request.stop,
-            stop_token_ids=stop_token_ids,
-            max_tokens=request.max_tokens,
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    params = request.model_dump()
+    params.update(dict(stop_token_ids=stop_token_ids, prompt_or_messages=request.prompt))
+    logger.debug(f"==== request ====\n{params}")
 
-    result_generator = engine.generate(
-        request.prompt if isinstance(request.prompt, str) else None, sampling_params, request_id, token_ids,
-    )
+    request_id: str = f"cmpl-{str(uuid.uuid4())}"
+    generator = engine.generate(params, request_id)
 
-    # Streaming response
     if request.stream:
-        generator = generate_completion_stream_generator(result_generator, request, request_id, engine.engine.tokenizer)
+        iterator = create_completion_stream(generator, params, request_id, engine.tokenizer)
         send_chan, recv_chan = anyio.create_memory_object_stream(10)
         return EventSourceResponse(
             recv_chan,
@@ -89,46 +79,52 @@ async def create_completion(
                 get_event_publisher,
                 request=raw_request,
                 inner_send_chan=send_chan,
-                iterator=generator,
+                iterator=iterator,
             ),
         )
+    else:
+        # Non-streaming response
+        final_res: RequestOutput = None
+        async for res in generator:
+            if raw_request is not None:
+                if await raw_request.is_disconnected():
+                    # Abort the request if the client disconnects.
+                    await engine.model.abort(request_id)
+                    return
+            final_res = res
 
-    # Non-streaming response
-    final_res: RequestOutput = None
-    async for res in result_generator:
-        if await raw_request.is_disconnected():
-            # Abort the request if the client disconnects.
-            await engine.abort(request_id)
-            return
-        final_res = res
-        
-    assert final_res is not None
-    choices = []
-    for output in final_res.outputs:
-        output.text = output.text.replace("�", "")
-        logprobs = None
-        if request.logprobs is not None:
-            logprobs = create_logprobs(engine.engine.tokenizer, output.token_ids, output.logprobs)
-        choice = CompletionChoice(
-            index=output.index,
-            text=output.text,
-            finish_reason=output.finish_reason,
-            logprobs=logprobs,
+        assert final_res is not None
+        choices = []
+        for output in final_res.outputs:
+            output.text = output.text.replace("�", "")
+            logprobs = None
+            if params.get("logprobs", None) is not None:
+                logprobs = create_logprobs(engine.tokenizer, output.token_ids, output.logprobs)
+
+            choice = CompletionChoice(
+                index=output.index,
+                text=output.text,
+                finish_reason=output.finish_reason,
+                logprobs=logprobs,
+            )
+            choices.append(choice)
+
+        num_prompt_tokens = len(final_res.prompt_token_ids)
+        num_generated_tokens = sum(len(output.token_ids) for output in final_res.outputs)
+        usage = CompletionUsage(
+            prompt_tokens=num_prompt_tokens,
+            completion_tokens=num_generated_tokens,
+            total_tokens=num_prompt_tokens + num_generated_tokens,
         )
-        choices.append(choice)
 
-    num_prompt_tokens = len(final_res.prompt_token_ids)
-    num_generated_tokens = sum(len(output.token_ids) for output in final_res.outputs)
-    usage = CompletionUsage(
-        prompt_tokens=num_prompt_tokens,
-        completion_tokens=num_generated_tokens,
-        total_tokens=num_prompt_tokens + num_generated_tokens,
-    )
-
-    return Completion(
-        id=request_id, choices=choices, created=int(time.time()),
-        model=request.model, object="text_completion", usage=usage
-    )
+        return Completion(
+            id=request_id,
+            choices=choices,
+            created=int(time.time()),
+            model=params.get("model", "llm"),
+            object="text_completion",
+            usage=usage,
+        )
 
 
 def create_logprobs(
@@ -137,7 +133,6 @@ def create_logprobs(
     id_logprobs: List[Dict[int, float]],
     initial_text_offset: int = 0
 ) -> Logprobs:
-    """Create OpenAI-style logprobs."""
     logprobs = Logprobs(text_offset=[], token_logprobs=[], tokens=[], top_logprobs=[])
     last_token_len = 0
     for token_id, id_logprob in zip(token_ids, id_logprobs):
@@ -159,24 +154,26 @@ def create_logprobs(
     return logprobs
 
 
-async def generate_completion_stream_generator(
-    result_generator, request: CompletionCreateParams, request_id: str, tokenizer,
-) -> AsyncGenerator:
-    previous_texts = [""] * request.n
-    previous_num_tokens = [0] * request.n
-    async for res in result_generator:
+async def create_completion_stream(
+    generator: AsyncIterator, params: Dict[str, Any], request_id: str, tokenizer,
+    ) -> AsyncIterator:
+    n = params.get("n", 1)
+    previous_texts = [""] * n
+    previous_num_tokens = [0] * n
+    async for res in generator:
         res: RequestOutput
         for output in res.outputs:
             i = output.index
             output.text = output.text.replace("�", "")
             delta_text = output.text[len(previous_texts[i]):]
 
-            if request.logprobs is not None:
+            if params.get("logprobs", None) is not None:
                 logprobs = create_logprobs(
                     tokenizer,
                     output.token_ids[previous_num_tokens[i]:],
                     output.logprobs[previous_num_tokens[i]:],
-                    len(previous_texts[i]))
+                    len(previous_texts[i])
+                )
             else:
                 logprobs = None
 
@@ -184,24 +181,37 @@ async def generate_completion_stream_generator(
             previous_num_tokens[i] = len(output.token_ids)
 
             choice = CompletionChoice(
-                index=i, text=delta_text, finish_reason="stop", logprobs=logprobs,
-            )  # TODO: support for length
-            chunk = Completion(
-                id=request_id, choices=[choice], created=int(time.time()),
-                model=request.model, object="text_completion",
+                index=i,
+                text=delta_text,
+                finish_reason="stop",
+                logprobs=logprobs,
             )
-            yield chunk.model_dump_json()
+            yield Completion(
+                id=request_id,
+                choices=[choice],
+                created=int(time.time()),
+                model=params.get("model", "llm"),
+                object="text_completion",
+            )
 
             if output.finish_reason is not None:
-                if request.logprobs is not None:
-                    logprobs = Logprobs(text_offset=[], token_logprobs=[], tokens=[], top_logprobs=[])
+                if params.get("logprobs", None) is not None:
+                    logprobs = Logprobs(
+                        text_offset=[], token_logprobs=[], tokens=[], top_logprobs=[]
+                    )
                 else:
                     logprobs = None
+
                 choice = CompletionChoice(
-                    index=i, text=delta_text, finish_reason="stop", logprobs=logprobs,
-                )  # TODO: support for length
-                chunk = Completion(
-                    id=request_id, choices=[choice], created=int(time.time()),
-                    model=request.model, object="text_completion",
+                    index=i,
+                    text=delta_text,
+                    finish_reason="stop",
+                    logprobs=logprobs,
                 )
-                yield chunk.model_dump_json(exclude_none=True)
+                yield Completion(
+                    id=request_id,
+                    choices=[choice],
+                    created=int(time.time()),
+                    model=params.get("model", "llm"),
+                    object="text_completion",
+                    )

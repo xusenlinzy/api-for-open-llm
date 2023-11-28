@@ -1,11 +1,14 @@
 import gc
 import json
 import re
-from typing import List, Union
+import time
+import uuid
+from typing import List, Union, Dict, Any
 
 import torch
 from loguru import logger
 from openai.types.chat import ChatCompletionMessageParam
+from transformers import PreTrainedTokenizer, PreTrainedModel
 from transformers.generation.logits_process import LogitsProcessor
 
 from api.generation.utils import apply_stopping_strings
@@ -75,23 +78,20 @@ def check_is_chatglm(model) -> bool:
 
 @torch.inference_mode()
 def generate_stream_chatglm(
-    model,
-    tokenizer,
-    params,
-    device,
-    context_len=2048,
-    stream_interval=2,
+    model: PreTrainedModel,
+    tokenizer: PreTrainedTokenizer,
+    params: Dict[str, Any],
 ):
-    prompt = params["prompt"]
+    inputs = params["inputs"]
+    model_name = params.get("model", "llm")
     temperature = float(params.get("temperature", 1.0))
     repetition_penalty = float(params.get("repetition_penalty", 1.0))
     top_p = float(params.get("top_p", 1.0))
     max_new_tokens = int(params.get("max_tokens", 256))
     echo = params.get("echo", True)
 
-    inputs = tokenizer([prompt], return_tensors="pt").to(model.device)
     input_echo_len = len(inputs["input_ids"][0])
-
+    inputs = inputs.to(model.device)
     if input_echo_len >= model.config.seq_length:
         logger.warning(f"Input length larger than {model.config.seq_length}")
 
@@ -105,7 +105,9 @@ def generate_stream_chatglm(
     if temperature > 1e-5:
         gen_kwargs["temperature"] = temperature
 
-    total_len = 0
+    total_len, previous_text = 0, ""
+    completion_id: str = f"cmpl-{str(uuid.uuid4())}"
+    created: int = int(time.time())
     for total_ids in model.stream_generate(**inputs, **gen_kwargs):
         total_ids = total_ids.tolist()[0]
         total_len = len(total_ids)
@@ -116,28 +118,41 @@ def generate_stream_chatglm(
         response = tokenizer.decode(output_ids)
         response = process_response(response)
 
+        delta_text = response[len(previous_text):]
+        previous_text = response
+
         yield {
+            "id": completion_id,
+            "object": "text_completion",
+            "created": created,
+            "model": model_name,
+            "delta": delta_text,
             "text": response,
+            "logprobs": None,
+            "finish_reason": None,
             "usage": {
                 "prompt_tokens": input_echo_len,
                 "completion_tokens": total_len - input_echo_len,
                 "total_tokens": total_len,
             },
-            "finish_reason": None,
         }
 
-    # TODO: ChatGLM stop when it reaches max length
     # Only last stream result contains finish_reason, we set finish_reason as stop
-    ret = {
+    yield {
+        "id": completion_id,
+        "object": "text_completion",
+        "created": created,
+        "model": model_name,
+        "delta": "",
         "text": response,
+        "logprobs": None,
+        "finish_reason": "stop",
         "usage": {
             "prompt_tokens": input_echo_len,
             "completion_tokens": total_len - input_echo_len,
             "total_tokens": total_len,
         },
-        "finish_reason": "stop",
     }
-    yield ret
 
     gc.collect()
     torch.cuda.empty_cache()
@@ -145,35 +160,20 @@ def generate_stream_chatglm(
 
 @torch.inference_mode()
 def generate_stream_chatglm_v3(
-    model,
-    tokenizer,
-    params,
-    device,
-    context_len=2048,
-    stream_interval=2,
+    model: PreTrainedModel,
+    tokenizer: PreTrainedTokenizer,
+    params: Dict[str, Any],
 ):
-    prompt: Union[List[ChatCompletionMessageParam], str] = params["prompt"]
-    functions = params.get("functions", None)
+    inputs = params["inputs"]
+    model_name = params.get("model", "llm")
     temperature = float(params.get("temperature", 1.0))
     repetition_penalty = float(params.get("repetition_penalty", 1.0))
     top_p = float(params.get("top_p", 1.0))
     max_new_tokens = int(params.get("max_tokens", 256))
     echo = params.get("echo", True)
 
-    if isinstance(prompt, list):
-        messages = process_chatglm_messages(prompt, functions=functions)
-        if functions:
-            logger.debug(f"==== Messages with tools ====\n{messages}")
-
-        query, role = messages[-1]["content"], messages[-1]["role"]
-
-        inputs = tokenizer.build_chat_input(query, history=messages[:-1], role=role)
-    else:
-        inputs = tokenizer([prompt], return_tensors="pt")
-
-    inputs = inputs.to(model.device)
     input_echo_len = len(inputs["input_ids"][0])
-
+    inputs = inputs.to(model.device)
     if input_echo_len >= model.config.seq_length:
         logger.warning(f"Input length larger than {model.config.seq_length}")
 
@@ -192,7 +192,9 @@ def generate_stream_chatglm_v3(
     if temperature > 1e-5:
         gen_kwargs["temperature"] = temperature
 
-    total_len = 0
+    total_len, previous_text = 0, ""
+    completion_id: str = f"cmpl-{str(uuid.uuid4())}"
+    created: int = int(time.time())
     for total_ids in model.stream_generate(**inputs, eos_token_id=eos_token_id, **gen_kwargs):
         total_ids = total_ids.tolist()[0]
         total_len = len(total_ids)
@@ -205,36 +207,53 @@ def generate_stream_chatglm_v3(
         if response and response[-1] != "�":
             response, stop_found = apply_stopping_strings(response, ["<|observation|>"])
 
+            delta_text = response[len(previous_text):]
+            previous_text = response
+
             yield {
+                "id": completion_id,
+                "object": "text_completion",
+                "created": created,
+                "model": model_name,
+                "delta": delta_text,
                 "text": response,
+                "logprobs": None,
+                "finish_reason": "function_call" if stop_found else None,
                 "usage": {
                     "prompt_tokens": input_echo_len,
                     "completion_tokens": total_len - input_echo_len,
                     "total_tokens": total_len,
                 },
-                "finish_reason": "function_call" if stop_found else None,
             }
 
             if stop_found:
                 break
 
     # Only last stream result contains finish_reason, we set finish_reason as stop
-    ret = {
+    yield {
+        "id": completion_id,
+        "object": "text_completion",
+        "created": created,
+        "model": model_name,
+        "delta": "",
         "text": response,
+        "logprobs": None,
+        "finish_reason": "stop",
         "usage": {
             "prompt_tokens": input_echo_len,
             "completion_tokens": total_len - input_echo_len,
             "total_tokens": total_len,
         },
-        "finish_reason": "stop",
     }
-    yield ret
 
     gc.collect()
     torch.cuda.empty_cache()
 
 
-def process_chatglm_messages(messages: List[ChatCompletionMessageParam], functions: Union[dict, List[dict]] = None) -> List[dict]:
+def process_chatglm_messages(
+    messages: List[ChatCompletionMessageParam],
+    functions: Union[dict, List[dict]] = None,
+) -> List[dict]:
     _messages = messages
     messages = []
 

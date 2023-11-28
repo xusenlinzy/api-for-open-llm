@@ -7,10 +7,15 @@ from openai.types.create_embedding_response import Usage
 from sentence_transformers import SentenceTransformer
 
 from api.config import SETTINGS
+from api.models import EMBEDDED_MODEL
 from api.utils.protocol import EmbeddingCreateParams, Embedding, CreateEmbeddingResponse
-from api.utils.request import check_api_key, get_embedding_engine
+from api.utils.request import check_api_key
 
 embedding_router = APIRouter()
+
+
+def get_embedding_engine():
+    yield EMBEDDED_MODEL
 
 
 @embedding_router.post("/embeddings", dependencies=[Depends(check_api_key)])
