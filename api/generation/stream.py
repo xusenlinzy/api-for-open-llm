@@ -213,7 +213,7 @@ def generate_stream(
                     raise ValueError("Invalid stop field type.")
 
             # Prevent yielding partial stop sequence
-            if not partially_stopped:
+            if (not partially_stopped) and output[-1] != "�":
                 delta_text = output[len(previous_text):]
                 previous_text = output
 
@@ -315,24 +315,25 @@ def generate_stream_v2(
             _, func_call_found = apply_stopping_strings(generated_text, ["Observation:"])
         generated_text, stop_found = apply_stopping_strings(generated_text, stop_strings)
 
-        delta_text = generated_text[len(previous_text):]
-        previous_text = generated_text
+        if generated_text[-1] != "�":
+            delta_text = generated_text[len(previous_text):]
+            previous_text = generated_text
 
-        yield {
-            "id": completion_id,
-            "object": "text_completion",
-            "created": created,
-            "model": model_name,
-            "delta": delta_text,
-            "text": generated_text,
-            "logprobs": None,
-            "finish_reason": "function_call" if func_call_found else None,
-            "usage": {
-                "prompt_tokens": input_echo_len,
-                "completion_tokens": i,
-                "total_tokens": input_echo_len + i,
-            },
-        }
+            yield {
+                "id": completion_id,
+                "object": "text_completion",
+                "created": created,
+                "model": model_name,
+                "delta": delta_text,
+                "text": generated_text,
+                "logprobs": None,
+                "finish_reason": "function_call" if func_call_found else None,
+                "usage": {
+                    "prompt_tokens": input_echo_len,
+                    "completion_tokens": i,
+                    "total_tokens": input_echo_len + i,
+                },
+            }
 
         if stop_found:
             break
