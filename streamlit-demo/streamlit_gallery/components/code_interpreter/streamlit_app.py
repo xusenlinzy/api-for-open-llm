@@ -73,12 +73,12 @@ def chat_once(message_placeholder, client: OpenAI):
                     {
                         "role": "assistant",
                         "content": full_response,
-                        "function_call": {"name": "interpreter", "arguments": ""},
                     }
                 )
                 st.session_state.messages.append(
                     {
                         "role": "function",
+                        "name": "interpreter",
                         "content": "[Image]" if res_type == "image" else res,  # 调用函数返回结果
                     }
                 )
