@@ -236,7 +236,7 @@ class DefaultEngine(ABC):
             }
 
         except (ValueError, RuntimeError) as e:
-            traceback.print_exc(e)
+            traceback.print_exc()
             yield {
                 "text": f"{server_error_msg}\n\n({e})",
                 "error_code": ErrorCode.INTERNAL_ERROR,

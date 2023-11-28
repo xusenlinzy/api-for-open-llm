@@ -6,6 +6,7 @@ from typing import (
     Dict,
     Any,
     AsyncIterator,
+    Optional,
 )
 
 import anyio
@@ -130,27 +131,39 @@ async def create_completion(
 def create_logprobs(
     tokenizer,
     token_ids: List[int],
-    id_logprobs: List[Dict[int, float]],
-    initial_text_offset: int = 0
+    top_logprobs: Optional[List[Optional[Dict[int, float]]]] = None,
+    num_output_top_logprobs: Optional[int] = None,
+    initial_text_offset: int = 0,
 ) -> Logprobs:
-    logprobs = Logprobs(text_offset=[], token_logprobs=[], tokens=[], top_logprobs=[])
+    logprobs = Logprobs(text_offset=[], token_logprobs=[], tokens=[], top_logprobs=None)
     last_token_len = 0
-    for token_id, id_logprob in zip(token_ids, id_logprobs):
+    if num_output_top_logprobs:
+        logprobs.top_logprobs = []
+
+    for i, token_id in enumerate(token_ids):
+        step_top_logprobs = top_logprobs[i]
+        if step_top_logprobs is not None:
+            token_logprob = step_top_logprobs[token_id]
+        else:
+            token_logprob = None
+
         token = tokenizer.convert_ids_to_tokens(token_id)
         logprobs.tokens.append(token)
-        logprobs.token_logprobs.append(id_logprob[token_id])
+        logprobs.token_logprobs.append(token_logprob)
         if len(logprobs.text_offset) == 0:
             logprobs.text_offset.append(initial_text_offset)
         else:
             logprobs.text_offset.append(logprobs.text_offset[-1] + last_token_len)
         last_token_len = len(token)
 
-        logprobs.top_logprobs.append(
-            {
-                tokenizer.convert_ids_to_tokens(i): p
-                for i, p in id_logprob.items()
-            }
-        )
+        if num_output_top_logprobs:
+            logprobs.top_logprobs.append(
+                {
+                    tokenizer.convert_ids_to_tokens(i): p
+                    for i, p in step_top_logprobs.items()
+                }
+                if step_top_logprobs else None
+            )
     return logprobs
 
 
