@@ -6,5 +6,5 @@ COPY requirements.txt /workspace/
 COPY . /workspace
 
 RUN pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple && \
-    pip install --no-cache-dir -r /workspace/requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple && \
-    pip install bitsandbytes --upgrade -i https://pypi.tuna.tsinghua.edu.cn/simple
+    pip install --no-cache-dir -r /workspace/requirements.txt && \
+    pip install bitsandbytes --upgrade
