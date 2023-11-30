@@ -15,7 +15,7 @@ docker build -f docker/Dockerfile -t llm-api:pytorch .
 安装依赖
 
 ```shell
-pip install torch==1.13.1
+pip install torch>=1.13.1
 pip install -r requirements.txt
 ```
 
@@ -117,6 +117,12 @@ python server.py
 ## 环境变量修改参考
 
 **环境变量修改内容参考下面**
+
++ [deepseek](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#deepseekchat)
+
++ [deepseek-coder](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#deepseekcoder)
+
++ [yi-chat](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#yi-chat)
 
 + [baichuan2](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#baichuan2)
 
@@ -426,5 +432,26 @@ PROMPT_NAME=xuanyuan
 MODEL_NAME=yi-chat
 MODEL_PATH=01-ai/Yi-34B-Chat
 PROMPT_NAME=yi
+DEVICE_MAP=auto
+```
+
+### DeepSeekCoder
+
+deepseek-ai/deepseek-coder-33b-instruct
+
+```shell
+MODEL_NAME=deepseek-coder
+MODEL_PATH=deepseek-ai/deepseek-coder-33b-instruct
+DEVICE_MAP=auto
+```
+
+
+### DeepseekChat
+
+deepseek-ai/deepseek-llm-67b-chat
+
+```shell
+MODEL_NAME=deepseek
+MODEL_PATH=deepseek-ai/deepseek-llm-67b-chat
 DEVICE_MAP=auto
 ```
