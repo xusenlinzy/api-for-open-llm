@@ -15,7 +15,7 @@ from transformers import PreTrainedTokenizer
 from vllm.engine.async_llm_engine import AsyncLLMEngine
 from vllm.sampling_params import SamplingParams
 
-from api.apapter import get_prompt_adapter
+from api.adapter import get_prompt_adapter
 from api.generation import build_qwen_chat_input
 
 

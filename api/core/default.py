@@ -32,7 +32,7 @@ from openai.types.completion_choice import CompletionChoice, Logprobs
 from openai.types.completion_usage import CompletionUsage
 from transformers import PreTrainedModel, PreTrainedTokenizer
 
-from api.apapter import get_prompt_adapter
+from api.adapter import get_prompt_adapter
 from api.generation import (
     build_baichuan_chat_input,
     check_is_baichuan,

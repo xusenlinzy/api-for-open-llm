@@ -28,7 +28,7 @@ def create_embedding_model():
 def create_generate_model():
     """ get generate model for chat or completion. """
     from api.core.default import DefaultEngine
-    from api.apapter.model import load_model
+    from api.adapter.model import load_model
 
     if SETTINGS.patch_type == "attention":
         from api.utils.patches import apply_attention_patch

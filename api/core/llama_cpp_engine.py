@@ -21,7 +21,7 @@ from openai.types.chat.chat_completion_chunk import (
 )
 from openai.types.completion_usage import CompletionUsage
 
-from api.apapter import get_prompt_adapter
+from api.adapter import get_prompt_adapter
 
 
 class LlamaCppEngine:
