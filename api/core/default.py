@@ -20,34 +20,34 @@ from openai.types.chat import (
 from openai.types.chat import ChatCompletionMessageParam
 from openai.types.chat.chat_completion import Choice
 from openai.types.chat.chat_completion_chunk import Choice as ChunkChoice
-from openai.types.chat.chat_completion_chunk import ChoiceDelta, ChoiceDeltaFunctionCall
+from openai.types.chat.chat_completion_chunk import (
+    ChoiceDelta,
+    ChoiceDeltaFunctionCall,
+    ChoiceDeltaToolCall,
+)
 from openai.types.chat.chat_completion_message import FunctionCall
+from openai.types.chat.chat_completion_message_tool_call import ChatCompletionMessageToolCall
 from openai.types.completion import Completion
 from openai.types.completion_choice import CompletionChoice, Logprobs
 from openai.types.completion_usage import CompletionUsage
 from transformers import PreTrainedModel, PreTrainedTokenizer
 
 from api.apapter import get_prompt_adapter
-from api.generation.baichuan import build_baichuan_chat_input
-from api.generation.baichuan import check_is_baichuan
-from api.generation.chatglm import (
+from api.generation import (
+    build_baichuan_chat_input,
+    check_is_baichuan,
     generate_stream_chatglm,
     check_is_chatglm,
     generate_stream_chatglm_v3,
-    process_chatglm_messages,
+    build_qwen_chat_input,
+    check_is_qwen,
+    generate_stream,
+    build_xverse_chat_input,
+    check_is_xverse,
 )
-from api.generation.chatglm import process_response_v3
-from api.generation.qwen import build_qwen_chat_input
-from api.generation.qwen import check_is_qwen
-from api.generation.qwen import parse_response
-from api.generation.stream import generate_stream
 from api.generation.utils import get_context_length
-from api.generation.xverse import build_xverse_chat_input
-from api.generation.xverse import check_is_xverse
 from api.utils.constants import ErrorCode
-from api.utils.request import (
-    create_error_response,
-)
+from api.utils.request import create_error_response
 
 server_error_msg = (
     "**NETWORK ERROR DUE TO HIGH TRAFFIC. PLEASE REGENERATE OR REFRESH THIS PAGE.**"
@@ -85,6 +85,8 @@ class DefaultEngine(ABC):
         self.context_len = context_len
         self.use_streamer_v2 = use_streamer_v2
 
+        self.prompt_adapter = get_prompt_adapter(self.model_name, prompt_name=self.prompt_name)
+
         self._prepare_for_generate()
         self._fix_tokenizer()
 
@@ -100,7 +102,6 @@ class DefaultEngine(ABC):
                 self.context_len = 8192 if self.context_len is None else self.context_len
 
         self._check_construct_prompt()
-        self.prompt_adapter = get_prompt_adapter(self.model_name, prompt_name=self.prompt_name)
 
         if self.context_len is None:
             self.context_len = get_context_length(self.model.config)
@@ -132,7 +133,8 @@ class DefaultEngine(ABC):
             logger.info("Add pad token: {}".format(self.tokenizer.pad_token))
 
     def convert_to_inputs(
-        self, prompt_or_messages: Union[List[ChatCompletionMessageParam], str],
+        self,
+        prompt_or_messages: Union[List[ChatCompletionMessageParam], str],
         infilling: Optional[bool] = False,
         suffix_first: Optional[bool] = False,
         **kwargs,
@@ -163,11 +165,20 @@ class DefaultEngine(ABC):
         return inputs, prompt_or_messages
 
     def apply_chat_template(
-        self, messages: List[ChatCompletionMessageParam],
+        self,
+        messages: List[ChatCompletionMessageParam],
         max_new_tokens: Optional[int] = 256,
-        functions: Optional[List[Dict]] = None,
+        functions: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
+        tools: Optional[List[Dict[str, Any]]] = None,
         **kwargs,
     ) -> Tuple[Union[List[int], Dict[str, Any]], Union[str, None]]:
+        if self.prompt_adapter.function_call_available:
+            messages = self.prompt_adapter.postprocess_messages(
+                messages, functions, tools=tools,
+            )
+            if functions or tools:
+                logger.debug(f"==== Messages with tools ====\n{messages}")
+
         if self.construct_prompt:
             prompt = self.prompt_adapter.apply_chat_template(messages)
             if check_is_qwen(self.model):
@@ -182,19 +193,20 @@ class DefaultEngine(ABC):
                 inputs = inputs[-max_src_len:]
             return inputs, prompt
         else:
-            inputs = self.build_chat_inputs(messages, max_new_tokens, functions)
+            inputs = self.build_chat_inputs(
+                messages, max_new_tokens, functions, tools, **kwargs
+            )
         return inputs, None
 
     def build_chat_inputs(
-        self, messages: List[ChatCompletionMessageParam],
+        self,
+        messages: List[ChatCompletionMessageParam],
         max_new_tokens: Optional[int] = 256,
-        functions: Optional[List[Dict]] = None,
+        functions: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
+        tools: Optional[List[Dict[str, Any]]] = None,
+        **kwargs,
     ) -> List[int]:
         if "chatglm3" in self.model_name:
-            messages = process_chatglm_messages(messages, functions=functions)
-            if functions:
-                logger.debug(f"==== Messages with tools ====\n{messages}")
-
             query, role = messages[-1]["content"], messages[-1]["role"]
             inputs = self.tokenizer.build_chat_input(query, history=messages[:-1], role=role)
         elif check_is_baichuan(self.model):
@@ -203,7 +215,7 @@ class DefaultEngine(ABC):
             )
         elif check_is_qwen(self.model):
             inputs = build_qwen_chat_input(
-                self.tokenizer, messages, self.context_len, max_new_tokens, functions
+                self.tokenizer, messages, self.context_len, max_new_tokens, functions, tools,
             )
         elif check_is_xverse(self.model):
             inputs = build_xverse_chat_input(
@@ -221,6 +233,7 @@ class DefaultEngine(ABC):
             suffix_first=params.get("suffix_first", False),
             max_new_tokens=params.get("max_tokens", 256),
             functions=params.get("functions", None),
+            tools=params.get("tools", None),
         )
         params.update(dict(inputs=inputs, prompt=prompt))
 
@@ -295,7 +308,6 @@ class DefaultEngine(ABC):
         )
 
     def _create_chat_completion_stream(self, params: Dict[str, Any]) -> Iterator:
-        use_tool = bool(params.get("functions", None) is not None)
         _id, _created, _model = None, None, None
         for i, output in enumerate(self._generate(params)):
             if output["error_code"] != 0:
@@ -322,20 +334,27 @@ class DefaultEngine(ABC):
                 continue
 
             function_call = None
-            if finish_reason == "function_call" and "chatglm3" in self.model_name:
+            if finish_reason == "function_call":
                 try:
-                    function_call = process_response_v3(output["text"], use_tool=use_tool)
+                    _, function_call = self.prompt_adapter.parse_assistant_response(
+                        output["text"], params.get("functions", None), params.get("tools", None),
+                    )
                 except:
+                    traceback.print_exc()
                     logger.warning("Failed to parse tool call")
-
-            elif finish_reason == "function_call" and "qwen" in self.model_name:
-                _, function_call = parse_response(output["text"])
 
             if isinstance(function_call, dict) and "arguments" in function_call:
                 function_call = ChoiceDeltaFunctionCall(**function_call)
                 delta = ChoiceDelta(
                     content=output["delta"],
                     function_call=function_call
+                )
+            elif isinstance(function_call, dict) and "function" in function_call:
+                function_call["index"] = 0
+                tool_calls = [ChoiceDeltaToolCall.model_validate(function_call)]
+                delta = ChoiceDelta(
+                    content=output["delta"],
+                    tool_calls=tool_calls,
                 )
             else:
                 delta = ChoiceDelta(content=output["delta"])
@@ -375,16 +394,15 @@ class DefaultEngine(ABC):
             return create_error_response(last_output["error_code"], last_output["text"])
 
         function_call, finish_reason = None, "stop"
-        use_tool = bool(params.get("functions", None) is not None)
-        if use_tool and "chatglm3" in self.model_name:
+        if params.get("functions", None) or params.get("tools", None):
             try:
-                function_call = process_response_v3(last_output["text"], use_tool=True)
+                res, function_call = self.prompt_adapter.parse_assistant_response(
+                    last_output["text"], params.get("functions", None), params.get("tools", None),
+                )
+                last_output["text"] = res
             except:
+                traceback.print_exc()
                 logger.warning("Failed to parse tool call")
-
-        elif use_tool and "qwen" in self.model_name:
-            res, function_call = parse_response(last_output["text"])
-            last_output["text"] = res
 
         if isinstance(function_call, dict) and "arguments" in function_call:
             finish_reason = "function_call"
@@ -393,6 +411,14 @@ class DefaultEngine(ABC):
                 role="assistant",
                 content=last_output["text"],
                 function_call=function_call,
+            )
+        elif isinstance(function_call, dict) and "function" in function_call:
+            finish_reason = "tool_calls"
+            tool_calls = [ChatCompletionMessageToolCall.model_validate(function_call)]
+            message = ChatCompletionMessage(
+                role="assistant",
+                content=last_output["text"],
+                tool_calls=tool_calls,
             )
         else:
             message = ChatCompletionMessage(
@@ -415,14 +441,26 @@ class DefaultEngine(ABC):
             usage=usage,
         )
 
-    def create_completion(self, params: Dict[str, Any]) -> Union[Iterator, Completion]:
+    def create_completion(
+        self,
+        params: Optional[Dict[str, Any]] = None,
+        **kwargs
+    ) -> Union[Iterator, Completion]:
+        params = params or {}
+        params.update(kwargs)
         if params.get("stream", False):
             completion_or_chunks = self._create_completion_stream(params)
         else:
             completion_or_chunks = self._create_completion(params)
         return completion_or_chunks
 
-    def create_chat_completion(self, params: Dict[str, Any]) -> Union[Iterator, ChatCompletion]:
+    def create_chat_completion(
+        self,
+        params: Optional[Dict[str, Any]] = None,
+        **kwargs,
+    ) -> Union[Iterator, ChatCompletion]:
+        params = params or {}
+        params.update(kwargs)
         if params.get("stream", False):
             chat_completion_or_chunks = self._create_chat_completion_stream(params)
         else:

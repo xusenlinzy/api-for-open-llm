@@ -110,7 +110,7 @@ def create_llama_cpp_engine():
     """ get llama.cpp generate engine for chat or completion. """
     try:
         from llama_cpp import Llama
-        from api.core.llama_cpp import LlamaCppEngine
+        from api.core.llama_cpp_engine import LlamaCppEngine
     except ImportError:
         return None
 

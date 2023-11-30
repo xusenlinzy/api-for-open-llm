@@ -32,7 +32,7 @@ async def create_chat_completion(
     request, stop_token_ids = await handle_request(request, engine.stop)
     request.max_tokens = request.max_tokens or 512
 
-    prompt = engine.apply_chat_template(request.messages)
+    prompt = engine.apply_chat_template(request.messages, request.functions, request.tools)
     include = {
         "temperature", "temperature", "top_p", "stream", "stop",
         "max_tokens", "presence_penalty", "frequency_penalty", "model"
@@ -40,7 +40,9 @@ async def create_chat_completion(
     kwargs = request.model_dump(include=include)
     logger.debug(f"==== request ====\n{kwargs}")
 
-    iterator_or_completion = await run_in_threadpool(engine.create_chat_completion, prompt, **kwargs)
+    iterator_or_completion = await run_in_threadpool(
+        engine.create_chat_completion, prompt, **kwargs
+    )
 
     if isinstance(iterator_or_completion, Iterator):
         # It's easier to ask for forgiveness than permission

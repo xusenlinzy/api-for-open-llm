@@ -4,7 +4,6 @@ from typing import Optional, Dict, List, Union, Literal, Any
 from openai.types.chat import (
     ChatCompletionMessageParam,
     ChatCompletionToolChoiceOptionParam,
-    ChatCompletionToolParam,
 )
 from openai.types.chat.completion_create_params import FunctionCall, ResponseFormat
 from openai.types.create_embedding_response import Usage
@@ -16,6 +15,7 @@ class Role(str, Enum):
     ASSISTANT = "assistant"
     SYSTEM = "system"
     FUNCTION = "function"
+    TOOL = "tool"
 
 
 class ErrorResponse(BaseModel):
@@ -139,7 +139,7 @@ class ChatCompletionCreateParams(BaseModel):
     functions are present.
     """
 
-    tools: Optional[List[ChatCompletionToolParam]] = None
+    tools: Optional[List] = None
     """A list of tools the model may call.
 
     Currently, only functions are supported as a tool. Use this to provide a list of

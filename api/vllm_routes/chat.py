@@ -1,4 +1,5 @@
 import time
+import traceback
 import uuid
 from functools import partial
 from typing import (
@@ -20,12 +21,11 @@ from openai.types.chat.chat_completion import Choice
 from openai.types.chat.chat_completion_chunk import Choice as ChunkChoice
 from openai.types.chat.chat_completion_chunk import ChoiceDelta
 from openai.types.chat.chat_completion_message import FunctionCall
+from openai.types.chat.chat_completion_message_tool_call import ChatCompletionMessageToolCall
 from openai.types.completion_usage import CompletionUsage
 from sse_starlette import EventSourceResponse
 from vllm.outputs import RequestOutput
 
-from api.generation.chatglm import process_response_v3
-from api.generation.qwen import parse_response
 from api.models import GENERATE_ENGINE
 from api.utils.protocol import Role, ChatCompletionCreateParams
 from api.utils.request import check_api_key
@@ -93,21 +93,22 @@ async def create_chat_completion(
 
         assert final_res is not None
         choices = []
-        use_tool = bool(params.get("functions", None) is not None)
+        functions = params.get("functions", None)
+        tools = params.get("tools", None)
         for output in final_res.outputs:
             output.text = output.text.replace("�", "")
 
             finish_reason = output.finish_reason
             function_call = None
-            if use_tool and "chatglm3" in engine.model_name:
+            if functions or tools:
                 try:
-                    function_call = process_response_v3(output.text, use_tool=True)
+                    res, function_call = engine.prompt_adapter.parse_assistant_response(
+                        output.text, functions, tools,
+                    )
+                    output.text = res
                 except:
+                    traceback.print_exc()
                     logger.warning("Failed to parse tool call")
-
-            elif use_tool and "qwen" in engine.model_name:
-                res, function_call = parse_response(output.text)
-                output.text = res
 
             if isinstance(function_call, dict) and "arguments" in function_call:
                 function_call = FunctionCall(**function_call)
@@ -117,6 +118,14 @@ async def create_chat_completion(
                     function_call=function_call
                 )
                 finish_reason = "function_call"
+            elif isinstance(function_call, dict) and "function" in function_call:
+                finish_reason = "tool_calls"
+                tool_calls = [ChatCompletionMessageToolCall.model_validate(function_call)]
+                message = ChatCompletionMessage(
+                    role="assistant",
+                    content=output.text,
+                    tool_calls=tool_calls,
+                )
             else:
                 message = ChatCompletionMessage(role="assistant", content=output.text)
 

@@ -9,13 +9,14 @@ from typing import (
 )
 
 from fastapi import HTTPException
+from loguru import logger
 from openai.types.chat import ChatCompletionMessageParam
 from transformers import PreTrainedTokenizer
 from vllm.engine.async_llm_engine import AsyncLLMEngine
 from vllm.sampling_params import SamplingParams
 
 from api.apapter import get_prompt_adapter
-from api.generation.chatglm import process_chatglm_messages
+from api.generation import build_qwen_chat_input
 
 
 class VllmEngine:
@@ -40,13 +41,28 @@ class VllmEngine:
             self.max_model_len = model_config.max_model_len
 
     def apply_chat_template(
-        self, messages: List[ChatCompletionMessageParam], **kwargs,
+        self,
+        messages: List[ChatCompletionMessageParam],
+        max_tokens: Optional[int] = 256,
+        functions: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
+        tools: Optional[List[Dict[str, Any]]] = None,
     ) -> Union[str, List[int]]:
+        if self.prompt_adapter.function_call_available:
+            messages = self.prompt_adapter.postprocess_messages(
+                messages, functions, tools,
+            )
+            if functions or tools:
+                logger.debug(f"==== Messages with tools ====\n{messages}")
+
         if "chatglm3" in self.model_name:
-            messages = process_chatglm_messages(messages, functions=kwargs.get("functions", None))
             query, role = messages[-1]["content"], messages[-1]["role"]
-            return self.tokenizer.build_chat_input(query, history=messages[:-1], role=role)["input_ids"][0].tolist()
-        return self.prompt_adapter.apply_chat_template(messages)
+            inputs = self.tokenizer.build_chat_input(query, history=messages[:-1], role=role)["input_ids"][0].tolist()
+        elif "qwen" in self.model_name:
+            inputs = build_qwen_chat_input(self.tokenizer, messages, self.max_model_len, max_tokens, functions, tools)
+        else:
+            inputs = self.prompt_adapter.apply_chat_template(messages)
+
+        return inputs
 
     def convert_to_inputs(
         self,
@@ -59,16 +75,22 @@ class VllmEngine:
         return input_ids[-max_input_tokens:]
 
     def generate(self, params: Dict[str, Any], request_id: str) -> AsyncIterator:
+        max_tokens = params.get("max_tokens", 256)
         prompt_or_messages = params.get("prompt_or_messages")
         if isinstance(prompt_or_messages, list):
-            prompt_or_messages = self.apply_chat_template(prompt_or_messages, functions=params.get("functions", None))
+            prompt_or_messages = self.apply_chat_template(
+                prompt_or_messages,
+                max_tokens,
+                functions=params.get("functions", None),
+                tools=params.get("tools", None),
+            )
 
         if isinstance(prompt_or_messages, list):
             prompt, token_ids = None, prompt_or_messages
         else:
             prompt, token_ids = prompt_or_messages, None
 
-        token_ids = self.convert_to_inputs(prompt, token_ids, max_tokens=params.get("max_tokens", 256))
+        token_ids = self.convert_to_inputs(prompt, token_ids, max_tokens=max_tokens)
         try:
             sampling_params = SamplingParams(
                 n=params.get("n", 1),

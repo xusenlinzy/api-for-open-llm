@@ -1,7 +1,11 @@
+import json
+from abc import ABC
 from functools import lru_cache
-from typing import List, Optional, Dict
+from typing import List, Union, Optional, Dict, Any, Tuple
 
 from openai.types.chat import ChatCompletionMessageParam
+
+from api.utils.protocol import Role
 
 
 @lru_cache
@@ -20,12 +24,13 @@ def _compile_jinja_template(chat_template):
     return jinja_env.from_string(chat_template)
 
 
-class BaseTemplate:
+class BaseTemplate(ABC):
 
     name: str = "chatml"
     system_prompt: Optional[str] = ""
     allow_models: Optional[List[str]] = None
     stop: Optional[Dict] = None
+    function_call_available: Optional[bool] = False
 
     def match(self, name) -> bool:
         return any(m in name for m in self.allow_models) if self.allow_models else True
@@ -62,6 +67,22 @@ class BaseTemplate:
     def template(self):
         raise NotImplementedError
 
+    def postprocess_messages(
+        self,
+        messages: List[ChatCompletionMessageParam],
+        functions: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
+        tools: Optional[List[Dict[str, Any]]] = None,
+    ) -> List[Dict[str, Any]]:
+        return messages
+
+    def parse_assistant_response(
+        self,
+        output: str,
+        functions: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
+        tools: Optional[List[Dict[str, Any]]] = None,
+    ) -> Tuple[str, Union[str, Dict[str, Any]]]:
+        raise NotImplementedError
+
 
 # A global registry for all prompt adapters
 prompt_adapters: List[BaseTemplate] = []
@@ -95,6 +116,7 @@ class QwenTemplate(BaseTemplate):
         "token_ids": [151643, 151644, 151645],  # "<|endoftext|>", "<|im_start|>", "<|im_end|>"
         "strings": ["<|endoftext|>", "<|im_end|>"],
     }
+    function_call_available = True
 
     @property
     def template(self):
@@ -110,6 +132,48 @@ class QwenTemplate(BaseTemplate):
             "{{ '<|im_start|>assistant\\n' }}"
             "{% endif %}"
         )
+
+    def parse_assistant_response(
+        self,
+        output: str,
+        functions: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
+        tools: Optional[List[Dict[str, Any]]] = None,
+    ) -> Tuple[str, Union[str, Dict[str, Any]]]:
+        func_name, func_args = "", ""
+        i = output.rfind("\nAction:")
+        j = output.rfind("\nAction Input:")
+        k = output.rfind("\nObservation:")
+
+        if 0 <= i < j:  # If the text has `Action` and `Action input`,
+            if k < j:  # but does not contain `Observation`,
+                # then it is likely that `Observation` is omitted by the LLM,
+                # because the output text may have discarded the stop word.
+                output = output.rstrip() + "\nObservation:"  # Add it back.
+            k = output.rfind("\nObservation:")
+            func_name = output[i + len("\nAction:"): j].strip()
+            func_args = output[j + len("\nAction Input:"): k].strip()
+
+        if func_name:
+            if functions:
+                function_call = {
+                    "name": func_name,
+                    "arguments": func_args
+                }
+            else:
+                function_call = {
+                    "function": {
+                        "name": func_name,
+                        "arguments": func_args
+                    },
+                    "id": func_name,
+                    "type": "function",
+                }
+            return output[:k], function_call
+
+        z = output.rfind("\nFinal Answer: ")
+        if z >= 0:
+            output = output[z + len("\nFinal Answer: "):]
+        return output, None
 
 
 class Llama2Template(BaseTemplate):
@@ -267,6 +331,7 @@ class Chatglm3Template(BaseTemplate):
         "strings": ["<|user|>", "</s>", "<|observation|>"],
         "token_ids": [64795, 64797, 2],
     }
+    function_call_available = True
 
     def match(self, name) -> bool:
         return name == "chatglm3"
@@ -281,14 +346,109 @@ class Chatglm3Template(BaseTemplate):
         return (
             "{% for message in messages %}"
             "{% if message['role'] == 'system' %}"
-            "{{ '<|system|>\\n' + message['content'] }}"
+            "{{ '<|system|>\\n ' + message['content'] }}"
             "{% elif message['role'] == 'user' %}"
-            "{{ '<|user|>\\n' + message['content'] + '<|assistant|>' }}"
+            "{{ '<|user|>\\n ' + message['content'] + '<|assistant|>' }}"
             "{% elif message['role'] == 'assistant' %}"
-            "{{ '\\n' + message['content'] }}"
+            "{{ '\\n ' + message['content'] }}"
             "{% endif %}"
             "{% endfor %}"
         )
+
+    def postprocess_messages(
+        self,
+        messages: List[ChatCompletionMessageParam],
+        functions: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
+        tools: Optional[List[Dict[str, Any]]] = None,
+    ) -> List[Dict[str, Any]]:
+        _messages = messages
+        messages = []
+
+        if functions or tools:
+            messages.append(
+                {
+                    "role": Role.SYSTEM,
+                    "content": "Answer the following questions as best as you can. You have access to the following tools:",
+                    "tools": functions if functions else [t["function"] for t in tools]
+                }
+            )
+
+        for m in _messages:
+            role, content = m["role"], m["content"]
+            if role in [Role.FUNCTION, Role.TOOL]:
+                messages.append(
+                    {
+                        "role": "observation",
+                        "content": content,
+                    }
+                )
+            elif role == Role.ASSISTANT:
+                if content is not None:
+                    for response in content.split("<|assistant|>"):
+                        if "\n" in response:
+                            metadata, sub_content = response.split("\n", maxsplit=1)
+                        else:
+                            metadata, sub_content = "", response
+                        messages.append(
+                            {
+                                "role": role,
+                                "metadata": metadata,
+                                "content": sub_content.strip()
+                            }
+                        )
+            else:
+                messages.append(
+                    {
+                        "role": role,
+                        "content": content,
+                    }
+                )
+        return messages
+
+    def parse_assistant_response(
+        self,
+        output: str,
+        functions: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
+        tools: Optional[List[Dict[str, Any]]] = None,
+    ) -> Tuple[str, Union[str, Dict[str, Any]]]:
+        content = ""
+        for response in output.split("<|assistant|>"):
+            if "\n" in response:
+                metadata, content = response.split("\n", maxsplit=1)
+            else:
+                metadata, content = "", response
+
+            if not metadata.strip():
+                content = content.strip()
+                content = content.replace("[[训练时间]]", "2023年")
+            else:
+                if functions or tools:
+                    content = "\n".join(content.split("\n")[1:-1])
+
+                    def tool_call(**kwargs):
+                        return kwargs
+
+                    parameters = eval(content)
+                    if functions:
+                        content = {
+                            "name": metadata.strip(),
+                            "arguments": json.dumps(parameters, ensure_ascii=False)
+                        }
+                    else:
+                        content = {
+                            "function": {
+                                "name": metadata.strip(),
+                                "arguments": json.dumps(parameters, ensure_ascii=False)
+                            },
+                            "id": metadata.strip(),
+                            "type": "function",
+                        }
+                else:
+                    content = {
+                        "name": metadata.strip(),
+                        "content": content
+                    }
+        return output, content
 
 
 class MossTemplate(BaseTemplate):
@@ -823,19 +983,22 @@ class PhindTemplate(BaseTemplate):
         )
 
 
-class DeepseekTemplate(BaseTemplate):
+class DeepseekCoderTemplate(BaseTemplate):
 
-    name = "deepseek"
+    name = "deepseek-coder"
     system_prompt = (
         "You are an AI programming assistant, utilizing the Deepseek Coder model, "
         "developed by Deepseek Company, and you only answer questions related to computer science. "
         "For politically sensitive questions, security and privacy issues, "
         "and other non-computer science questions, you will refuse to answer.\n"
     )
-    allow_models = ["deepseek"]
+    allow_models = ["deepseek-coder"]
     stop = {
         "strings": ["<|EOT|>"],
     }
+
+    def match(self, name) -> bool:
+        return name == "deepseek-coder"
 
     @property
     def template(self):
@@ -850,6 +1013,31 @@ class DeepseekTemplate(BaseTemplate):
             "{{ '### Instruction:\\n' + message['content'] + '\\n' + '### Response:\\n' }}"
             "{% elif message['role'] == 'assistant' %}"
             "{{ message['content'] + '\\n<|EOT|>\\n' }}"
+            "{% endif %}"
+            "{% endfor %}"
+        )
+
+
+class DeepseekTemplate(BaseTemplate):
+
+    name = "deepseek"
+    allow_models = ["deepseek"]
+    stop = {
+        "token_ids": [100001],
+        "strings": ["<｜end▁of▁sentence｜>"],
+    }
+
+    @property
+    def template(self):
+        return (
+            "{{ '<｜begin▁of▁sentence｜>' }}"
+            "{% for message in messages %}"
+            "{% if message['role'] == 'user' %}"
+            "{{ 'User: ' + message['content'] + '\\n\\n' + 'Assistant: ' }}"
+            "{% elif message['role'] == 'assistant' %}"
+            "{{ message['content'] + '<｜end▁of▁sentence｜>' }}"
+            "{% elif message['role'] == 'system' %}"
+            "{{ message['content'] + '\\n\\n' }}"
             "{% endif %}"
             "{% endfor %}"
         )
@@ -987,6 +1175,7 @@ register_prompt_adapter(Chatglm2Template)
 register_prompt_adapter(Chatglm3Template)
 register_prompt_adapter(ChineseAlpaca2Template)
 register_prompt_adapter(DeepseekTemplate)
+register_prompt_adapter(DeepseekCoderTemplate)
 register_prompt_adapter(FireflyTemplate)
 register_prompt_adapter(FireflyForQwenTemplate)
 register_prompt_adapter(HuatuoTemplate)
@@ -1014,5 +1203,6 @@ if __name__ == '__main__':
         {"role": "assistant", "content": "I'm doing great. How can I help you today?"},
         {"role": "user", "content": "I'd like to show off how chat templating works!"},
     ]
-    template = get_prompt_adapter(prompt_name="yi")
-    print(template.apply_chat_template(chat))
+    template = get_prompt_adapter(prompt_name="deepseek")
+    messages = template.postprocess_messages(chat)
+    print(template.apply_chat_template(messages))

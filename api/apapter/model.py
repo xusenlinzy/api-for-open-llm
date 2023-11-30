@@ -14,6 +14,7 @@ from transformers import (
     AutoTokenizer,
     AutoModelForCausalLM,
     BitsAndBytesConfig,
+    PreTrainedTokenizer,
 )
 from transformers.utils.versions import require_version
 
@@ -28,10 +29,15 @@ class BaseModelAdapter:
 
     model_names = []
 
-    def match(self, model_name):
+    def match(self, model_name) -> bool:
         return any(m in model_name for m in self.model_names) if self.model_names else True
 
-    def load_model(self, model_name_or_path: Optional[str] = None, adapter_model: Optional[str] = None, **kwargs):
+    def load_model(
+        self,
+        model_name_or_path: Optional[str] = None,
+        adapter_model: Optional[str] = None,
+        **kwargs
+    ):
         """ Load model through transformers. """
         model_name_or_path = self.default_model_name_or_path if model_name_or_path is None else model_name_or_path
         tokenizer_kwargs = {"trust_remote_code": True, "use_fast": False}
@@ -149,7 +155,9 @@ class BaseModelAdapter:
             torch_dtype=model_kwargs.get("torch_dtype", torch.float16),
         )
 
-    def load_adapter_model(self, model, tokenizer, adapter_model, is_chatglm, model_kwargs, **kwargs):
+    def load_adapter_model(
+        self, model, tokenizer, adapter_model, is_chatglm, model_kwargs, **kwargs
+    ):
         use_ptuning_v2 = kwargs.get("use_ptuning_v2", False)
         resize_embeddings = kwargs.get("resize_embeddings", False)
         if adapter_model and resize_embeddings and not is_chatglm:
@@ -176,7 +184,7 @@ class BaseModelAdapter:
 
         return model
 
-    def post_tokenizer(self, tokenizer):
+    def post_tokenizer(self, tokenizer) -> PreTrainedTokenizer:
         return tokenizer
 
     @property
@@ -262,6 +270,20 @@ class ChatglmModelAdapter(BaseModelAdapter):
     @property
     def default_model_name_or_path(self):
         return "THUDM/chatglm2-6b"
+
+
+class Chatglm3ModelAdapter(ChatglmModelAdapter):
+    """ https://github.com/THUDM/ChatGLM-6B """
+
+    model_names = ["chatglm3"]
+
+    @property
+    def tokenizer_kwargs(self):
+        return {"encode_special_tokens": True}
+
+    @property
+    def default_model_name_or_path(self):
+        return "THUDM/chatglm3-6b"
 
 
 class LlamaModelAdapter(BaseModelAdapter):

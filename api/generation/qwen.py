@@ -1,7 +1,7 @@
 import json
 import re
 from copy import deepcopy
-from typing import List, Union
+from typing import List, Union, Optional, Dict, Any
 
 from fastapi import HTTPException
 from loguru import logger
@@ -42,10 +42,11 @@ def build_qwen_chat_input(
     messages: List[ChatCompletionMessageParam],
     context_len: int = 8192,
     max_new_tokens: int = 256,
-    functions: List[dict] = None,
+    functions: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
+    tools: Optional[List[Dict[str, Any]]] = None,
 ) -> List[int]:
     """ https://huggingface.co/Qwen/Qwen-7B-Chat/blob/main/qwen_generation_utils.py """
-    query, history = process_qwen_messages(messages, functions)
+    query, history = process_qwen_messages(messages, functions, tools)
     if query is _TEXT_COMPLETION_CMD:
         return build_last_message_input(tokenizer, history)
     else:
@@ -106,8 +107,10 @@ def check_is_qwen(model) -> bool:
 
 
 def process_qwen_messages(
-    messages: List[ChatCompletionMessageParam], functions: Union[dict, List[dict]] = None
-):
+    messages: List[ChatCompletionMessageParam],
+    functions: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
+    tools: Optional[List[Dict[str, Any]]] = None,
+) -> List[ChatCompletionMessageParam]:
     if all(m["role"] != Role.USER for m in messages):
         raise HTTPException(
             status_code=400,
@@ -121,6 +124,9 @@ def process_qwen_messages(
         system = messages.pop(0)["content"].lstrip("\n").rstrip()
         if system == default_system:
             system = ""
+
+    if tools:
+        functions = [t["function"] for t in tools]
 
     if functions:
         tools_text = []
@@ -161,10 +167,10 @@ def process_qwen_messages(
     messages = []
     for m_idx, m in enumerate(_messages):
         role, content = m["role"], m["content"]
-        func_call = m.get("function_call", None)
+        func_call, tools_call = m.get("function_call", None), m.get("tools_call", None)
         if content:
             content = content.lstrip("\n").rstrip()
-        if role == Role.FUNCTION:
+        if role in [Role.FUNCTION, Role.TOOL]:
             if (len(messages) == 0) or (messages[-1]["role"] != Role.ASSISTANT):
                 raise HTTPException(
                     status_code=400,
@@ -182,11 +188,14 @@ def process_qwen_messages(
             last_msg = messages[-1]["content"]
             last_msg_has_zh = len(re.findall(r"[\u4e00-\u9fff]+", last_msg)) > 0
 
-            if func_call is None:
-                if functions:
+            if func_call is None and tools_call is None:
+                if functions or tools_call:
                     content = dummy_thought["zh" if last_msg_has_zh else "en"] + content
             else:
-                f_name, f_args = func_call.get("name"), func_call.get("arguments")
+                if func_call:
+                    f_name, f_args = func_call.get("name"), func_call.get("arguments")
+                else:
+                    f_name, f_args = tools_call[0]["function"]["name"], tools_call[0]["function"]["arguments"]
                 if not content:
                     if last_msg_has_zh:
                         content = f"Thought: 我可以使用 {f_name} API。"
@@ -238,31 +247,6 @@ def process_qwen_messages(
         assert query is not _TEXT_COMPLETION_CMD
         query = f"{system}\n\nQuestion: {query}"
     return query, history
-
-
-def parse_response(response):
-    func_name, func_args = "", ""
-    i = response.rfind("\nAction:")
-    j = response.rfind("\nAction Input:")
-    k = response.rfind("\nObservation:")
-
-    if 0 <= i < j:  # If the text has `Action` and `Action input`,
-        if k < j:  # but does not contain `Observation`,
-            # then it is likely that `Observation` is omitted by the LLM,
-            # because the output text may have discarded the stop word.
-            response = response.rstrip() + "\nObservation:"  # Add it back.
-        k = response.rfind("\nObservation:")
-        func_name = response[i + len("\nAction:"): j].strip()
-        func_args = response[j + len("\nAction Input:"): k].strip()
-
-    if func_name:
-        function_call = {"name": func_name, "arguments": func_args}
-        return response[:k], function_call
-
-    z = response.rfind("\nFinal Answer: ")
-    if z >= 0:
-        response = response[z + len("\nFinal Answer: "):]
-    return response, None
 
 
 def build_last_message_input(tokenizer: PreTrainedTokenizer, history: list):
