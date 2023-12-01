@@ -64,6 +64,9 @@ async def create_completion(
     request.max_tokens = request.max_tokens or 128
     request, stop_token_ids = await handle_request(request, engine.prompt_adapter.stop, chat=False)
 
+    if isinstance(request.prompt, list):
+        request.prompt = request.prompt[0]
+
     params = request.model_dump()
     params.update(dict(stop_token_ids=stop_token_ids, prompt_or_messages=request.prompt))
     logger.debug(f"==== request ====\n{params}")
