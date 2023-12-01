@@ -23,17 +23,16 @@ docker build -f docker/Dockerfile.vllm -t llm-api:vllm .
 **`vLLM` 环境需要将 `torch` 版本升级到 `2.0.0` 以上，再安装 `vllm`**
 
 ```shell
-pip install -r requirements.txt
-pip install torch -U
-pip install vllm>=0.1.4
-# pip install git+https://github.com/vllm-project/vllm.git
-pip uninstall transformer-engine
+pip install torch==2.1.0
+pip install vllm>=0.2.2
+pip install -r requirements.txt 
+pip uninstall transformer-engine -y
 ```
 
 如不需要安装 `vLLM`，则只需要
 
 ```shell
-pip install torch==1.13
+pip install torch>=1.13
 pip install -r requirements.txt
 ```
 
