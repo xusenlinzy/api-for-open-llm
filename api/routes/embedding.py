@@ -41,21 +41,20 @@ async def create_embeddings(
             request.input = [decoding.decode(text) for text in request.input]
 
     # https://huggingface.co/BAAI/bge-large-zh
-    if engine is not None:
-        if "bge" in SETTINGS.embedding_name.lower():
-            instruction = ""
-            if "zh" in SETTINGS.embedding_name.lower():
-                instruction = "为这个句子生成表示以用于检索相关文章："
-            elif "en" in SETTINGS.embedding_name.lower():
-                instruction = "Represent this sentence for searching relevant passages: "
-            request.input = [instruction + q for q in request.input]
+    if engine is not None and "bge" in SETTINGS.embedding_name.lower():
+        instruction = ""
+        if "zh" in SETTINGS.embedding_name.lower():
+            instruction = "为这个句子生成表示以用于检索相关文章："
+        elif "en" in SETTINGS.embedding_name.lower():
+            instruction = "Represent this sentence for searching relevant passages: "
+        request.input = [instruction + q for q in request.input]
 
     data, total_tokens = [], 0
     batches = [
         request.input[i: i + 1024] for i in range(0, len(request.input), 1024)
     ]
     for num_batch, batch in enumerate(batches):
-        token_num = sum([len(i) for i in batch])
+        token_num = sum(len(i) for i in batch)
         vecs = engine.encode(batch, normalize_embeddings=True)
 
         bs, dim = vecs.shape
@@ -68,11 +67,12 @@ async def create_embeddings(
         else:
             vecs = vecs.tolist()
 
-        for i, embed in enumerate(vecs):
-            data.append(
-                Embedding(index=num_batch * 1024 + i, object="embedding", embedding=embed)
+        data.extend(
+            Embedding(
+                index=num_batch * 1024 + i, object="embedding", embedding=embed
             )
-
+            for i, embed in enumerate(vecs)
+        )
         total_tokens += token_num
 
     return CreateEmbeddingResponse(

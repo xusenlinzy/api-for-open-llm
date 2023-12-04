@@ -36,12 +36,10 @@ async def create_completion(
     request, stop_token_ids = await handle_request(request, engine.stop, chat=False)
     request.max_tokens = request.max_tokens or 128
 
-    params = request.model_dump()
-    params.update(
-        dict(
-            prompt_or_messages=request.prompt[0],
-            stop_token_ids=stop_token_ids,
-        )
+    params = request.model_dump(exclude={"prompt"})
+    params |= dict(
+        prompt_or_messages=request.prompt[0],
+        stop_token_ids=stop_token_ids,
     )
 
     iterator_or_completion = await run_in_threadpool(engine.create_completion, params)

@@ -33,23 +33,22 @@ llama_inner_lock = Lock()
 async def check_api_key(
     auth: Optional[HTTPAuthorizationCredentials] = Depends(HTTPBearer(auto_error=False)),
 ):
-    if SETTINGS.api_keys:
-        if auth is None or (token := auth.credentials) not in SETTINGS.api_keys:
-            raise HTTPException(
-                status_code=401,
-                detail={
-                    "error": {
-                        "message": "",
-                        "type": "invalid_request_error",
-                        "param": None,
-                        "code": "invalid_api_key",
-                    }
-                },
-            )
-        return token
-    else:
+    if not SETTINGS.api_keys:
         # api_keys not set; allow all
         return None
+    if auth is None or (token := auth.credentials) not in SETTINGS.api_keys:
+        raise HTTPException(
+            status_code=401,
+            detail={
+                "error": {
+                    "message": "",
+                    "type": "invalid_request_error",
+                    "param": None,
+                    "code": "invalid_api_key",
+                }
+            },
+        )
+    return token
 
 
 def create_error_response(code: int, message: str) -> JSONResponse:
@@ -75,9 +74,8 @@ async def handle_request(
     if isinstance(request.stop, str):
         request.stop = [request.stop]
 
-    if chat:
-        if "qwen" in SETTINGS.model_name.lower() and request.functions:
-            request.stop.append("Observation:")
+    if chat and ("qwen" in SETTINGS.model_name.lower() and request.functions):
+        request.stop.append("Observation:")
 
     request.stop = list(set(_stop + request.stop))
 
@@ -116,14 +114,13 @@ def check_requests(request: Union[CompletionCreateParams, ChatCompletionCreatePa
             ErrorCode.PARAM_OUT_OF_RANGE,
             f"{request.top_p} is greater than the maximum of 1 - 'temperature'",
         )
-    if request.stop is not None and (
-            not isinstance(request.stop, str) and not isinstance(request.stop, list)
-    ):
+    if request.stop is None or isinstance(request.stop, (str, list)):
+        return None
+    else:
         return create_error_response(
             ErrorCode.PARAM_OUT_OF_RANGE,
             f"{request.stop} is not valid under any of the given schemas - 'stop'",
         )
-    return None
 
 
 async def get_event_publisher(

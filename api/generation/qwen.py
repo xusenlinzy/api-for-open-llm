@@ -1,7 +1,7 @@
 import json
 import re
 from copy import deepcopy
-from typing import List, Union, Optional, Dict, Any
+from typing import List, Union, Optional, Dict, Any, Tuple
 
 from fastapi import HTTPException
 from loguru import logger
@@ -45,21 +45,39 @@ def build_qwen_chat_input(
     functions: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
     tools: Optional[List[Dict[str, Any]]] = None,
 ) -> List[int]:
-    """ https://huggingface.co/Qwen/Qwen-7B-Chat/blob/main/qwen_generation_utils.py """
+    """
+    Builds the input tokens for Qwen chat generation.
+
+    Refs:
+        https://huggingface.co/Qwen/Qwen-7B-Chat/blob/main/qwen_generation_utils.py
+
+    Args:
+        tokenizer: The tokenizer used to encode the input tokens.
+        messages: The list of chat messages.
+        context_len: The maximum length of the context.
+        max_new_tokens: The maximum number of new tokens to add.
+        functions: Optional dictionary or list of dictionaries representing the functions.
+        tools: Optional list of dictionaries representing the tools.
+
+    Returns:
+        The list of input tokens.
+    """
     query, history = process_qwen_messages(messages, functions, tools)
     if query is _TEXT_COMPLETION_CMD:
         return build_last_message_input(tokenizer, history)
-    else:
-        for q, r in history:
-            messages.extend(
-                [ChatCompletionUserMessageParam(role="user", content=q),
-                 ChatCompletionAssistantMessageParam(role="assistant", content=r)]
-            )
-        messages.append(ChatCompletionUserMessageParam(role="user", content=query))
+
+    for q, r in history:
+        messages.extend(
+            [
+                ChatCompletionUserMessageParam(role="user", content=q),
+                ChatCompletionAssistantMessageParam(role="assistant", content=r)
+            ]
+        )
+    messages.append(ChatCompletionUserMessageParam(role="user", content=query))
 
     max_input_tokens = context_len - max_new_tokens
     system, rounds = parse_messages(messages)
-    system = "You are a helpful assistant." + system  # fix system prompt
+    system = f"You are a helpful assistant.{system}"
 
     im_start_tokens, im_end_tokens = [tokenizer.im_start_id], [tokenizer.im_end_id]
     nl_tokens = tokenizer.encode("\n")
@@ -103,6 +121,15 @@ def build_qwen_chat_input(
 
 
 def check_is_qwen(model) -> bool:
+    """
+    Checks if the given model is a Qwen model.
+
+    Args:
+        model: The model to be checked.
+
+    Returns:
+        bool: True if the model is a Qwen model, False otherwise.
+    """
     return "QWenBlock" in getattr(model, "_no_split_modules", [])
 
 
@@ -110,7 +137,18 @@ def process_qwen_messages(
     messages: List[ChatCompletionMessageParam],
     functions: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
     tools: Optional[List[Dict[str, Any]]] = None,
-) -> List[ChatCompletionMessageParam]:
+) -> Tuple[str, List[List[str]]]:
+    """
+    Process the Qwen messages and generate a query and history.
+
+    Args:
+        messages (List[ChatCompletionMessageParam]): The list of chat completion messages.
+        functions (Optional[Union[Dict[str, Any], List[Dict[str, Any]]]]): The functions to be used.
+        tools (Optional[List[Dict[str, Any]]]): The tools to be used.
+
+    Returns:
+        Tuple[str, List[List[str]]]: The generated query and history.
+    """
     if all(m["role"] != Role.USER for m in messages):
         raise HTTPException(
             status_code=400,

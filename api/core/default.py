@@ -11,6 +11,7 @@ from typing import (
 )
 
 import torch
+from fastapi.responses import JSONResponse
 from loguru import logger
 from openai.types.chat import (
     ChatCompletionMessage,
@@ -67,14 +68,16 @@ class DefaultEngine(ABC):
         use_streamer_v2: Optional[bool] = False,
     ):
         """
+        Initialize the Default class.
+
         Args:
-            model (PreTrainedModel): PreTrained language model loads with transformers.
-            tokenizer (PreTrainedTokenizer): PreTrained tokenizer loads with transformers.
-            device (Union[str, torch.device]): The device to load model.
-            model_name (str): Model name to distinguish diffierent models.
-            context_len (int, *optional*): Context length for generating completions.
-            prompt_name (str, *optional*): Chat template for generating prompt.
-            use_streamer_v2 (bool, *optional*): Whether to support for transformers.TextIteratorStreamer.
+            model (PreTrainedModel): The pre-trained model.
+            tokenizer (PreTrainedTokenizer): The tokenizer for the model.
+            device (Union[str, torch.device]): The device to use for inference.
+            model_name (str): The name of the model.
+            context_len (Optional[int], optional): The length of the context. Defaults to None.
+            prompt_name (Optional[str], optional): The name of the prompt. Defaults to None.
+            use_streamer_v2 (Optional[bool], optional): Whether to use Streamer V2. Defaults to False.
         """
         self.model = model
         self.tokenizer = tokenizer
@@ -91,15 +94,22 @@ class DefaultEngine(ABC):
         self._fix_tokenizer()
 
     def _prepare_for_generate(self):
+        """
+        Prepare the object for text generation.
+
+        1. Sets the appropriate generate stream function based on the model name and type.
+        2. Updates the context length if necessary.
+        3. Checks and constructs the prompt.
+        4. Sets the context length if it is not already set.
+        """
         self.generate_stream_func = generate_stream
         if "chatglm3" in self.model_name:
             self.generate_stream_func = generate_stream_chatglm_v3
             self.use_streamer_v2 = False
-        else:
-            if check_is_chatglm(self.model):
-                self.generate_stream_func = generate_stream_chatglm
-            elif check_is_qwen(self.model):
-                self.context_len = 8192 if self.context_len is None else self.context_len
+        elif check_is_chatglm(self.model):
+            self.generate_stream_func = generate_stream_chatglm
+        elif check_is_qwen(self.model):
+            self.context_len = 8192 if self.context_len is None else self.context_len
 
         self._check_construct_prompt()
 
@@ -108,7 +118,7 @@ class DefaultEngine(ABC):
 
     def _check_construct_prompt(self):
         """ Check whether to need to construct prompts or inputs. """
-        self.construct_prompt = False if self.prompt_name is None else True
+        self.construct_prompt = self.prompt_name is not None
         if "chatglm3" in self.model_name:
             logger.info("Using ChatGLM3 Model for Chat!")
         elif check_is_baichuan(self.model):
@@ -121,16 +131,20 @@ class DefaultEngine(ABC):
             self.construct_prompt = True
 
     def _fix_tokenizer(self):
+        """ 
+        Fix the tokenizer by adding the end-of-sequence (eos) token 
+        and the padding (pad) token if they are missing.
+        """
         if self.tokenizer.eos_token_id is None:
             self.tokenizer.eos_token = "<|endoftext|>"
-            logger.info("Add eos token: {}".format(self.tokenizer.eos_token))
+            logger.info(f"Add eos token: {self.tokenizer.eos_token}")
 
         if self.tokenizer.pad_token_id is None:
             if self.tokenizer.unk_token_id is not None:
                 self.tokenizer.pad_token = self.tokenizer.unk_token
             else:
                 self.tokenizer.pad_token = self.tokenizer.eos_token
-            logger.info("Add pad token: {}".format(self.tokenizer.pad_token))
+            logger.info(f"Add pad token: {self.tokenizer.pad_token}")
 
     def convert_to_inputs(
         self,
@@ -139,27 +153,37 @@ class DefaultEngine(ABC):
         suffix_first: Optional[bool] = False,
         **kwargs,
     ) -> Tuple[Union[List[int], Dict[str, Any]], Union[List[ChatCompletionMessageParam], str]]:
+        """
+        Convert the prompt or messages into input format for the model.
+
+        Args:
+            prompt_or_messages: The prompt or messages to be converted.
+            infilling: Whether to perform infilling.
+            suffix_first: Whether to append the suffix first.
+            **kwargs: Additional keyword arguments.
+
+        Returns:
+            Tuple containing the converted inputs and the prompt or messages.
+        """
         # for completion
         if isinstance(prompt_or_messages, str):
             if infilling:
                 inputs = self.tokenizer(
                     prompt_or_messages, suffix_first=suffix_first,
                 ).input_ids
+            elif check_is_qwen(self.model):
+                inputs = self.tokenizer(
+                    prompt_or_messages, allowed_special="all", disallowed_special=()
+                ).input_ids
+            elif check_is_chatglm(self.model):
+                inputs = self.tokenizer([prompt_or_messages], return_tensors="pt")
             else:
-                if check_is_qwen(self.model):
-                    inputs = self.tokenizer(
-                        prompt_or_messages, allowed_special="all", disallowed_special=()
-                    ).input_ids
-                elif check_is_chatglm(self.model):
-                    inputs = self.tokenizer([prompt_or_messages], return_tensors="pt")
-                else:
-                    inputs = self.tokenizer(prompt_or_messages).input_ids
+                inputs = self.tokenizer(prompt_or_messages).input_ids
 
             if isinstance(inputs, list):
                 max_src_len = self.context_len - kwargs.get("max_tokens", 256) - 1
                 inputs = inputs[-max_src_len:]
 
-        # for chat completion
         else:
             inputs, prompt_or_messages = self.apply_chat_template(prompt_or_messages, **kwargs)
         return inputs, prompt_or_messages
@@ -171,7 +195,20 @@ class DefaultEngine(ABC):
         functions: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
         tools: Optional[List[Dict[str, Any]]] = None,
         **kwargs,
-    ) -> Tuple[Union[List[int], Dict[str, Any]], Union[str, None]]:
+    ) -> Tuple[Union[List[int], Dict[str, Any]], Optional[str]]:
+        """
+        Apply chat template to generate model inputs and prompt.
+
+        Args:
+            messages (List[ChatCompletionMessageParam]): List of chat completion message parameters.
+            max_new_tokens (Optional[int], optional): Maximum number of new tokens to generate. Defaults to 256.
+            functions (Optional[Union[Dict[str, Any], List[Dict[str, Any]]]], optional): Functions to apply to the messages. Defaults to None.
+            tools (Optional[List[Dict[str, Any]]], optional): Tools to apply to the messages. Defaults to None.
+            **kwargs: Additional keyword arguments.
+
+        Returns:
+            Tuple[Union[List[int], Dict[str, Any]], Union[str, None]]: Tuple containing the generated inputs and prompt.
+        """
         if self.prompt_adapter.function_call_available:
             messages = self.prompt_adapter.postprocess_messages(
                 messages, functions, tools=tools,
@@ -204,7 +241,7 @@ class DefaultEngine(ABC):
         max_new_tokens: Optional[int] = 256,
         functions: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
         tools: Optional[List[Dict[str, Any]]] = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> List[int]:
         if "chatglm3" in self.model_name:
             query, role = messages[-1]["content"], messages[-1]["role"]
@@ -226,16 +263,25 @@ class DefaultEngine(ABC):
         return inputs
 
     def _generate(self, params: Dict[str, Any]) -> Iterator:
+        """
+        Generates text based on the given parameters.
+
+        Args:
+            params (Dict[str, Any]): A dictionary containing the parameters for text generation.
+
+        Yields:
+            Iterator: A dictionary containing the generated text and error code.
+        """
         prompt_or_messages = params.get("prompt_or_messages")
         inputs, prompt = self.convert_to_inputs(
             prompt_or_messages,
             infilling=params.get("infilling", False),
             suffix_first=params.get("suffix_first", False),
             max_new_tokens=params.get("max_tokens", 256),
-            functions=params.get("functions", None),
-            tools=params.get("tools", None),
+            functions=params.get("functions"),
+            tools=params.get("tools"),
         )
-        params.update(dict(inputs=inputs, prompt=prompt))
+        params |= dict(inputs=inputs, prompt=prompt)
 
         try:
             for output in self.generate_stream_func(self.model, self.tokenizer, params):
@@ -256,13 +302,22 @@ class DefaultEngine(ABC):
             }
 
     def _create_completion_stream(self, params: Dict[str, Any]) -> Iterator:
+        """
+        Generates a stream of completions based on the given parameters.
+
+        Args:
+            params (Dict[str, Any]): The parameters for generating completions.
+
+        Yields:
+            Iterator: A stream of completion objects.
+        """
         for output in self._generate(params):
             if output["error_code"] != 0:
                 yield output
                 return
 
             logprobs = None
-            if params.get("logprobs", None) and output["logprobs"]:
+            if params.get("logprobs") and output["logprobs"]:
                 logprobs = Logprobs.model_validate(output["logprobs"])
 
             choice = CompletionChoice(
@@ -279,7 +334,16 @@ class DefaultEngine(ABC):
                 object="text_completion",
             )
 
-    def _create_completion(self, params: Dict[str, Any]) -> Completion:
+    def _create_completion(self, params: Dict[str, Any]) -> Union[Completion, JSONResponse]:
+        """
+        Creates a completion based on the given parameters.
+
+        Args:
+            params (Dict[str, Any]): The parameters for creating the completion.
+
+        Returns:
+            Completion: The generated completion object.
+        """
         last_output = None
         for output in self._generate(params):
             last_output = output
@@ -288,7 +352,7 @@ class DefaultEngine(ABC):
             return create_error_response(last_output["error_code"], last_output["text"])
 
         logprobs = None
-        if params.get("logprobs", None) and last_output["logprobs"]:
+        if params.get("logprobs") and last_output["logprobs"]:
             logprobs = Logprobs.model_validate(last_output["logprobs"])
 
         choice = CompletionChoice(
@@ -308,6 +372,15 @@ class DefaultEngine(ABC):
         )
 
     def _create_chat_completion_stream(self, params: Dict[str, Any]) -> Iterator:
+        """
+        Creates a chat completion stream.
+
+        Args:
+            params (Dict[str, Any]): The parameters for generating the chat completion.
+
+        Yields:
+            Dict[str, Any]: The output of the chat completion stream.
+        """
         _id, _created, _model = None, None, None
         for i, output in enumerate(self._generate(params)):
             if output["error_code"] != 0:
@@ -337,9 +410,9 @@ class DefaultEngine(ABC):
             if finish_reason == "function_call":
                 try:
                     _, function_call = self.prompt_adapter.parse_assistant_response(
-                        output["text"], params.get("functions", None), params.get("tools", None),
+                        output["text"], params.get("functions"), params.get("tools"),
                     )
-                except:
+                except Exception as e:
                     traceback.print_exc()
                     logger.warning("Failed to parse tool call")
 
@@ -385,7 +458,16 @@ class DefaultEngine(ABC):
             object="chat.completion.chunk",
         )
 
-    def _create_chat_completion(self, params: Dict[str, Any]) -> ChatCompletion:
+    def _create_chat_completion(self, params: Dict[str, Any]) -> Union[ChatCompletion, JSONResponse]:
+        """
+        Creates a chat completion based on the given parameters.
+
+        Args:
+            params (Dict[str, Any]): The parameters for generating the chat completion.
+
+        Returns:
+            ChatCompletion: The generated chat completion.
+        """
         last_output = None
         for output in self._generate(params):
             last_output = output
@@ -394,13 +476,13 @@ class DefaultEngine(ABC):
             return create_error_response(last_output["error_code"], last_output["text"])
 
         function_call, finish_reason = None, "stop"
-        if params.get("functions", None) or params.get("tools", None):
+        if params.get("functions") or params.get("tools"):
             try:
                 res, function_call = self.prompt_adapter.parse_assistant_response(
-                    last_output["text"], params.get("functions", None), params.get("tools", None),
+                    last_output["text"], params.get("functions"), params.get("tools"),
                 )
                 last_output["text"] = res
-            except:
+            except Exception as e:
                 traceback.print_exc()
                 logger.warning("Failed to parse tool call")
 
@@ -444,15 +526,15 @@ class DefaultEngine(ABC):
     def create_completion(
         self,
         params: Optional[Dict[str, Any]] = None,
-        **kwargs
+        **kwargs: Any,
     ) -> Union[Iterator, Completion]:
         params = params or {}
-        params.update(kwargs)
-        if params.get("stream", False):
-            completion_or_chunks = self._create_completion_stream(params)
-        else:
-            completion_or_chunks = self._create_completion(params)
-        return completion_or_chunks
+        params |= kwargs
+        return (
+            self._create_completion_stream(params)
+            if params.get("stream", False)
+            else self._create_completion(params)
+        )
 
     def create_chat_completion(
         self,
@@ -460,13 +542,19 @@ class DefaultEngine(ABC):
         **kwargs,
     ) -> Union[Iterator, ChatCompletion]:
         params = params or {}
-        params.update(kwargs)
-        if params.get("stream", False):
-            chat_completion_or_chunks = self._create_chat_completion_stream(params)
-        else:
-            chat_completion_or_chunks = self._create_chat_completion(params)
-        return chat_completion_or_chunks
+        params |= kwargs
+        return (
+            self._create_chat_completion_stream(params)
+            if params.get("stream", False)
+            else self._create_chat_completion(params)
+        )
 
     @property
     def stop(self):
+        """
+        Gets the stop property of the prompt adapter.
+
+        Returns:
+            The stop property of the prompt adapter, or None if it does not exist.
+        """
         return self.prompt_adapter.stop if hasattr(self.prompt_adapter, "stop") else None

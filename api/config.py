@@ -17,7 +17,7 @@ def get_bool_env(key, default="false"):
 
 def get_env(key, default):
     val = os.environ.get(key, "")
-    return val if val else default
+    return val or default
 
 
 class Settings(BaseModel):

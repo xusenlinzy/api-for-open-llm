@@ -1,9 +1,8 @@
 import gc
-import json
 import re
 import time
 import uuid
-from typing import List, Union, Dict, Any
+from typing import List, Union, Dict, Any, Iterator
 
 import torch
 from loguru import logger
@@ -25,7 +24,17 @@ class InvalidScoreLogitsProcessor(LogitsProcessor):
         return scores
 
 
-def process_response(response):
+def process_response(response: str) -> str:
+    """
+    Process the response by stripping leading and trailing whitespace,
+    replacing the placeholder for training time, and normalizing punctuation.
+
+    Args:
+        response: The input response string.
+
+    Returns:
+        The processed response string.
+    """
     response = response.strip()
     response = response.replace("[[训练时间]]", "2023年")
     punkts = [
@@ -41,38 +50,16 @@ def process_response(response):
     return response
 
 
-def process_response_v3(output: str, use_tool: bool = False) -> Union[str, dict]:
-    content = ""
-    for response in output.split("<|assistant|>"):
-        if "\n" in response:
-            metadata, content = response.split("\n", maxsplit=1)
-        else:
-            metadata, content = "", response
-
-        if not metadata.strip():
-            content = content.strip()
-            content = content.replace("[[训练时间]]", "2023年")
-        else:
-            if use_tool:
-                content = "\n".join(content.split("\n")[1:-1])
-
-                def tool_call(**kwargs):
-                    return kwargs
-
-                parameters = eval(content)
-                content = {
-                    "name": metadata.strip(),
-                    "arguments": json.dumps(parameters, ensure_ascii=False)
-                }
-            else:
-                content = {
-                    "name": metadata.strip(),
-                    "content": content
-                }
-    return content
-
-
 def check_is_chatglm(model) -> bool:
+    """
+    Checks if the given model is a ChatGLM model.
+
+    Args:
+        model: The model to be checked.
+
+    Returns:
+        bool: True if the model is a ChatGLM model, False otherwise.
+    """
     return "GLMBlock" in getattr(model, "_no_split_modules", [])
 
 
@@ -81,7 +68,19 @@ def generate_stream_chatglm(
     model: PreTrainedModel,
     tokenizer: PreTrainedTokenizer,
     params: Dict[str, Any],
-):
+) -> Iterator:
+    """
+    Generates text in a streaming manner using the ChatGLM model.
+
+    Args:
+        model: The pre-trained ChatGLM model.
+        tokenizer: The tokenizer used for tokenizing the input.
+        params: A dictionary containing the input parameters.
+
+    Yields:
+        A dictionary representing each generated text completion.
+
+    """
     inputs = params["inputs"]
     model_name = params.get("model", "llm")
     temperature = float(params.get("temperature", 1.0))
@@ -91,13 +90,14 @@ def generate_stream_chatglm(
     echo = params.get("echo", True)
 
     input_echo_len = len(inputs["input_ids"][0])
-    inputs = inputs.to(model.device)
     if input_echo_len >= model.config.seq_length:
         logger.warning(f"Input length larger than {model.config.seq_length}")
 
+    inputs = {k: v[:, -model.config.seq_length:].to(model.device) for k, v in inputs.items()}
+
     gen_kwargs = {
         "max_length": min(max_new_tokens + input_echo_len, model.config.seq_length),
-        "do_sample": True if temperature > 1e-5 else False,
+        "do_sample": temperature > 1e-5,
         "top_p": top_p,
         "repetition_penalty": repetition_penalty,
         "logits_processor": [InvalidScoreLogitsProcessor()],
@@ -111,10 +111,8 @@ def generate_stream_chatglm(
     for total_ids in model.stream_generate(**inputs, **gen_kwargs):
         total_ids = total_ids.tolist()[0]
         total_len = len(total_ids)
-        if echo:
-            output_ids = total_ids
-        else:
-            output_ids = total_ids[input_echo_len:]
+
+        output_ids = total_ids if echo else total_ids[input_echo_len:]
         response = tokenizer.decode(output_ids)
         response = process_response(response)
 
@@ -163,7 +161,19 @@ def generate_stream_chatglm_v3(
     model: PreTrainedModel,
     tokenizer: PreTrainedTokenizer,
     params: Dict[str, Any],
-):
+) -> Iterator:
+    """
+    Generates text in a streaming manner using the ChatGLM model.
+
+    Args:
+        model: The pre-trained ChatGLM model.
+        tokenizer: The tokenizer used for tokenizing the input.
+        params: A dictionary containing the input parameters.
+
+    Yields:
+        A dictionary representing each generated text completion.
+
+    """
     inputs = params["inputs"]
     model_name = params.get("model", "llm")
     temperature = float(params.get("temperature", 1.0))
@@ -173,9 +183,10 @@ def generate_stream_chatglm_v3(
     echo = params.get("echo", True)
 
     input_echo_len = len(inputs["input_ids"][0])
-    inputs = inputs.to(model.device)
     if input_echo_len >= model.config.seq_length:
         logger.warning(f"Input length larger than {model.config.seq_length}")
+
+    inputs = {k: v[:, -model.config.seq_length:].to(model.device) for k, v in inputs.items()}
 
     eos_token_id = [
         tokenizer.eos_token_id,
@@ -184,7 +195,7 @@ def generate_stream_chatglm_v3(
 
     gen_kwargs = {
         "max_length": min(max_new_tokens + input_echo_len, model.config.seq_length),
-        "do_sample": True if temperature > 1e-5 else False,
+        "do_sample": temperature > 1e-5,
         "top_p": top_p,
         "repetition_penalty": repetition_penalty,
         "logits_processor": [InvalidScoreLogitsProcessor()],
@@ -198,11 +209,8 @@ def generate_stream_chatglm_v3(
     for total_ids in model.stream_generate(**inputs, eos_token_id=eos_token_id, **gen_kwargs):
         total_ids = total_ids.tolist()[0]
         total_len = len(total_ids)
-        if echo:
-            output_ids = total_ids[:-1]
-        else:
-            output_ids = total_ids[input_echo_len:-1]
-
+        
+        output_ids = total_ids[:-1] if echo else total_ids[input_echo_len:-1]
         response = tokenizer.decode(output_ids)
         if response and response[-1] != "�":
             response, stop_found = apply_stopping_strings(response, ["<|observation|>"])
@@ -254,6 +262,16 @@ def process_chatglm_messages(
     messages: List[ChatCompletionMessageParam],
     functions: Union[dict, List[dict]] = None,
 ) -> List[dict]:
+    """
+    Processes a list of chat messages and returns a modified list of messages.
+
+    Args:
+        messages: A list of chat messages to be processed.
+        functions: Optional. A dictionary or list of dictionaries representing the available tools.
+
+    Returns:
+        A modified list of chat messages.
+    """
     _messages = messages
     messages = []
 

@@ -10,6 +10,19 @@ from api.utils.protocol import Role
 
 @lru_cache
 def _compile_jinja_template(chat_template: str):
+    """
+    Compile a Jinja template from a string.
+
+    Args:
+        chat_template (str): The string representation of the Jinja template.
+
+    Returns:
+        jinja2.Template: The compiled Jinja template.
+
+    Examples:
+        >>> template_string = "Hello, {{ name }}!"
+        >>> template = _compile_jinja_template(template_string)
+    """
     try:
         from jinja2.exceptions import TemplateError
         from jinja2.sandbox import ImmutableSandboxedEnvironment
@@ -33,6 +46,15 @@ class BaseTemplate(ABC):
     function_call_available: Optional[bool] = False
 
     def match(self, name) -> bool:
+        """
+        Check if the given name matches any allowed models.
+
+        Args:
+            name: The name to match against the allowed models.
+
+        Returns:
+            bool: True if the name matches any allowed models, False otherwise.
+        """
         return any(m in name for m in self.allow_models) if self.allow_models else True
 
     def apply_chat_template(
@@ -56,12 +78,11 @@ class BaseTemplate(ABC):
         """
         # Compilation function uses a cache to avoid recompiling the same template
         compiled_template = _compile_jinja_template(self.template)
-
-        rendered = compiled_template.render(
-            messages=conversation, add_generation_prompt=add_generation_prompt, system_prompt=self.system_prompt
+        return compiled_template.render(
+            messages=conversation,
+            add_generation_prompt=add_generation_prompt,
+            system_prompt=self.system_prompt,
         )
-
-        return rendered
 
     @property
     def template(self) -> str:
@@ -97,20 +118,19 @@ prompt_adapter_dict: Dict[str, BaseTemplate] = {}
 
 
 def register_prompt_adapter(cls):
-    """Register a prompt adapter."""
+    """ Register a prompt adapter. """
     prompt_adapters.append(cls())
     prompt_adapter_dict[cls().name] = cls()
 
 
 @lru_cache
 def get_prompt_adapter(model_name: Optional[str] = None, prompt_name: Optional[str] = None) -> BaseTemplate:
-    """Get a prompt adapter for a model name or prompt name."""
+    """ Get a prompt adapter for a model name or prompt name. """
     if prompt_name is not None:
         return prompt_adapter_dict[prompt_name]
-    else:
-        for adapter in prompt_adapters:
-            if adapter.match(model_name):
-                return adapter
+    for adapter in prompt_adapters:
+        if adapter.match(model_name):
+            return adapter
     raise ValueError(f"No valid prompt adapter for {model_name}")
 
 
@@ -377,7 +397,7 @@ class Chatglm3Template(BaseTemplate):
                 {
                     "role": Role.SYSTEM,
                     "content": "Answer the following questions as best as you can. You have access to the following tools:",
-                    "tools": functions if functions else [t["function"] for t in tools]
+                    "tools": functions or [t["function"] for t in tools]
                 }
             )
 

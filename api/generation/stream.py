@@ -27,19 +27,19 @@ def generate_stream(
     params: Dict[str, Any],
 ):
     # Read parameters
-    input_ids = params["inputs"]
-    prompt = params.get("prompt", None)
+    input_ids = params.get("inputs")
+    prompt = params.get("prompt")
     model_name = params.get("model", "llm")
     temperature = float(params.get("temperature", 1.0))
     repetition_penalty = float(params.get("repetition_penalty", 1.0))
     top_p = float(params.get("top_p", 1.0))
     top_k = int(params.get("top_k", -1))  # -1 means disable
     max_new_tokens = int(params.get("max_tokens", 256))
-    logprobs = params.get("logprobs", None)
+    logprobs = params.get("logprobs")
     echo = bool(params.get("echo", True))
-    stop_str = params.get("stop", None)
+    stop_str = params.get("stop")
 
-    stop_token_ids = params.get("stop_token_ids", None) or []
+    stop_token_ids = params.get("stop_token_ids") or []
     if tokenizer.eos_token_id not in stop_token_ids:
         stop_token_ids.append(tokenizer.eos_token_id)
 
@@ -96,11 +96,11 @@ def generate_stream(
             if model.config.is_encoder_decoder:
                 out = model.decoder(
                     input_ids=torch.as_tensor(
-                        [[token] if not sent_interrupt else output_ids], device=device
+                        [output_ids if sent_interrupt else [token]], device=device
                     ),
                     encoder_hidden_states=encoder_output,
                     use_cache=True,
-                    past_key_values=past_key_values if not sent_interrupt else None,
+                    past_key_values=None if sent_interrupt else past_key_values,
                 )
                 sent_interrupt = False
 
@@ -108,10 +108,10 @@ def generate_stream(
             else:
                 out = model(
                     input_ids=torch.as_tensor(
-                        [[token] if not sent_interrupt else output_ids], device=device
+                        [output_ids if sent_interrupt else [token]], device=device
                     ),
                     use_cache=True,
-                    past_key_values=past_key_values if not sent_interrupt else None,
+                    past_key_values=None if sent_interrupt else past_key_values,
                 )
                 sent_interrupt = False
                 logits = out.logits
@@ -264,8 +264,8 @@ def generate_stream_v2(
     tokenizer: PreTrainedTokenizer,
     params: Dict[str, Any],
 ):
-    input_ids = params["inputs"]
-    functions = params.get("functions", None)
+    input_ids = params.get("inputs")
+    functions = params.get("functions")
     model_name = params.get("model", "llm")
     temperature = float(params.get("temperature", 1.0))
     repetition_penalty = float(params.get("repetition_penalty", 1.0))
@@ -273,7 +273,7 @@ def generate_stream_v2(
     top_k = int(params.get("top_k", 40))
     max_new_tokens = int(params.get("max_tokens", 256))
 
-    stop_token_ids = params.get("stop_token_ids", None) or []
+    stop_token_ids = params.get("stop_token_ids") or []
     if tokenizer.eos_token_id not in stop_token_ids:
         stop_token_ids.append(tokenizer.eos_token_id)
     stop_strings = params.get("stop", [])

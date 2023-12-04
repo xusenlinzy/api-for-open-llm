@@ -56,12 +56,10 @@ async def create_chat_completion(
     request.max_tokens = request.max_tokens or 512
 
     params = request.model_dump(exclude={"messages"})
-    params.update(
-        dict(
+    params |= dict(
             prompt_or_messages=request.messages,
             echo=False,
             stop_token_ids=stop_token_ids,
-        )
     )
     logger.debug(f"==== request ====\n{params}")
 
@@ -84,11 +82,9 @@ async def create_chat_completion(
         # Non-streaming response
         final_res: RequestOutput = None
         async for res in generator:
-            if raw_request is not None:
-                if await raw_request.is_disconnected():
-                    # Abort the request if the client disconnects.
-                    await engine.model.abort(request_id)
-                    return
+            if raw_request is not None and await raw_request.is_disconnected():
+                await engine.model.abort(request_id)
+                return
             final_res = res
 
         assert final_res is not None
@@ -106,7 +102,7 @@ async def create_chat_completion(
                         output.text, functions, tools,
                     )
                     output.text = res
-                except:
+                except Exception as e:
                     traceback.print_exc()
                     logger.warning("Failed to parse tool call")
 
