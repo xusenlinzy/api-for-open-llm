@@ -20,7 +20,7 @@
 
 ## 📢 新闻
 
-+ 【2023.11.24】 支持 [llama-cpp-pythton](https://github.com/abetlen/llama-cpp-python) 推理，[使用文档](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/LLAMA_CPP.md)
++ 【2023.11.24】 支持 [llama-cpp-python](https://github.com/abetlen/llama-cpp-python) 推理，[使用文档](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/LLAMA_CPP.md)
 
 
 + 【2023.11.03】 支持 `chatglm3` 和 `qwen` 模型的 `function call` 调用功能，同时支持流式和非流式模式, [工具使用示例](https://github.com/xusenlinzy/api-for-open-llm/tree/master/examples/chatglm3/tool_using.py), 网页 `demo` 已经集成到 [streamlit-demo](./streamlit-demo)
