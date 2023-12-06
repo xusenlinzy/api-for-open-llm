@@ -1,8 +1,7 @@
 import json
 import os
 import sys
-from typing import List
-from typing import Optional
+from typing import List, Optional, Any, Dict, Tuple
 
 import torch
 from loguru import logger
@@ -15,6 +14,7 @@ from transformers import (
     AutoModelForCausalLM,
     BitsAndBytesConfig,
     PreTrainedTokenizer,
+    PreTrainedModel,
 )
 from transformers.utils.versions import require_version
 
@@ -25,31 +25,59 @@ else:
 
 
 class BaseModelAdapter:
-    """The base and the default model adapter."""
+    """ The base and default model adapter. """
 
     model_names = []
 
     def match(self, model_name) -> bool:
+        """
+        Check if the given model name matches any of the predefined model names.
+
+        Args:
+            model_name (str): The model name to check.
+
+        Returns:
+            bool: True if the model name matches any of the predefined model names, False otherwise.
+        """
+
         return any(m in model_name for m in self.model_names) if self.model_names else True
 
     def load_model(
         self,
         model_name_or_path: Optional[str] = None,
         adapter_model: Optional[str] = None,
-        **kwargs
-    ):
-        """ Load model through transformers. """
-        model_name_or_path = self.default_model_name_or_path if model_name_or_path is None else model_name_or_path
-        tokenizer_kwargs = {"trust_remote_code": True, "use_fast": False}
-        tokenizer_kwargs.update(self.tokenizer_kwargs)
+        **kwargs: Any,
+    ) -> Tuple[PreTrainedModel, PreTrainedTokenizer]:
+        """
+        Load a model and tokenizer based on the provided model name or path.
 
+        Args:
+            model_name_or_path (str, optional): The name or path of the model. Defaults to None.
+            adapter_model (str, optional): The adapter model to load the tokenizer from. Defaults to None.
+            **kwargs: Additional keyword arguments.
+
+        Returns:
+            Tuple[PreTrainedModel, PreTrainedTokenizer]: A tuple containing the loaded model and tokenizer.
+        """
+
+        model_name_or_path = model_name_or_path or self.default_model_name_or_path
+        tokenizer_kwargs = {"trust_remote_code": True, "use_fast": False}
+        tokenizer_kwargs |= self.tokenizer_kwargs
+        
+        # load a tokenizer from adapter model if it exists.
         if adapter_model is not None:
             try:
-                tokenizer = self.tokenizer_class.from_pretrained(adapter_model, **tokenizer_kwargs)
+                tokenizer = self.tokenizer_class.from_pretrained(
+                    adapter_model, **tokenizer_kwargs,
+                    )
             except OSError:
-                tokenizer = self.tokenizer_class.from_pretrained(model_name_or_path, **tokenizer_kwargs)
+                tokenizer = self.tokenizer_class.from_pretrained(
+                    model_name_or_path, **tokenizer_kwargs,
+                    )
         else:
-            tokenizer = self.tokenizer_class.from_pretrained(model_name_or_path, **tokenizer_kwargs)
+            tokenizer = self.tokenizer_class.from_pretrained(
+                model_name_or_path, **tokenizer_kwargs,
+                )
 
         config_kwargs = self.model_kwargs
         device = kwargs.get("device", "cuda")
@@ -109,12 +137,10 @@ class BaseModelAdapter:
 
         use_ptuning_v2 = kwargs.get("use_ptuning_v2", False)
         if use_ptuning_v2 and adapter_model:
-            prefix_encoder_file = open(f'{adapter_model}/config.json', 'r')
-            prefix_encoder_config = json.loads(prefix_encoder_file.read())
-            prefix_encoder_file.close()
-
-            config.pre_seq_len = prefix_encoder_config['pre_seq_len']
-            config.prefix_projection = prefix_encoder_config['prefix_projection']
+            with open(f"{adapter_model}/config.json", "r") as prefix_encoder_file:
+                prefix_encoder_config = json.loads(prefix_encoder_file.read())
+            config.pre_seq_len = prefix_encoder_config["pre_seq_len"]
+            config.prefix_projection = prefix_encoder_config["prefix_projection"]
 
         # Load and prepare pretrained models (without valuehead).
         model = self.model_class.from_pretrained(
@@ -148,7 +174,22 @@ class BaseModelAdapter:
 
         return model, tokenizer
 
-    def load_lora_model(self, model, adapter_model, model_kwargs):
+    def load_lora_model(
+        self, model: PreTrainedModel, adapter_model: str, model_kwargs: Dict,
+    ) -> PeftModel:
+        """
+        Load a LoRA model.
+
+        This function loads a LoRA model using the specified pretrained model and adapter model.
+
+        Args:
+            model (PreTrainedModel): The base pretrained model.
+            adapter_model (str): The name or path of the adapter model.
+            model_kwargs (dict): Additional keyword arguments for the model.
+
+        Returns:
+            PeftModel: The loaded LoRA model.
+        """
         return PeftModel.from_pretrained(
             model,
             adapter_model,
@@ -156,8 +197,14 @@ class BaseModelAdapter:
         )
 
     def load_adapter_model(
-        self, model, tokenizer, adapter_model, is_chatglm, model_kwargs, **kwargs
-    ):
+        self, 
+        model: PreTrainedModel, 
+        tokenizer: PreTrainedTokenizer, 
+        adapter_model: str, 
+        is_chatglm: bool,
+        model_kwargs: Dict,
+        **kwargs: Any,
+    ) -> PreTrainedModel:
         use_ptuning_v2 = kwargs.get("use_ptuning_v2", False)
         resize_embeddings = kwargs.get("resize_embeddings", False)
         if adapter_model and resize_embeddings and not is_chatglm:
@@ -173,10 +220,11 @@ class BaseModelAdapter:
 
         if use_ptuning_v2:
             prefix_state_dict = torch.load(os.path.join(adapter_model, "pytorch_model.bin"))
-            new_prefix_state_dict = {}
-            for k, v in prefix_state_dict.items():
-                if k.startswith("transformer.prefix_encoder."):
-                    new_prefix_state_dict[k[len("transformer.prefix_encoder."):]] = v
+            new_prefix_state_dict = {
+                k[len("transformer.prefix_encoder.") :]: v
+                for k, v in prefix_state_dict.items()
+                if k.startswith("transformer.prefix_encoder.")
+            }
             model.transformer.prefix_encoder.load_state_dict(new_prefix_state_dict)
             model.transformer.prefix_encoder.float()
         else:
@@ -213,13 +261,21 @@ model_adapters: List[BaseModelAdapter] = []
 
 
 def register_model_adapter(cls):
-    """Register a model adapter."""
+    """ Register a model adapter. """
     model_adapters.append(cls())
 
 
 @cache
 def get_model_adapter(model_name: str) -> BaseModelAdapter:
-    """Get a model adapter for a model name."""
+    """
+    Get a model adapter for a given model name.
+
+    Args:
+        model_name (str): The name of the model.
+
+    Returns:
+        ModelAdapter: The model adapter that matches the given model name.
+    """
     for adapter in model_adapters:
         if adapter.match(model_name):
             return adapter
@@ -233,8 +289,23 @@ def load_model(
     quantize: Optional[int] = 16,
     device: Optional[str] = "cuda",
     load_in_8bit: Optional[bool] = False,
-    **kwargs
-):
+    **kwargs: Any,
+) -> Tuple[PreTrainedModel, PreTrainedTokenizer]:
+    """
+    Load a pre-trained model and tokenizer.
+
+    Args:
+        model_name (str): The name of the model.
+        model_name_or_path (Optional[str], optional): The path or name of the pre-trained model. Defaults to None.
+        adapter_model (Optional[str], optional): The name of the adapter model. Defaults to None.
+        quantize (Optional[int], optional): The quantization level. Defaults to 16.
+        device (Optional[str], optional): The device to load the model on. Defaults to "cuda".
+        load_in_8bit (Optional[bool], optional): Whether to load the model in 8-bit mode. Defaults to False.
+        **kwargs (Any): Additional keyword arguments.
+
+    Returns:
+        Tuple[PreTrainedModel, PreTrainedTokenizer]: A tuple containing the loaded model and tokenizer.
+    """
     model_name = model_name.lower()
 
     if "tiger" in model_name:
@@ -496,6 +567,7 @@ class CodeLlamaModelAdapter(LlamaModelAdapter):
 
 
 register_model_adapter(ChatglmModelAdapter)
+register_model_adapter(Chatglm3ModelAdapter)
 register_model_adapter(LlamaModelAdapter)
 register_model_adapter(MossModelAdapter)
 register_model_adapter(PhoenixModelAdapter)

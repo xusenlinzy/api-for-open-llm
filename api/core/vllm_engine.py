@@ -28,6 +28,16 @@ class VllmEngine:
         prompt_name: Optional[str] = None,
         context_len: Optional[int] = -1,
     ):
+        """
+        Initializes the VLLMEngine object.
+
+        Args:
+            model: The AsyncLLMEngine object.
+            tokenizer: The PreTrainedTokenizer object.
+            model_name: The name of the model.
+            prompt_name: The name of the prompt (optional).
+            context_len: The length of the context (optional, default=-1).
+        """
         self.model = model
         self.model_name = model_name.lower()
         self.tokenizer = tokenizer
@@ -47,6 +57,18 @@ class VllmEngine:
         functions: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
         tools: Optional[List[Dict[str, Any]]] = None,
     ) -> Union[str, List[int]]:
+        """
+        Applies a chat template to the given messages and returns the processed output.
+
+        Args:
+            messages: A list of ChatCompletionMessageParam objects representing the chat messages.
+            max_tokens: The maximum number of tokens in the output (optional, default=256).
+            functions: A dictionary or list of dictionaries representing the functions to be applied (optional).
+            tools: A list of dictionaries representing the tools to be used (optional).
+
+        Returns:
+            Union[str, List[int]]: The processed output as a string or a list of integers.
+        """
         if self.prompt_adapter.function_call_available:
             messages = self.prompt_adapter.postprocess_messages(
                 messages, functions, tools,
@@ -56,13 +78,20 @@ class VllmEngine:
 
         if "chatglm3" in self.model_name:
             query, role = messages[-1]["content"], messages[-1]["role"]
-            inputs = self.tokenizer.build_chat_input(query, history=messages[:-1], role=role)["input_ids"][0].tolist()
+            return self.tokenizer.build_chat_input(
+                query, history=messages[:-1], role=role
+            )["input_ids"][0].tolist()
         elif "qwen" in self.model_name:
-            inputs = build_qwen_chat_input(self.tokenizer, messages, self.max_model_len, max_tokens, functions, tools)
+            return build_qwen_chat_input(
+                self.tokenizer,
+                messages,
+                self.max_model_len,
+                max_tokens,
+                functions,
+                tools,
+            )
         else:
-            inputs = self.prompt_adapter.apply_chat_template(messages)
-
-        return inputs
+            return self.prompt_adapter.apply_chat_template(messages)
 
     def convert_to_inputs(
         self,
@@ -71,18 +100,28 @@ class VllmEngine:
         max_tokens: Optional[int] = 256,
     ) -> List[int]:
         max_input_tokens = self.max_model_len - max_tokens
-        input_ids = token_ids if token_ids else self.tokenizer(prompt).input_ids
+        input_ids = token_ids or self.tokenizer(prompt).input_ids
         return input_ids[-max_input_tokens:]
 
     def generate(self, params: Dict[str, Any], request_id: str) -> AsyncIterator:
+        """
+        Generates text based on the given parameters and request ID.
+
+        Args:
+            params (Dict[str, Any]): A dictionary of parameters for text generation.
+            request_id (str): The ID of the request.
+
+        Yields:
+            Any: The generated text.
+        """
         max_tokens = params.get("max_tokens", 256)
         prompt_or_messages = params.get("prompt_or_messages")
         if isinstance(prompt_or_messages, list):
             prompt_or_messages = self.apply_chat_template(
                 prompt_or_messages,
                 max_tokens,
-                functions=params.get("functions", None),
-                tools=params.get("tools", None),
+                functions=params.get("functions"),
+                tools=params.get("tools"),
             )
 
         if isinstance(prompt_or_messages, list):
@@ -109,10 +148,16 @@ class VllmEngine:
                 token_ids,
             )
         except ValueError as e:
-            raise HTTPException(status_code=400, detail=str(e))
+            raise HTTPException(status_code=400, detail=str(e)) from e
 
         return result_generator
 
     @property
     def stop(self):
+        """
+        Gets the stop property of the prompt adapter.
+
+        Returns:
+            The stop property of the prompt adapter, or None if it does not exist.
+        """
         return self.prompt_adapter.stop if hasattr(self.prompt_adapter, "stop") else None

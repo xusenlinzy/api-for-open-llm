@@ -1,10 +1,10 @@
 from typing import List
 
 from openai.types.chat import ChatCompletionMessageParam
+from transformers import PreTrainedTokenizer
 
 from api.generation.utils import parse_messages
 from api.utils.protocol import Role
-from transformers import PreTrainedTokenizer
 
 
 def build_baichuan_chat_input(
@@ -13,7 +13,21 @@ def build_baichuan_chat_input(
     context_len: int = 4096,
     max_new_tokens: int = 256
 ) -> List[int]:
-    """  https://huggingface.co/baichuan-inc/Baichuan-13B-Chat/blob/main/generation_utils.py """
+    """
+    Builds the input tokens for the Baichuan chat model based on the given messages.
+
+    Refs:
+        https://huggingface.co/baichuan-inc/Baichuan-13B-Chat/blob/main/generation_utils.py 
+
+    Args:
+        tokenizer: The PreTrainedTokenizer object.
+        messages: A list of ChatCompletionMessageParam objects representing the chat messages.
+        context_len: The maximum length of the context (default=4096).
+        max_new_tokens: The maximum number of new tokens to be added (default=256).
+
+    Returns:
+        List[int]: The input tokens for the Baichuan chat model.
+    """
     max_input_tokens = context_len - max_new_tokens
     system, rounds = parse_messages(messages)
     system_tokens = tokenizer.encode(system)
@@ -43,4 +57,13 @@ def build_baichuan_chat_input(
 
 
 def check_is_baichuan(model) -> bool:
+    """
+    Checks if the given model is a Baichuan model.
+
+    Args:
+        model: The model to be checked.
+
+    Returns:
+        bool: True if the model is a Baichuan model, False otherwise.
+    """
     return "BaichuanLayer" in getattr(model, "_no_split_modules", [])

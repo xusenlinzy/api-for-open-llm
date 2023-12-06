@@ -1,10 +1,10 @@
 from typing import List
 
 from openai.types.chat import ChatCompletionMessageParam
+from transformers import PreTrainedTokenizer
 
 from api.generation.utils import parse_messages
 from api.utils.protocol import Role
-from transformers import PreTrainedTokenizer
 
 
 def build_xverse_chat_input(
@@ -13,7 +13,21 @@ def build_xverse_chat_input(
     context_len: int = 8192,
     max_new_tokens: int = 256
 ) -> List[int]:
-    """ https://huggingface.co/xverse/XVERSE-13B-Chat/blob/main/modeling_xverse.py """
+    """
+    Builds the input tokens for the Xverse chat model based on the given messages.
+
+    Refs:
+        https://huggingface.co/xverse/XVERSE-13B-Chat/blob/main/modeling_xverse.py
+
+    Args:
+        tokenizer: The PreTrainedTokenizer object.
+        messages: A list of ChatCompletionMessageParam objects representing the chat messages.
+        context_len: The maximum length of the context (default=8192).
+        max_new_tokens: The maximum number of new tokens to be added (default=256).
+
+    Returns:
+        List[int]: The input tokens for the Baichuan chat model.
+    """
     max_input_tokens = context_len - max_new_tokens
     system, rounds = parse_messages(messages)
     system = f"{system}\n\n" if system else system
@@ -49,4 +63,13 @@ def build_xverse_chat_input(
 
 
 def check_is_xverse(model) -> bool:
+    """
+    Checks if the given model is a Xverse model.
+
+    Args:
+        model: The model to be checked.
+
+    Returns:
+        bool: True if the model is a Xverse model, False otherwise.
+    """
     return "XverseDecoderLayer" in getattr(model, "_no_split_modules", [])

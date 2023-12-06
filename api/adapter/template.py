@@ -9,7 +9,20 @@ from api.utils.protocol import Role
 
 
 @lru_cache
-def _compile_jinja_template(chat_template):
+def _compile_jinja_template(chat_template: str):
+    """
+    Compile a Jinja template from a string.
+
+    Args:
+        chat_template (str): The string representation of the Jinja template.
+
+    Returns:
+        jinja2.Template: The compiled Jinja template.
+
+    Examples:
+        >>> template_string = "Hello, {{ name }}!"
+        >>> template = _compile_jinja_template(template_string)
+    """
     try:
         from jinja2.exceptions import TemplateError
         from jinja2.sandbox import ImmutableSandboxedEnvironment
@@ -33,6 +46,15 @@ class BaseTemplate(ABC):
     function_call_available: Optional[bool] = False
 
     def match(self, name) -> bool:
+        """
+        Check if the given name matches any allowed models.
+
+        Args:
+            name: The name to match against the allowed models.
+
+        Returns:
+            bool: True if the name matches any allowed models, False otherwise.
+        """
         return any(m in name for m in self.allow_models) if self.allow_models else True
 
     def apply_chat_template(
@@ -56,16 +78,22 @@ class BaseTemplate(ABC):
         """
         # Compilation function uses a cache to avoid recompiling the same template
         compiled_template = _compile_jinja_template(self.template)
-
-        rendered = compiled_template.render(
-            messages=conversation, add_generation_prompt=add_generation_prompt, system_prompt=self.system_prompt
+        return compiled_template.render(
+            messages=conversation,
+            add_generation_prompt=add_generation_prompt,
+            system_prompt=self.system_prompt,
         )
 
-        return rendered
-
     @property
-    def template(self):
-        raise NotImplementedError
+    def template(self) -> str:
+        return (
+            "{% for message in messages %}"
+            "{{ '<|im_start|>' + message['role'] + '\\n' + message['content'] + '<|im_end|>' + '\\n' }}"
+            "{% endfor %}"
+            "{% if add_generation_prompt %}"
+            "{{ '<|im_start|>assistant\\n' }}"
+            "{% endif %}"
+        )
 
     def postprocess_messages(
         self,
@@ -80,8 +108,8 @@ class BaseTemplate(ABC):
         output: str,
         functions: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
         tools: Optional[List[Dict[str, Any]]] = None,
-    ) -> Tuple[str, Union[str, Dict[str, Any]]]:
-        raise NotImplementedError
+    ) -> Tuple[str, Optional[Union[str, Dict[str, Any]]]]:
+        return output, None
 
 
 # A global registry for all prompt adapters
@@ -90,20 +118,19 @@ prompt_adapter_dict: Dict[str, BaseTemplate] = {}
 
 
 def register_prompt_adapter(cls):
-    """Register a prompt adapter."""
+    """ Register a prompt adapter. """
     prompt_adapters.append(cls())
     prompt_adapter_dict[cls().name] = cls()
 
 
 @lru_cache
 def get_prompt_adapter(model_name: Optional[str] = None, prompt_name: Optional[str] = None) -> BaseTemplate:
-    """Get a prompt adapter for a model name or prompt name."""
+    """ Get a prompt adapter for a model name or prompt name. """
     if prompt_name is not None:
         return prompt_adapter_dict[prompt_name]
-    else:
-        for adapter in prompt_adapters:
-            if adapter.match(model_name):
-                return adapter
+    for adapter in prompt_adapters:
+        if adapter.match(model_name):
+            return adapter
     raise ValueError(f"No valid prompt adapter for {model_name}")
 
 
@@ -119,7 +146,7 @@ class QwenTemplate(BaseTemplate):
     function_call_available = True
 
     @property
-    def template(self):
+    def template(self) -> str:
         """ This template formats inputs in the standard ChatML format. See
         https://github.com/openai/openai-python/blob/main/chatml.md
         """
@@ -138,7 +165,7 @@ class QwenTemplate(BaseTemplate):
         output: str,
         functions: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
         tools: Optional[List[Dict[str, Any]]] = None,
-    ) -> Tuple[str, Union[str, Dict[str, Any]]]:
+    ) -> Tuple[str, Optional[Union[str, Dict[str, Any]]]]:
         func_name, func_args = "", ""
         i = output.rfind("\nAction:")
         j = output.rfind("\nAction Input:")
@@ -177,6 +204,7 @@ class QwenTemplate(BaseTemplate):
 
 
 class Llama2Template(BaseTemplate):
+
     name = "llama2"
     system_prompt = "You are a helpful, respectful and honest assistant. Always answer as helpfully as possible, while being safe." \
                     "Your answers should not include any harmful, unethical, racist, sexist, toxic, dangerous, or illegal content." \
@@ -189,7 +217,7 @@ class Llama2Template(BaseTemplate):
     }
 
     @property
-    def template(self):
+    def template(self) -> str:
         """
         LLaMA uses [INST] and [/INST] to indicate user messages, and <<SYS>> and <</SYS>> to indicate system messages.
         Assistant messages do not have special tokens, because LLaMA chat models are generally trained with strict
@@ -257,7 +285,7 @@ class ChatglmTemplate(BaseTemplate):
         return name == "chatglm"
 
     @property
-    def template(self):
+    def template(self) -> str:
         """ The output should look something like:
 
         [Round 0]
@@ -292,7 +320,7 @@ class Chatglm2Template(BaseTemplate):
         return name == "chatglm2"
 
     @property
-    def template(self):
+    def template(self) -> str:
         """ The output should look something like:
 
         [Round 1]
@@ -337,7 +365,7 @@ class Chatglm3Template(BaseTemplate):
         return name == "chatglm3"
 
     @property
-    def template(self):
+    def template(self) -> str:
         """
         The reference for this chat template is [this code
         snippet](https://huggingface.co/THUDM/chatglm3-6b/blob/main/modeling_chatglm.py)
@@ -369,7 +397,7 @@ class Chatglm3Template(BaseTemplate):
                 {
                     "role": Role.SYSTEM,
                     "content": "Answer the following questions as best as you can. You have access to the following tools:",
-                    "tools": functions if functions else [t["function"] for t in tools]
+                    "tools": functions or [t["function"] for t in tools]
                 }
             )
 
@@ -410,7 +438,7 @@ class Chatglm3Template(BaseTemplate):
         output: str,
         functions: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
         tools: Optional[List[Dict[str, Any]]] = None,
-    ) -> Tuple[str, Union[str, Dict[str, Any]]]:
+    ) -> Tuple[str, Optional[Union[str, Dict[str, Any]]]]:
         content = ""
         for response in output.split("<|assistant|>"):
             if "\n" in response:
@@ -471,7 +499,7 @@ Capabilities and tools that MOSS can possess.
     }
 
     @property
-    def template(self):
+    def template(self) -> str:
         """ The output should look something like:
 
         <|Human|>: {Prompt}<eoh>
@@ -501,7 +529,7 @@ class PhoenixTemplate(BaseTemplate):
     allow_models = ["phoenix"]
 
     @property
-    def template(self):
+    def template(self) -> str:
         """ The output should look something like:
 
         Human: <s>{Prompt}</s>Assistant: <s>{Answer}</s>
@@ -536,7 +564,7 @@ class AlpacaTemplate(BaseTemplate):
     }
 
     @property
-    def template(self):
+    def template(self) -> str:
         """ The output should look something like:
 
         ### Instruction:
@@ -573,7 +601,7 @@ class FireflyTemplate(BaseTemplate):
     allow_models = ["firefly"]
 
     @property
-    def template(self):
+    def template(self) -> str:
         """ The output should look something like:
 
         <s>{Prompt}</s>{Answer}</s>{Prompt}</s>
@@ -597,7 +625,7 @@ class FireflyForQwenTemplate(BaseTemplate):
     allow_models = ["firefly-qwen"]
 
     @property
-    def template(self):
+    def template(self) -> str:
         """ The output should look something like:
 
         <|endoftext|>{Prompt}<|endoftext|>{Answer}<|endoftext|>{Prompt}<|endoftext|>
@@ -620,7 +648,7 @@ class BelleTemplate(BaseTemplate):
     allow_models = ["belle"]
 
     @property
-    def template(self):
+    def template(self) -> str:
         """ The output should look something like:
 
         Human: {Prompt}
@@ -658,7 +686,7 @@ Buddy strictly refuses to discuss harmful, political, NSFW, illegal, abusive, of
 """
 
     @property
-    def template(self):
+    def template(self) -> str:
         """ The output should look something like:
 
         User: {Prompt}
@@ -692,7 +720,7 @@ class InternLMTemplate(BaseTemplate):
     }
 
     @property
-    def template(self):
+    def template(self) -> str:
         """ The output should look something like:
 
         <s><|User|>:{Prompt}<eoh>
@@ -721,7 +749,7 @@ class BaiChuanTemplate(BaseTemplate):
     }
 
     @property
-    def template(self):
+    def template(self) -> str:
         """ The output should look something like:
 
         <reserved_102>{Prompt}<reserved_103>{Answer}<reserved_102>{Prompt}<reserved_103>
@@ -747,7 +775,7 @@ class BaiChuan2Template(BaseTemplate):
     }
 
     @property
-    def template(self):
+    def template(self) -> str:
         """ The output should look something like:
 
         <reserved_106>{Prompt}<reserved_107>{Answer}<reserved_106>{Prompt}<reserved_107>
@@ -773,7 +801,7 @@ class StarChatTemplate(BaseTemplate):
     }
 
     @property
-    def template(self):
+    def template(self) -> str:
         """ The output should look something like:
 
         <|user|>
@@ -809,7 +837,7 @@ class AquilaChatTemplate(BaseTemplate):
     }
 
     @property
-    def template(self):
+    def template(self) -> str:
         """ The output should look something like:
 
         Human: {Prompt}###
@@ -850,7 +878,7 @@ class OctopackTemplate(BaseTemplate):
     allow_models = ["starcoder-self-instruct"]
 
     @property
-    def template(self):
+    def template(self) -> str:
         """ The output should look something like:
 
         Question:{Prompt}
@@ -878,7 +906,7 @@ class XverseTemplate(BaseTemplate):
     allow_models = ["xverse"]
 
     @property
-    def template(self):
+    def template(self) -> str:
         """ The output should look something like:
 
         Human: {Prompt}
@@ -905,7 +933,7 @@ class VicunaTemplate(BaseTemplate):
     allow_models = ["vicuna", "xwin"]
 
     @property
-    def template(self):
+    def template(self) -> str:
         """ The output should look something like:
 
         USER: {Prompt} ASSISTANT: {Answer}</s>USER: {Prompt} ASSISTANT:
@@ -933,7 +961,7 @@ class XuanYuanTemplate(BaseTemplate):
     allow_models = ["xuanyuan"]
 
     @property
-    def template(self):
+    def template(self) -> str:
         """ The output should look something like:
 
         Human: {Prompt} Assistant: {Answer}</s>Human: {Prompt} Assistant:
@@ -964,7 +992,7 @@ class PhindTemplate(BaseTemplate):
     }
 
     @property
-    def template(self):
+    def template(self) -> str:
         return (
             "{% if messages[0]['role'] == 'system' %}"
             "{{ messages[0]['content'] }}"
@@ -1001,7 +1029,7 @@ class DeepseekCoderTemplate(BaseTemplate):
         return name == "deepseek-coder"
 
     @property
-    def template(self):
+    def template(self) -> str:
         return (
             "{% if messages[0]['role'] == 'system' %}"
             "{{ messages[0]['content'] }}"
@@ -1028,7 +1056,7 @@ class DeepseekTemplate(BaseTemplate):
     }
 
     @property
-    def template(self):
+    def template(self) -> str:
         return (
             "{{ '<｜begin▁of▁sentence｜>' }}"
             "{% for message in messages %}"
@@ -1052,7 +1080,7 @@ class BlueLMTemplate(BaseTemplate):
     }
 
     @property
-    def template(self):
+    def template(self) -> str:
         return (
             "{% for message in messages %}"
             "{% if message['role'] == 'system' %}"
@@ -1072,7 +1100,7 @@ class ZephyrTemplate(BaseTemplate):
     allow_models = ["zephyr"]
 
     @property
-    def template(self):
+    def template(self) -> str:
         return (
             "{% for message in messages %}"
             "{% if message['role'] == 'system' %}"
@@ -1100,7 +1128,7 @@ class HuatuoTemplate(BaseTemplate):
     }
 
     @property
-    def template(self):
+    def template(self) -> str:
         return (
             "{% if messages[0]['role'] == 'system' %}"
             "{{ messages[0]['content'] }}"
@@ -1129,7 +1157,7 @@ class OrionStarTemplate(BaseTemplate):
     }
 
     @property
-    def template(self):
+    def template(self) -> str:
         return (
             "{{ '<|startoftext|>' }}"
             "{% for message in messages %}"
@@ -1153,7 +1181,7 @@ class YiAITemplate(BaseTemplate):
     }
 
     @property
-    def template(self):
+    def template(self) -> str:
         return (
             "{% for message in messages %}"
             "{{ '<|im_start|>' + message['role'] + '\\n' + message['content'] + '<|im_end|>' + '\\n' }}"
@@ -1203,6 +1231,6 @@ if __name__ == '__main__':
         {"role": "assistant", "content": "I'm doing great. How can I help you today?"},
         {"role": "user", "content": "I'd like to show off how chat templating works!"},
     ]
-    template = get_prompt_adapter(prompt_name="deepseek")
+    template = get_prompt_adapter(prompt_name="yi")
     messages = template.postprocess_messages(chat)
     print(template.apply_chat_template(messages))

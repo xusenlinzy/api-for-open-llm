@@ -36,12 +36,10 @@ async def create_chat_completion(
     request.max_tokens = request.max_tokens or 1024
 
     params = request.model_dump(exclude={"messages"})
-    params.update(
-        dict(
-            prompt_or_messages=request.messages,
-            echo=False,
-            stop_token_ids=stop_token_ids,
-        )
+    params |= dict(
+        prompt_or_messages=request.messages,
+        echo=False,
+        stop_token_ids=stop_token_ids,
     )
     logger.debug(f"==== request ====\n{params}")
 

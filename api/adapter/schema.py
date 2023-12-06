@@ -6,9 +6,7 @@ from pydantic import BaseModel
 
 def convert_data_type(param_type: str) -> str:
     """ convert data_type to typescript data type """
-    if param_type == "integer" or param_type == "float":
-        return "number"
-    return param_type
+    return "number" if param_type in {"integer", "float"} else param_type
 
 
 def get_param_type(param: Dict[str, Any]) -> str:
@@ -16,19 +14,19 @@ def get_param_type(param: Dict[str, Any]) -> str:
     param_type = "any"
     if "type" in param:
         raw_param_type = param["type"]
-        if type(raw_param_type) is list:
-            param_type = " | ".join(raw_param_type)
-        else:
-            param_type = raw_param_type
-
-    else:  # in many cases, the json schema contains: oneOf instead of "type"
-        if "oneOf" in param:
-            one_of_types = []
-            for item in param["oneOf"]:
-                if "type" in item:
-                    one_of_types.append(convert_data_type(item["type"]))
-            one_of_types = list(set(one_of_types))
-            param_type = " | ".join(one_of_types)
+        param_type = (
+            " | ".join(raw_param_type)
+            if type(raw_param_type) is list
+            else raw_param_type
+        )
+    elif "oneOf" in param:
+        one_of_types = [
+            convert_data_type(item["type"])
+            for item in param["oneOf"]
+            if "type" in item
+        ]
+        one_of_types = list(set(one_of_types))
+        param_type = " | ".join(one_of_types)
     return convert_data_type(param_type)
 
 
@@ -37,11 +35,8 @@ def get_format_param(param: Dict[str, Any]) -> Optional[str]:
     if "format" in param:
         return param["format"]
     if "oneOf" in param:
-        formats = []
-        for item in param["oneOf"]:
-            if "format" in item:
-                formats.append(item["format"])
-        if len(formats) > 0:
+        formats = [item["format"] for item in param["oneOf"] if "format" in item]
+        if formats:
             return " or ".join(formats)
     return None
 
@@ -64,37 +59,31 @@ def get_param_info(param: Dict[str, Any]) -> Optional[str]:
 
     format_param = get_format_param(param)
     if format_param is not None:
-        info_list.append("Format=" + format_param)
+        info_list.append(f"Format={format_param}")
 
-    for field, field_name in [
-        ("maximum", "Maximum"),
-        ("minimum", "Minimum"),
-        ("maxLength", "Maximum length"),
-        ("minLength", "Minimum length"),
-    ]:
-        if field in param:
-            info_list.append(f"{field_name}=" + str(param[field]))
-
-    if len(info_list) > 0:
+    info_list.extend(
+        f"{field_name}={str(param[field])}"
+        for field, field_name in [
+            ("maximum", "Maximum"),
+            ("minimum", "Minimum"),
+            ("maxLength", "Maximum length"),
+            ("minLength", "Minimum length"),
+        ]
+        if field in param
+    )
+    if info_list:
         result = "// " + " ".join(info_list)
-        result = result.replace("\n", " ")
-        return result
+        return result.replace("\n", " ")
     return None
 
 
 def append_new_param_info(info_list: List[str], param_declaration: str, comment_info: Optional[str], depth: int):
     """ Append a new parameter with comment to the info_list """
-    offset = ""
-    if depth >= 1:
-        offset = "".join(["    " for _ in range(depth)])
+    offset = "".join(["    " for _ in range(depth)]) if depth >= 1 else ""
     if comment_info is not None:
         # if depth == 0:  # format: //comment\nparam: type
         info_list.append(f"{offset}{comment_info}")
-        info_list.append(f"{offset}{param_declaration}")
-    # else:  # format: param: type  // comment
-    #     info_list.append(f"{offset}{param_declaration}    {comment_info}")
-    else:
-        info_list.append(f"{offset}{param_declaration}")
+    info_list.append(f"{offset}{param_declaration}")
 
 
 def get_enum_option_str(enum_options: List) -> str:
@@ -121,16 +110,11 @@ def get_array_typescript(param_name: Optional[str], param_dic: dict, depth: int 
     Returns:
         _type_: typescript of array
     """
-    offset = ""
-    if depth >= 1:
-        offset = "".join(["    " for _ in range(depth)])
+    offset = "".join(["    " for _ in range(depth)]) if depth >= 1 else ""
     items_info = param_dic.get("items", {})
 
     if len(items_info) == 0:
-        if param_name is not None:
-            return f"{offset}{param_name}: []"
-        else:
-            return "[]"
+        return f"{offset}{param_name}: []" if param_name is not None else "[]"
     array_type = get_param_type(items_info)
     if array_type == "object":
         info_lines = []
@@ -154,17 +138,17 @@ def get_array_typescript(param_name: Optional[str], param_dic: dict, depth: int 
         return f"{offset}{param_name}: {item_info.strip()}[]"
 
     else:
-        if "enum" in items_info:
-            item_type = get_enum_option_str(items_info["enum"])
-            if param_name is None:
-                return f"({item_type})[]"
-            else:
-                return f"{offset}{param_name}: ({item_type})[]"
+        if "enum" not in items_info:
+            return (
+                f"{array_type}[]"
+                if param_name is None
+                else f"{offset}{param_name}: {array_type}[],"
+            )
+        item_type = get_enum_option_str(items_info["enum"])
+        if param_name is None:
+            return f"({item_type})[]"
         else:
-            if param_name is None:
-                return f"{array_type}[]"
-            else:
-                return f"{offset}{param_name}: {array_type}[],"
+            return f"{offset}{param_name}: ({item_type})[]"
 
 
 def get_parameter_typescript(properties, required_params, depth=0) -> List[str]:
@@ -182,16 +166,15 @@ def get_parameter_typescript(properties, required_params, depth=0) -> List[str]:
     tp_lines = []
     for param_name, param in properties.items():
         # Sometimes properties have "required" field as a list of string.
-        # Even though its supposed to be not under properties. So we skip it
+        # Even though it is supposed to be not under properties. So we skip it
         if not isinstance(param, dict):
             continue
         # Param Description
         comment_info = get_param_info(param)
         # Param Name declaration
         param_declaration = f"{param_name}"
-        if isinstance(required_params, list):
-            if param_name not in required_params:
-                param_declaration += "?"
+        if isinstance(required_params, list) and param_name not in required_params:
+            param_declaration += "?"
         param_type = get_param_type(param)
 
         offset = ""
@@ -270,7 +253,7 @@ def generate_schema_from_openapi(specification: Dict[str, Any], description: str
     Convert OpenAPI specification object to a schema that language models can understand.
 
     Input:
-    specification: can be obtained by json.loads of any OpanAPI json spec, or yaml.safe_load for yaml OpenAPI specs
+    specification: can be obtained by json. loads of any OpanAPI json spec, or yaml.safe_load for yaml OpenAPI specs
 
     Example output:
 
