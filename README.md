@@ -20,6 +20,9 @@
 
 ## 📢 新闻
 
++ 【2023.12.06】 添加 [SUS-Chat-34B](https://huggingface.co/SUSTech/SUS-Chat-34B) 模型支持，[启动方式链接](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#suschat)
+
+
 + 【2023.11.24】 支持 [llama-cpp-python](https://github.com/abetlen/llama-cpp-python) 推理，[使用文档](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/LLAMA_CPP.md)
 
 

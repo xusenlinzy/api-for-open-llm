@@ -1192,6 +1192,30 @@ class YiAITemplate(BaseTemplate):
         )
 
 
+class SusChatTemplate(BaseTemplate):
+    """ https://huggingface.co/01-ai/Yi-34B-Chat/blob/main/tokenizer_config.json """
+
+    name = "sus-chat"
+    allow_models = ["sus-chat"]
+    stop = {
+        "strings": ["<|endoftext|>", "### Human"],
+        "token_ids": [2],
+    }
+
+    @property
+    def template(self) -> str:
+        return (
+            "{{ system_prompt }}"
+            "{% for message in messages %}"
+            "{% if message['role'] == 'user' %}"
+            "{{ '### Human: ' + message['content'] + '\\n\\n### Assistant: ' }}"
+            "{% elif message['role'] == 'assistant' %}"
+            "{{ message['content'] }}"
+            "{% endif %}"
+            "{% endfor %}"
+        )
+
+
 register_prompt_adapter(AlpacaTemplate)
 register_prompt_adapter(AquilaChatTemplate)
 register_prompt_adapter(BaiChuanTemplate)
@@ -1217,6 +1241,7 @@ register_prompt_adapter(PhindTemplate)
 register_prompt_adapter(PhoenixTemplate)
 register_prompt_adapter(QwenTemplate)
 register_prompt_adapter(StarChatTemplate)
+register_prompt_adapter(SusChatTemplate)
 register_prompt_adapter(VicunaTemplate)
 register_prompt_adapter(XuanYuanTemplate)
 register_prompt_adapter(XverseTemplate)
@@ -1231,6 +1256,6 @@ if __name__ == '__main__':
         {"role": "assistant", "content": "I'm doing great. How can I help you today?"},
         {"role": "user", "content": "I'd like to show off how chat templating works!"},
     ]
-    template = get_prompt_adapter(prompt_name="yi")
+    template = get_prompt_adapter(prompt_name="sus-chat")
     messages = template.postprocess_messages(chat)
     print(template.apply_chat_template(messages))

@@ -118,6 +118,8 @@ python server.py
 
 **环境变量修改内容参考下面**
 
++ [sus-chat](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#suschat)
+
 + [deepseek](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#deepseekchat)
 
 + [deepseek-coder](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#deepseekcoder)
@@ -453,5 +455,15 @@ deepseek-ai/deepseek-llm-67b-chat
 ```shell
 MODEL_NAME=deepseek
 MODEL_PATH=deepseek-ai/deepseek-llm-67b-chat
+DEVICE_MAP=auto
+```
+
+### SUSChat
+
+SUSTech/SUS-Chat-34B
+
+```shell
+MODEL_NAME=sus-chat
+MODEL_PATH=SUSTech/SUS-Chat-34B
 DEVICE_MAP=auto
 ```
