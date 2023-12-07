@@ -40,7 +40,7 @@ def create_generate_model():
         apply_ntk_scaling_patch(SETTINGS.alpha)
 
     include = {
-        "model_name", "quantize", "device", "device_map", "num_gpus",
+        "model_name", "quantize", "device", "device_map", "num_gpus", "pre_seq_len",
         "load_in_8bit", "load_in_4bit", "using_ptuning_v2", "dtype", "resize_embeddings"
     }
     kwargs = SETTINGS.model_dump(include=include)

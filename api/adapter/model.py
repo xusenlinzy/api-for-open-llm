@@ -1,4 +1,3 @@
-import json
 import os
 import sys
 from typing import List, Optional, Any, Dict, Tuple
@@ -135,12 +134,8 @@ class BaseModelAdapter:
             setattr(config, "bf16", dtype == "bfloat16")
             config_kwargs.pop("torch_dtype", None)
 
-        use_ptuning_v2 = kwargs.get("use_ptuning_v2", False)
-        if use_ptuning_v2 and adapter_model:
-            with open(f"{adapter_model}/config.json", "r") as prefix_encoder_file:
-                prefix_encoder_config = json.loads(prefix_encoder_file.read())
-            config.pre_seq_len = prefix_encoder_config["pre_seq_len"]
-            config.prefix_projection = prefix_encoder_config["prefix_projection"]
+        if kwargs.get("using_ptuning_v2", False) and adapter_model:
+            config.pre_seq_len = kwargs.get("pre_seq_len", 128)
 
         # Load and prepare pretrained models (without valuehead).
         model = self.model_class.from_pretrained(
@@ -205,7 +200,7 @@ class BaseModelAdapter:
         model_kwargs: Dict,
         **kwargs: Any,
     ) -> PreTrainedModel:
-        use_ptuning_v2 = kwargs.get("use_ptuning_v2", False)
+        using_ptuning_v2 = kwargs.get("using_ptuning_v2", False)
         resize_embeddings = kwargs.get("resize_embeddings", False)
         if adapter_model and resize_embeddings and not is_chatglm:
             model_vocab_size = model.get_input_embeddings().weight.size(0)
@@ -218,10 +213,10 @@ class BaseModelAdapter:
                 logger.info("Resize model embeddings to fit tokenizer")
                 model.resize_token_embeddings(tokenzier_vocab_size)
 
-        if use_ptuning_v2:
+        if using_ptuning_v2:
             prefix_state_dict = torch.load(os.path.join(adapter_model, "pytorch_model.bin"))
             new_prefix_state_dict = {
-                k[len("transformer.prefix_encoder.") :]: v
+                k[len("transformer.prefix_encoder."):]: v
                 for k, v in prefix_state_dict.items()
                 if k.startswith("transformer.prefix_encoder.")
             }
