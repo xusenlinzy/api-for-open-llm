@@ -116,7 +116,7 @@ class Settings(BaseModel):
         default=get_bool_env("USING_PTUNING_V2"),
         description="Whether to load the model using ptuning_v2."
     )
-    pre_seq_len: Optional[bool] = Field(
+    pre_seq_len: Optional[int] = Field(
         default=int(get_env("PRE_SEQ_LEN", 128)),
         ge=0,
         description="PRE_SEQ_LEN for ptuning_v2."
