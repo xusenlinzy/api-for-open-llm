@@ -213,7 +213,7 @@ def generate_stream(
                     raise ValueError("Invalid stop field type.")
 
             # Prevent yielding partial stop sequence
-            if (not partially_stopped) and output[-1] != "�":
+            if (not partially_stopped) and output and output[-1] != "�":
                 delta_text = output[len(previous_text):]
                 previous_text = output
 
@@ -315,7 +315,7 @@ def generate_stream_v2(
             _, func_call_found = apply_stopping_strings(generated_text, ["Observation:"])
         generated_text, stop_found = apply_stopping_strings(generated_text, stop_strings)
 
-        if generated_text[-1] != "�":
+        if generated_text and generated_text[-1] != "�":
             delta_text = generated_text[len(previous_text):]
             previous_text = generated_text
 
