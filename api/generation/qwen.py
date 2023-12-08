@@ -66,6 +66,7 @@ def build_qwen_chat_input(
     if query is _TEXT_COMPLETION_CMD:
         return build_last_message_input(tokenizer, history)
 
+    messages = []
     for q, r in history:
         messages.extend(
             [
