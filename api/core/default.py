@@ -382,6 +382,7 @@ class DefaultEngine(ABC):
             Dict[str, Any]: The output of the chat completion stream.
         """
         _id, _created, _model = None, None, None
+        has_function_call = False
         for i, output in enumerate(self._generate(params)):
             if output["error_code"] != 0:
                 yield output
@@ -417,12 +418,15 @@ class DefaultEngine(ABC):
                     logger.warning("Failed to parse tool call")
 
             if isinstance(function_call, dict) and "arguments" in function_call:
+                has_function_call = True
                 function_call = ChoiceDeltaFunctionCall(**function_call)
                 delta = ChoiceDelta(
                     content=output["delta"],
                     function_call=function_call
                 )
             elif isinstance(function_call, dict) and "function" in function_call:
+                has_function_call = True
+                finish_reason = "tool_calls"
                 function_call["index"] = 0
                 tool_calls = [ChoiceDeltaToolCall.model_validate(function_call)]
                 delta = ChoiceDelta(
@@ -445,18 +449,19 @@ class DefaultEngine(ABC):
                 object="chat.completion.chunk",
             )
 
-        choice = ChunkChoice(
-            index=0,
-            delta=ChoiceDelta(),
-            finish_reason="stop"
-        )
-        yield ChatCompletionChunk(
-            id=_id,
-            choices=[choice],
-            created=_created,
-            model=_model,
-            object="chat.completion.chunk",
-        )
+        if not has_function_call:
+            choice = ChunkChoice(
+                index=0,
+                delta=ChoiceDelta(),
+                finish_reason="stop"
+            )
+            yield ChatCompletionChunk(
+                id=_id,
+                choices=[choice],
+                created=_created,
+                model=_model,
+                object="chat.completion.chunk",
+            )
 
     def _create_chat_completion(self, params: Dict[str, Any]) -> Union[ChatCompletion, JSONResponse]:
         """
