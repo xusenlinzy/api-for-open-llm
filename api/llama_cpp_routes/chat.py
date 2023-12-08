@@ -8,6 +8,7 @@ from sse_starlette import EventSourceResponse
 from starlette.concurrency import run_in_threadpool
 
 from api.llama_cpp_routes.utils import get_llama_cpp_engine
+from api.utils.compat import model_dump
 from api.utils.protocol import Role, ChatCompletionCreateParams
 from api.utils.request import (
     handle_request,
@@ -37,7 +38,7 @@ async def create_chat_completion(
         "temperature", "temperature", "top_p", "stream", "stop",
         "max_tokens", "presence_penalty", "frequency_penalty", "model"
     }
-    kwargs = request.model_dump(include=include)
+    kwargs = model_dump(request, include=include)
     logger.debug(f"==== request ====\n{kwargs}")
 
     iterator_or_completion = await run_in_threadpool(

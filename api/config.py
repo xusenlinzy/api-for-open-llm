@@ -6,9 +6,11 @@ import dotenv
 from loguru import logger
 from pydantic import BaseModel, Field
 
+from api.utils.compat import model_json, disable_warnings
+
 dotenv.load_dotenv()
-# Disable warning for model_name settings
-BaseModel.model_config["protected_namespaces"] = ()
+
+disable_warnings(BaseModel)
 
 
 def get_bool_env(key, default="false"):
@@ -239,7 +241,7 @@ class Settings(BaseModel):
 
 
 SETTINGS = Settings()
-logger.debug(f"SETTINGS: {SETTINGS.model_dump_json(indent=4)}")
+logger.debug(f"SETTINGS: {model_json(SETTINGS, indent=4)}")
 if SETTINGS.gpus:
     if len(SETTINGS.gpus.split(",")) < SETTINGS.num_gpus:
         raise ValueError(

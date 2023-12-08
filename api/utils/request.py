@@ -7,6 +7,8 @@ from typing import (
     Dict,
     Any,
     AsyncIterator,
+    Tuple,
+    List,
 )
 
 import anyio
@@ -19,6 +21,7 @@ from pydantic import BaseModel
 from starlette.concurrency import iterate_in_threadpool
 
 from api.config import SETTINGS
+from api.utils.compat import model_json, model_dump
 from api.utils.constants import ErrorCode
 from api.utils.protocol import (
     ChatCompletionCreateParams,
@@ -52,14 +55,14 @@ async def check_api_key(
 
 
 def create_error_response(code: int, message: str) -> JSONResponse:
-    return JSONResponse(ErrorResponse(message=message, code=code).model_dump(), status_code=500)
+    return JSONResponse(model_dump(ErrorResponse(message=message, code=code)), status_code=500)
 
 
 async def handle_request(
     request: Union[CompletionCreateParams, ChatCompletionCreateParams],
     stop: Dict[str, Any] = None,
     chat: bool = True,
-):
+) -> Tuple[Union[CompletionCreateParams, ChatCompletionCreateParams], List[int]]:
     error_check_ret = check_requests(request)
     if error_check_ret is not None:
         return error_check_ret
@@ -133,7 +136,7 @@ async def get_event_publisher(
             if SETTINGS.engine != "vllm":
                 async for chunk in iterate_in_threadpool(iterator):
                     if isinstance(chunk, BaseModel):
-                        chunk = chunk.model_dump_json()
+                        chunk = model_json(chunk)
                     elif isinstance(chunk, dict):
                         chunk = json.dumps(chunk, ensure_ascii=False)
 
@@ -147,7 +150,7 @@ async def get_event_publisher(
                         raise anyio.get_cancelled_exc_class()()
             else:
                 async for chunk in iterator:
-                    chunk = chunk.model_dump_json()
+                    chunk = model_json(chunk)
                     await inner_send_chan.send(dict(data=chunk))
                     if await request.is_disconnected():
                         raise anyio.get_cancelled_exc_class()()

@@ -3,6 +3,8 @@ from typing import Any, Dict, List, Optional
 from openai.types.chat.completion_create_params import Function
 from pydantic import BaseModel
 
+from api.utils.compat import model_dump
+
 
 def convert_data_type(param_type: str) -> str:
     """ convert data_type to typescript data type """
@@ -223,7 +225,7 @@ def generate_schema_from_functions(functions: List[Function], namespace="functio
     for function in functions:
         # Convert a Function object to dict, if necessary
         if isinstance(function, BaseModel):
-            function = function.model_dump()
+            function = model_dump(function)
         function_name = function.get("name", None)
         if function_name is None:
             continue

@@ -20,6 +20,7 @@ from sse_starlette import EventSourceResponse
 from vllm.outputs import RequestOutput
 
 from api.models import GENERATE_ENGINE
+from api.utils.compat import model_dump
 from api.utils.protocol import CompletionCreateParams
 from api.utils.request import (
     handle_request,
@@ -67,7 +68,7 @@ async def create_completion(
     if isinstance(request.prompt, list):
         request.prompt = request.prompt[0]
 
-    params = request.model_dump()
+    params = model_dump(request)
     params |= dict(stop_token_ids=stop_token_ids, prompt_or_messages=request.prompt)
     logger.debug(f"==== request ====\n{params}")
 

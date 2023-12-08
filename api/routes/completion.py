@@ -7,6 +7,7 @@ from sse_starlette import EventSourceResponse
 from starlette.concurrency import run_in_threadpool
 
 from api.models import GENERATE_ENGINE
+from api.utils.compat import model_dump
 from api.utils.protocol import CompletionCreateParams
 from api.utils.request import (
     handle_request,
@@ -36,7 +37,7 @@ async def create_completion(
     request, stop_token_ids = await handle_request(request, engine.stop, chat=False)
     request.max_tokens = request.max_tokens or 128
 
-    params = request.model_dump(exclude={"prompt"})
+    params = model_dump(request, exclude={"prompt"})
     params |= dict(
         prompt_or_messages=request.prompt[0],
         stop_token_ids=stop_token_ids,

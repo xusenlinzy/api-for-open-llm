@@ -47,6 +47,7 @@ from api.generation import (
     check_is_xverse,
 )
 from api.generation.utils import get_context_length
+from api.utils.compat import model_parse
 from api.utils.constants import ErrorCode
 from api.utils.request import create_error_response
 
@@ -318,7 +319,7 @@ class DefaultEngine(ABC):
 
             logprobs = None
             if params.get("logprobs") and output["logprobs"]:
-                logprobs = Logprobs.model_validate(output["logprobs"])
+                logprobs = model_parse(Logprobs, output["logprobs"])
 
             choice = CompletionChoice(
                 index=0,
@@ -353,7 +354,7 @@ class DefaultEngine(ABC):
 
         logprobs = None
         if params.get("logprobs") and last_output["logprobs"]:
-            logprobs = Logprobs.model_validate(last_output["logprobs"])
+            logprobs = model_parse(Logprobs, last_output["logprobs"])
 
         choice = CompletionChoice(
             index=0,
@@ -361,7 +362,7 @@ class DefaultEngine(ABC):
             finish_reason="stop",
             logprobs=logprobs,
         )
-        usage = CompletionUsage.model_validate(last_output["usage"])
+        usage = model_parse(CompletionUsage, last_output["usage"])
         return Completion(
             id=last_output["id"],
             choices=[choice],
@@ -428,7 +429,7 @@ class DefaultEngine(ABC):
                 has_function_call = True
                 finish_reason = "tool_calls"
                 function_call["index"] = 0
-                tool_calls = [ChoiceDeltaToolCall.model_validate(function_call)]
+                tool_calls = [model_parse(ChoiceDeltaToolCall, function_call)]
                 delta = ChoiceDelta(
                     content=output["delta"],
                     tool_calls=tool_calls,
@@ -501,7 +502,7 @@ class DefaultEngine(ABC):
             )
         elif isinstance(function_call, dict) and "function" in function_call:
             finish_reason = "tool_calls"
-            tool_calls = [ChatCompletionMessageToolCall.model_validate(function_call)]
+            tool_calls = [model_parse(ChatCompletionMessageToolCall, function_call)]
             message = ChatCompletionMessage(
                 role="assistant",
                 content=last_output["text"],
@@ -518,7 +519,7 @@ class DefaultEngine(ABC):
             message=message,
             finish_reason=finish_reason,
         )
-        usage = CompletionUsage.model_validate(last_output["usage"])
+        usage = model_parse(CompletionUsage, last_output["usage"])
         return ChatCompletion(
             id=last_output["id"],
             choices=[choice],

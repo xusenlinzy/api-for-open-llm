@@ -27,9 +27,10 @@ from sse_starlette import EventSourceResponse
 from vllm.outputs import RequestOutput
 
 from api.models import GENERATE_ENGINE
+from api.utils.compat import model_dump, model_parse
 from api.utils.protocol import Role, ChatCompletionCreateParams
-from api.utils.request import check_api_key
 from api.utils.request import (
+    check_api_key,
     handle_request,
     get_event_publisher,
 )
@@ -55,7 +56,7 @@ async def create_chat_completion(
     request, stop_token_ids = await handle_request(request, engine.prompt_adapter.stop)
     request.max_tokens = request.max_tokens or 512
 
-    params = request.model_dump(exclude={"messages"})
+    params = model_dump(request, exclude={"messages"})
     params |= dict(
             prompt_or_messages=request.messages,
             echo=False,
@@ -116,7 +117,7 @@ async def create_chat_completion(
                 finish_reason = "function_call"
             elif isinstance(function_call, dict) and "function" in function_call:
                 finish_reason = "tool_calls"
-                tool_calls = [ChatCompletionMessageToolCall.model_validate(function_call)]
+                tool_calls = [model_parse(ChatCompletionMessageToolCall, function_call)]
                 message = ChatCompletionMessage(
                     role="assistant",
                     content=output.text,
