@@ -35,7 +35,7 @@ async def create_chat_completion(
 
     prompt = engine.apply_chat_template(request.messages, request.functions, request.tools)
     include = {
-        "temperature", "temperature", "top_p", "stream", "stop",
+        "temperature", "top_p", "stream", "stop",
         "max_tokens", "presence_penalty", "frequency_penalty", "model"
     }
     kwargs = model_dump(request, include=include)

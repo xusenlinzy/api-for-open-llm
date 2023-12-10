@@ -63,13 +63,13 @@ async def create_completion(
         raise HTTPException(status_code=400, detail="suffix is not currently supported")
 
     request.max_tokens = request.max_tokens or 128
-    request, stop_token_ids = await handle_request(request, engine.prompt_adapter.stop, chat=False)
+    request = await handle_request(request, engine.prompt_adapter.stop, chat=False)
 
     if isinstance(request.prompt, list):
         request.prompt = request.prompt[0]
 
-    params = model_dump(request)
-    params |= dict(stop_token_ids=stop_token_ids, prompt_or_messages=request.prompt)
+    params = model_dump(request, exclude={"prompt"})
+    params |= dict(prompt_or_messages=request.prompt)
     logger.debug(f"==== request ====\n{params}")
 
     request_id: str = f"cmpl-{str(uuid.uuid4())}"
@@ -171,7 +171,7 @@ def create_logprobs(
 
 async def create_completion_stream(
     generator: AsyncIterator, params: Dict[str, Any], request_id: str, tokenizer,
-    ) -> AsyncIterator:
+) -> AsyncIterator:
     n = params.get("n", 1)
     previous_texts = [""] * n
     previous_num_tokens = [0] * n

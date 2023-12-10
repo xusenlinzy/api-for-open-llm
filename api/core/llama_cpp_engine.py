@@ -129,7 +129,7 @@ class LlamaCppEngine:
                     finish_reason=None,
                 )
                 yield ChatCompletionChunk(
-                    id=_id,
+                    id=f"chat{_id}",
                     choices=[choice],
                     created=_created,
                     model=_model,
@@ -147,7 +147,7 @@ class LlamaCppEngine:
                 finish_reason=output["choices"][0]["finish_reason"],
             )
             yield ChatCompletionChunk(
-                id=_id,
+                id=f"chat{_id}",
                 choices=[choice],
                 created=_created,
                 model=_model,

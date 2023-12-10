@@ -30,10 +30,10 @@ async def create_completion(
         request.prompt = request.prompt[0] if len(request.prompt) > 0 else ""
 
     request.max_tokens = request.max_tokens or 256
-    request, stop_token_ids = await handle_request(request, engine.stop)
+    request = await handle_request(request, engine.stop)
 
     include = {
-        "temperature", "temperature", "top_p", "stream", "stop",
+        "temperature", "top_p", "stream", "stop",
         "max_tokens", "presence_penalty", "frequency_penalty", "model"
     }
     kwargs = model_dump(request, include=include)

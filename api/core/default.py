@@ -397,7 +397,7 @@ class DefaultEngine(ABC):
                     finish_reason=None,
                 )
                 yield ChatCompletionChunk(
-                    id=_id,
+                    id=f"chat{_id}",
                     choices=[choice],
                     created=_created,
                     model=_model,
@@ -443,7 +443,7 @@ class DefaultEngine(ABC):
                 finish_reason=finish_reason
             )
             yield ChatCompletionChunk(
-                id=_id,
+                id=f"chat{_id}",
                 choices=[choice],
                 created=_created,
                 model=_model,
@@ -457,7 +457,7 @@ class DefaultEngine(ABC):
                 finish_reason="stop"
             )
             yield ChatCompletionChunk(
-                id=_id,
+                id=f"chat{_id}",
                 choices=[choice],
                 created=_created,
                 model=_model,
@@ -521,7 +521,7 @@ class DefaultEngine(ABC):
         )
         usage = model_parse(CompletionUsage, last_output["usage"])
         return ChatCompletion(
-            id=last_output["id"],
+            id=f"chat{last_output['id']}",
             choices=[choice],
             created=last_output["created"],
             model=last_output["model"],

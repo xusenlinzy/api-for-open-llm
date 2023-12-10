@@ -239,6 +239,12 @@ class Settings(BaseModel):
         description="RoPE frequency scaling factor",
     )
 
+    # support for tgi
+    tgi_endpoint: Optional[str] = Field(
+        default=get_env("TGI_ENDPOINT", None),
+        description="Text Generate Inference Endpoint.",
+    )
+
 
 SETTINGS = Settings()
 logger.debug(f"SETTINGS: {model_json(SETTINGS, indent=4)}")

@@ -131,6 +131,20 @@ def create_llama_cpp_engine():
     return LlamaCppEngine(engine, SETTINGS.model_name, SETTINGS.chat_template)
 
 
+def create_tgi_engine():
+    """ get llama.cpp generate engine for chat or completion. """
+    try:
+        from text_generation import AsyncClient
+        from api.core.tgi import TGIEngine
+    except ImportError:
+        return None
+
+    client = AsyncClient(SETTINGS.tgi_endpoint)
+    logger.info("Using TGI engine")
+
+    return TGIEngine(client, SETTINGS.model_name, SETTINGS.chat_template)
+
+
 # fastapi app
 app = create_app()
 
@@ -145,6 +159,8 @@ if (not SETTINGS.only_embedding) and SETTINGS.activate_inference:
         GENERATE_ENGINE = create_vllm_engine()
     elif SETTINGS.engine == "llama.cpp":
         GENERATE_ENGINE = create_llama_cpp_engine()
+    elif SETTINGS.engine == "tgi":
+        GENERATE_ENGINE = create_tgi_engine()
 else:
     GENERATE_ENGINE = None
 

@@ -34,14 +34,11 @@ async def create_completion(
     if len(request.prompt) < 1:
         raise HTTPException(status_code=400, detail="Invalid request")
 
-    request, stop_token_ids = await handle_request(request, engine.stop, chat=False)
+    request = await handle_request(request, engine.stop, chat=False)
     request.max_tokens = request.max_tokens or 128
 
     params = model_dump(request, exclude={"prompt"})
-    params |= dict(
-        prompt_or_messages=request.prompt[0],
-        stop_token_ids=stop_token_ids,
-    )
+    params |= dict(prompt_or_messages=request.prompt[0])
 
     iterator_or_completion = await run_in_threadpool(engine.create_completion, params)
 

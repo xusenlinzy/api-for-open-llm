@@ -140,6 +140,13 @@ class VllmEngine:
                 stop=params.get("stop", []),
                 stop_token_ids=params.get("stop_token_ids", []),
                 max_tokens=params.get("max_tokens", 256),
+                repetition_penalty=params.get("repetition_penalty", 1.03),
+                min_p=params.get("min_p", 0.0),
+                best_of=params.get("best_of", 1),
+                ignore_eos=params.get("ignore_eos", False),
+                use_beam_search=params.get("use_beam_search", False),
+                skip_special_tokens=params.get("skip_special_tokens", True),
+                spaces_between_special_tokens=params.get("spaces_between_special_tokens", True),
             )
             result_generator = self.model.generate(
                 prompt_or_messages if isinstance(prompt_or_messages, str) else None,

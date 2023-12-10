@@ -172,6 +172,35 @@ class ChatCompletionCreateParams(BaseModel):
     [Example Python code](https://cookbook.openai.com/examples/how_to_stream_completions).
     """
 
+    # Addictional parameters
+    repetition_penalty: Optional[float] = 1.03
+    """The parameter for repetition penalty. 1.0 means no penalty.
+    See[this paper](https://arxiv.org / pdf / 1909.05858.pdf) for more details.
+    """
+
+    typical_p: Optional[float] = None
+    """Typical Decoding mass.
+    See[Typical Decoding for Natural Language Generation](https://arxiv.org / abs / 2202.00666) for more information
+    """
+
+    watermark: Optional[bool] = False
+    """Watermarking with [A Watermark for Large Language Models](https://arxiv.org / abs / 2301.10226)
+    """
+
+    best_of: Optional[int] = 1
+
+    ignore_eos: Optional[bool] = False
+
+    use_beam_search: Optional[bool] = False
+
+    stop_token_ids: Optional[List[int]] = None
+
+    skip_special_tokens: Optional[bool] = True
+
+    spaces_between_special_tokens: Optional[bool] = True
+
+    min_p: Optional[float] = 0.0
+
 
 class CompletionCreateParams(BaseModel):
     model: str
@@ -324,6 +353,33 @@ class CompletionCreateParams(BaseModel):
     message.
     [Example Python code](https://cookbook.openai.com/examples/how_to_stream_completions).
     """
+
+    # Addictional parameters
+    repetition_penalty: Optional[float] = 1.03
+    """The parameter for repetition penalty. 1.0 means no penalty.
+    See[this paper](https://arxiv.org / pdf / 1909.05858.pdf) for more details.
+    """
+
+    typical_p: Optional[float] = None
+    """Typical Decoding mass.
+    See[Typical Decoding for Natural Language Generation](https://arxiv.org / abs / 2202.00666) for more information
+    """
+
+    watermark: Optional[bool] = False
+    """Watermarking with [A Watermark for Large Language Models](https://arxiv.org / abs / 2301.10226)
+    """
+
+    ignore_eos: Optional[bool] = False
+
+    use_beam_search: Optional[bool] = False
+
+    stop_token_ids: Optional[List[int]] = None
+
+    skip_special_tokens: Optional[bool] = True
+
+    spaces_between_special_tokens: Optional[bool] = True
+
+    min_p: Optional[float] = 0.0
 
 
 class EmbeddingCreateParams(BaseModel):

@@ -1,20 +1,12 @@
 from __future__ import annotations
 
-from typing import Any, TypeVar, cast, Dict
+from typing import Any, cast, Dict, Type
 
 import pydantic
-
-_ModelT = TypeVar("_ModelT", bound=pydantic.BaseModel)
 
 # --------------- Pydantic v2 compatibility ---------------
 
 PYDANTIC_V2 = pydantic.VERSION.startswith("2.")
-
-
-def model_copy(model: _ModelT) -> _ModelT:
-    if PYDANTIC_V2:
-        return model.model_copy()
-    return model.copy()  # type: ignore
 
 
 def model_json(model: pydantic.BaseModel, **kwargs) -> str:
@@ -32,13 +24,13 @@ def model_dump(model: pydantic.BaseModel, **kwargs) -> Dict[str, Any]:
     )
 
 
-def model_parse(model: _ModelT, data: Any) -> _ModelT:
+def model_parse(model: Type[pydantic.BaseModel], data: Any) -> pydantic.BaseModel:
     if PYDANTIC_V2:
         return model.model_validate(data)
     return model.parse_obj(data)  # pyright: ignore[reportDeprecated]
 
 
-def disable_warnings(model: pydantic.BaseModel):
+def disable_warnings(model: Type[pydantic.BaseModel]):
     # Disable warning for model_name settings
     if PYDANTIC_V2:
         model.model_config["protected_namespaces"] = ()

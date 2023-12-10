@@ -7,8 +7,6 @@ from typing import (
     Dict,
     Any,
     AsyncIterator,
-    Tuple,
-    List,
 )
 
 import anyio
@@ -62,15 +60,15 @@ async def handle_request(
     request: Union[CompletionCreateParams, ChatCompletionCreateParams],
     stop: Dict[str, Any] = None,
     chat: bool = True,
-) -> Tuple[Union[CompletionCreateParams, ChatCompletionCreateParams], List[int]]:
+) -> Union[Union[CompletionCreateParams, ChatCompletionCreateParams], JSONResponse]:
     error_check_ret = check_requests(request)
     if error_check_ret is not None:
         return error_check_ret
 
     # stop settings
-    _stop, stop_token_ids = [], []
+    _stop, _stop_token_ids = [], []
     if stop is not None:
-        stop_token_ids = stop.get("token_ids", [])
+        _stop_token_ids = stop.get("token_ids", [])
         _stop = stop.get("strings", [])
 
     request.stop = request.stop or []
@@ -81,8 +79,10 @@ async def handle_request(
         request.stop.append("Observation:")
 
     request.stop = list(set(_stop + request.stop))
+    request.stop_token_ids = request.stop_token_ids or []
+    request.stop_token_ids = list(set(_stop_token_ids + request.stop_token_ids))
 
-    return request, stop_token_ids
+    return request
 
 
 def check_requests(request: Union[CompletionCreateParams, ChatCompletionCreateParams]) -> Optional[JSONResponse]:
@@ -133,7 +133,7 @@ async def get_event_publisher(
 ):
     async with inner_send_chan:
         try:
-            if SETTINGS.engine != "vllm":
+            if SETTINGS.engine not in ["vllm", "tgi"]:
                 async for chunk in iterate_in_threadpool(iterator):
                     if isinstance(chunk, BaseModel):
                         chunk = model_json(chunk)

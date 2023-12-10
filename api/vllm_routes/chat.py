@@ -53,14 +53,13 @@ async def create_chat_completion(
     if (not request.messages) or request.messages[-1]["role"] == Role.ASSISTANT:
         raise HTTPException(status_code=400, detail="Invalid request")
 
-    request, stop_token_ids = await handle_request(request, engine.prompt_adapter.stop)
+    request = await handle_request(request, engine.prompt_adapter.stop)
     request.max_tokens = request.max_tokens or 512
 
     params = model_dump(request, exclude={"messages"})
     params |= dict(
             prompt_or_messages=request.messages,
             echo=False,
-            stop_token_ids=stop_token_ids,
     )
     logger.debug(f"==== request ====\n{params}")
 
