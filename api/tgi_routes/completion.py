@@ -50,8 +50,7 @@ async def create_completion(
 
     request_id: str = f"cmpl-{str(uuid.uuid4())}"
     include = {
-        "temperature", "stop_token_ids", "stream", "model",
-        "repetition_penalty", "typical_p", "watermark", "best_of",
+        "temperature", "best_of", "repetition_penalty", "typical_p", "watermark",
     }
     params = model_dump(request, include=include)
     params |= dict(

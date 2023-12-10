@@ -56,8 +56,7 @@ async def create_chat_completion(
 
     prompt = engine.apply_chat_template(request.messages)
     include = {
-        "temperature", "stop_token_ids", "stream", "model",
-        "repetition_penalty", "typical_p", "watermark", "best_of"
+        "temperature", "best_of", "repetition_penalty", "typical_p", "watermark",
     }
     params = model_dump(request, include=include)
     params |= dict(
