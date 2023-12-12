@@ -1216,6 +1216,34 @@ class SusChatTemplate(BaseTemplate):
         )
 
 
+class MixtralTemplate(BaseTemplate):
+    """ https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.2/blob/main/tokenizer_config.json """
+
+    name = "mixtral"
+    allow_models = ["mixtral"]
+    stop = {
+        "strings": ["[INST]", "[/INST]"],
+    }
+
+    @property
+    def template(self) -> str:
+        return (
+            "{{ bos_token }}"
+            "{% for message in messages %}"
+            "{% if (message['role'] == 'user') != (loop.index0 % 2 == 0) %}"
+            "{{ raise_exception('Conversation roles must alternate user/assistant/user/assistant/...') }}"
+            "{% endif %}"
+            "{% if message['role'] == 'user' %}"
+            "{{ '[INST] ' + message['content'] + ' [/INST]' }}"
+            "{% elif message['role'] == 'assistant' %}"
+            "{{ message['content'] + '</s>' }}"
+            "{% else %}"
+            "{{ raise_exception('Only user and assistant roles are supported!') }}"
+            "{% endif %}"
+            "{% endfor %}"
+        )
+
+
 register_prompt_adapter(AlpacaTemplate)
 register_prompt_adapter(AquilaChatTemplate)
 register_prompt_adapter(BaiChuanTemplate)
@@ -1233,6 +1261,7 @@ register_prompt_adapter(FireflyForQwenTemplate)
 register_prompt_adapter(HuatuoTemplate)
 register_prompt_adapter(InternLMTemplate)
 register_prompt_adapter(Llama2Template)
+register_prompt_adapter(MixtralTemplate)
 register_prompt_adapter(MossTemplate)
 register_prompt_adapter(OctopackTemplate)
 register_prompt_adapter(OpenBuddyTemplate)
@@ -1256,6 +1285,6 @@ if __name__ == '__main__':
         {"role": "assistant", "content": "I'm doing great. How can I help you today?"},
         {"role": "user", "content": "I'd like to show off how chat templating works!"},
     ]
-    template = get_prompt_adapter(prompt_name="sus-chat")
+    template = get_prompt_adapter(prompt_name="mixtral")
     messages = template.postprocess_messages(chat)
     print(template.apply_chat_template(messages))
