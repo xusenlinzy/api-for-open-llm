@@ -30,7 +30,7 @@ async def create_chat_completion(
     if (not request.messages) or request.messages[-1]["role"] == Role.ASSISTANT:
         raise HTTPException(status_code=400, detail="Invalid request")
 
-    request, stop_token_ids = await handle_request(request, engine.stop)
+    request = await handle_request(request, engine.stop)
     request.max_tokens = request.max_tokens or 512
 
     prompt = engine.apply_chat_template(request.messages, request.functions, request.tools)
