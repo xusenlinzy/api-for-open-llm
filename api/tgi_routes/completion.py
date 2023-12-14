@@ -53,13 +53,15 @@ async def create_completion(
         "temperature", "best_of", "repetition_penalty", "typical_p", "watermark",
     }
     params = model_dump(request, include=include)
-    params |= dict(
-        prompt=request.prompt,
-        do_sample=request.temperature > 1e-5,
-        max_new_tokens=request.max_tokens,
-        stop_sequences=request.stop,
-        top_p=request.top_p if request.top_p < 1.0 else 0.99,
-        return_full_text=request.echo,
+    params.update(
+        dict(
+            prompt=request.prompt,
+            do_sample=request.temperature > 1e-5,
+            max_new_tokens=request.max_tokens,
+            stop_sequences=request.stop,
+            top_p=request.top_p if request.top_p < 1.0 else 0.99,
+            return_full_text=request.echo,
+        )
     )
     logger.debug(f"==== request ====\n{params}")
 

@@ -59,12 +59,14 @@ async def create_chat_completion(
         "temperature", "best_of", "repetition_penalty", "typical_p", "watermark",
     }
     params = model_dump(request, include=include)
-    params |= dict(
-        prompt=prompt,
-        do_sample=request.temperature > 1e-5,
-        max_new_tokens=request.max_tokens,
-        stop_sequences=request.stop,
-        top_p=request.top_p if request.top_p < 1.0 else 0.99,
+    params.update(
+        dict(
+            prompt=prompt,
+            do_sample=request.temperature > 1e-5,
+            max_new_tokens=request.max_tokens,
+            stop_sequences=request.stop,
+            top_p=request.top_p if request.top_p < 1.0 else 0.99,
+        )
     )
     logger.debug(f"==== request ====\n{params}")
 

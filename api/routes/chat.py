@@ -37,10 +37,7 @@ async def create_chat_completion(
     request.max_tokens = request.max_tokens or 1024
 
     params = model_dump(request, exclude={"messages"})
-    params |= dict(
-        prompt_or_messages=request.messages,
-        echo=False,
-    )
+    params.update(dict(prompt_or_messages=request.messages,echo=False))
     logger.debug(f"==== request ====\n{params}")
 
     iterator_or_completion = await run_in_threadpool(engine.create_chat_completion, params)

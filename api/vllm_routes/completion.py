@@ -69,7 +69,7 @@ async def create_completion(
         request.prompt = request.prompt[0]
 
     params = model_dump(request, exclude={"prompt"})
-    params |= dict(prompt_or_messages=request.prompt)
+    params.update(dict(prompt_or_messages=request.prompt))
     logger.debug(f"==== request ====\n{params}")
 
     request_id: str = f"cmpl-{str(uuid.uuid4())}"

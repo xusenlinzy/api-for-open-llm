@@ -61,7 +61,7 @@ class BaseModelAdapter:
 
         model_name_or_path = model_name_or_path or self.default_model_name_or_path
         tokenizer_kwargs = {"trust_remote_code": True, "use_fast": False}
-        tokenizer_kwargs |= self.tokenizer_kwargs
+        tokenizer_kwargs.update(self.tokenizer_kwargs)
         
         # load a tokenizer from adapter model if it exists.
         if adapter_model is not None:

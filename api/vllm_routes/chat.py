@@ -57,10 +57,7 @@ async def create_chat_completion(
     request.max_tokens = request.max_tokens or 512
 
     params = model_dump(request, exclude={"messages"})
-    params |= dict(
-            prompt_or_messages=request.messages,
-            echo=False,
-    )
+    params.update(dict(prompt_or_messages=request.messages,echo=False))
     logger.debug(f"==== request ====\n{params}")
 
     request_id: str = f"chatcmpl-{str(uuid.uuid4())}"

@@ -282,7 +282,7 @@ class DefaultEngine(ABC):
             functions=params.get("functions"),
             tools=params.get("tools"),
         )
-        params |= dict(inputs=inputs, prompt=prompt)
+        params.update(dict(inputs=inputs, prompt=prompt))
 
         try:
             for output in self.generate_stream_func(self.model, self.tokenizer, params):
@@ -535,7 +535,7 @@ class DefaultEngine(ABC):
         **kwargs: Any,
     ) -> Union[Iterator, Completion]:
         params = params or {}
-        params |= kwargs
+        params.update(kwargs)
         return (
             self._create_completion_stream(params)
             if params.get("stream", False)
@@ -548,7 +548,7 @@ class DefaultEngine(ABC):
         **kwargs,
     ) -> Union[Iterator, ChatCompletion]:
         params = params or {}
-        params |= kwargs
+        params.update(kwargs)
         return (
             self._create_chat_completion_stream(params)
             if params.get("stream", False)
