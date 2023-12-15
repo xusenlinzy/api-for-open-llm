@@ -786,6 +786,11 @@ class BaiChuan2Template(BaseTemplate):
         <reserved_106>{Prompt}<reserved_107>{Answer}<reserved_106>{Prompt}<reserved_107>
         """
         return (
+            "{% if messages[0]['role'] == 'system' %}"
+            "{{ messages[0]['content'] }}"
+            "{% else %}"
+            "{{ system_prompt }}"
+            "{% endif %}"
             "{% for message in messages %}"
             "{% if message['role'] == 'user' %}"
             "{{ '<reserved_106>' + message['content'] + '<reserved_107>' }}"
