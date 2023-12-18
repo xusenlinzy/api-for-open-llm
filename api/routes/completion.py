@@ -3,6 +3,7 @@ from typing import Iterator
 
 import anyio
 from fastapi import APIRouter, Depends, HTTPException, Request
+from loguru import logger
 from sse_starlette import EventSourceResponse
 from starlette.concurrency import run_in_threadpool
 
@@ -40,6 +41,7 @@ async def create_completion(
 
     params = model_dump(request, exclude={"prompt"})
     params.update(dict(prompt_or_messages=request.prompt[0]))
+    logger.debug(f"==== request ====\n{params}")
 
     iterator_or_completion = await run_in_threadpool(engine.create_completion, params)
 
