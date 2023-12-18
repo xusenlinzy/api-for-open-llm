@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sse_starlette import EventSourceResponse
 from starlette.concurrency import run_in_threadpool
 
+from api.core.default import DefaultEngine
 from api.models import GENERATE_ENGINE
 from api.utils.compat import model_dump
 from api.utils.protocol import CompletionCreateParams
@@ -26,7 +27,7 @@ def get_engine():
 async def create_completion(
     request: CompletionCreateParams,
     raw_request: Request,
-    engine=Depends(get_engine),
+    engine: DefaultEngine = Depends(get_engine),
 ):
     if isinstance(request.prompt, str):
         request.prompt = [request.prompt]

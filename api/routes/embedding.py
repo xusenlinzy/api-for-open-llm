@@ -107,9 +107,11 @@ async def create_embeddings(
 
             data.extend(
                 Embedding(
-                    index=num_batch * 1024 + i, object="embedding", embedding=embed
+                    index=num_batch * 1024 + i,
+                    object="embedding",
+                    embedding=embedding,
                 )
-                for i, embed in enumerate(vecs)
+                for i, embedding in enumerate(vecs)
             )
             total_tokens += token_num
 

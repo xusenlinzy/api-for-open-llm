@@ -7,6 +7,7 @@ from loguru import logger
 from sse_starlette import EventSourceResponse
 from starlette.concurrency import run_in_threadpool
 
+from api.core.llama_cpp_engine import LlamaCppEngine
 from api.llama_cpp_routes.utils import get_llama_cpp_engine
 from api.utils.compat import model_dump
 from api.utils.protocol import CompletionCreateParams
@@ -23,7 +24,7 @@ completion_router = APIRouter()
 async def create_completion(
     request: CompletionCreateParams,
     raw_request: Request,
-    engine=Depends(get_llama_cpp_engine),
+    engine: LlamaCppEngine = Depends(get_llama_cpp_engine),
 ):
     if isinstance(request.prompt, list):
         assert len(request.prompt) <= 1
@@ -33,8 +34,14 @@ async def create_completion(
     request = await handle_request(request, engine.stop)
 
     include = {
-        "temperature", "top_p", "stream", "stop", "model",
-        "max_tokens", "presence_penalty", "frequency_penalty",
+        "temperature",
+        "top_p",
+        "stream",
+        "stop",
+        "model",
+        "max_tokens",
+        "presence_penalty",
+        "frequency_penalty",
     }
     kwargs = model_dump(request, include=include)
     logger.debug(f"==== request ====\n{kwargs}")

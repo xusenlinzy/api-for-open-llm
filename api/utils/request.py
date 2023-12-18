@@ -82,6 +82,10 @@ async def handle_request(
     request.stop_token_ids = request.stop_token_ids or []
     request.stop_token_ids = list(set(_stop_token_ids + request.stop_token_ids))
 
+    request.top_p = max(request.top_p, 1e-5)
+    if request.temperature <= 1e-5:
+        request.top_p = 1.0
+
     return request
 
 

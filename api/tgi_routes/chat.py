@@ -46,8 +46,6 @@ async def create_chat_completion(
     raw_request: Request,
     engine: TGIEngine = Depends(get_engine),
 ):
-    logger.info(f"Received chat messages: {request.messages}")
-
     if (not request.messages) or request.messages[-1]["role"] == Role.ASSISTANT:
         raise HTTPException(status_code=400, detail="Invalid request")
 
@@ -56,7 +54,11 @@ async def create_chat_completion(
 
     prompt = engine.apply_chat_template(request.messages)
     include = {
-        "temperature", "best_of", "repetition_penalty", "typical_p", "watermark",
+        "temperature",
+        "best_of",
+        "repetition_penalty",
+        "typical_p",
+        "watermark",
     }
     params = model_dump(request, include=include)
     params.update(

@@ -26,6 +26,7 @@ from openai.types.completion_usage import CompletionUsage
 from sse_starlette import EventSourceResponse
 from vllm.outputs import RequestOutput
 
+from api.core.vllm_engine import VllmEngine
 from api.models import GENERATE_ENGINE
 from api.utils.compat import model_dump, model_parse
 from api.utils.protocol import Role, ChatCompletionCreateParams
@@ -46,10 +47,8 @@ def get_engine():
 async def create_chat_completion(
     request: ChatCompletionCreateParams,
     raw_request: Request,
-    engine=Depends(get_engine),
+    engine: VllmEngine = Depends(get_engine),
 ):
-    logger.info(f"Received chat messages: {request.messages}")
-
     if (not request.messages) or request.messages[-1]["role"] == Role.ASSISTANT:
         raise HTTPException(status_code=400, detail="Invalid request")
 
@@ -57,7 +56,7 @@ async def create_chat_completion(
     request.max_tokens = request.max_tokens or 512
 
     params = model_dump(request, exclude={"messages"})
-    params.update(dict(prompt_or_messages=request.messages,echo=False))
+    params.update(dict(prompt_or_messages=request.messages, echo=False))
     logger.debug(f"==== request ====\n{params}")
 
     request_id: str = f"chatcmpl-{str(uuid.uuid4())}"

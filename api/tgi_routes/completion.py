@@ -50,7 +50,11 @@ async def create_completion(
 
     request_id: str = f"cmpl-{str(uuid.uuid4())}"
     include = {
-        "temperature", "best_of", "repetition_penalty", "typical_p", "watermark",
+        "temperature",
+        "best_of",
+        "repetition_penalty",
+        "typical_p",
+        "watermark",
     }
     params = model_dump(request, include=include)
     params.update(

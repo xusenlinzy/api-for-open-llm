@@ -7,6 +7,7 @@ from loguru import logger
 from sse_starlette import EventSourceResponse
 from starlette.concurrency import run_in_threadpool
 
+from api.core.default import DefaultEngine
 from api.models import GENERATE_ENGINE
 from api.utils.compat import model_dump
 from api.utils.protocol import ChatCompletionCreateParams, Role
@@ -27,7 +28,7 @@ def get_engine():
 async def create_chat_completion(
     request: ChatCompletionCreateParams,
     raw_request: Request,
-    engine=Depends(get_engine),
+    engine: DefaultEngine = Depends(get_engine),
 ):
     """Creates a completion for the chat message"""
     if (not request.messages) or request.messages[-1]["role"] == Role.ASSISTANT:
@@ -37,7 +38,7 @@ async def create_chat_completion(
     request.max_tokens = request.max_tokens or 1024
 
     params = model_dump(request, exclude={"messages"})
-    params.update(dict(prompt_or_messages=request.messages,echo=False))
+    params.update(dict(prompt_or_messages=request.messages, echo=False))
     logger.debug(f"==== request ====\n{params}")
 
     iterator_or_completion = await run_in_threadpool(engine.create_chat_completion, params)

@@ -19,6 +19,7 @@ from openai.types.completion_usage import CompletionUsage
 from sse_starlette import EventSourceResponse
 from vllm.outputs import RequestOutput
 
+from api.core.vllm_engine import VllmEngine
 from api.models import GENERATE_ENGINE
 from api.utils.compat import model_dump
 from api.utils.protocol import CompletionCreateParams
@@ -39,19 +40,12 @@ def get_engine():
 async def create_completion(
     request: CompletionCreateParams,
     raw_request: Request,
-    engine=Depends(get_engine),
+    engine: VllmEngine = Depends(get_engine),
 ):
     """Completion API similar to OpenAI's API.
 
     See https://platform.openai.com/docs/api-reference/completions/create
     for the API specification. This API mimics the OpenAI Completion API.
-
-    NOTE: Currently we do not support the following features:
-        - echo (since the vLLM engine does not currently support
-          getting the logprobs of prompt tokens)
-        - suffix (the language models we currently support do not support
-          suffix)
-        - logit_bias (to be supported by vLLM engine)
     """
     if request.echo:
         # We do not support echo since the vLLM engine does not
@@ -229,4 +223,4 @@ async def create_completion_stream(
                     created=int(time.time()),
                     model=params.get("model", "llm"),
                     object="text_completion",
-                    )
+                )
