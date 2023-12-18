@@ -19,7 +19,7 @@ class ModelList(BaseModel):
 available_models = ModelList(
     data=[
         Model(
-            id=SETTINGS.model_name,
+            id=SETTINGS.model_name or "",
             object="model",
             created=int(time.time()),
             owned_by="open"

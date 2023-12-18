@@ -21,9 +21,13 @@ def create_app() -> FastAPI:
 
 def create_embedding_model():
     """ get embedding model from sentence-transformers. """
-    from sentence_transformers import SentenceTransformer
-
-    return SentenceTransformer(SETTINGS.embedding_name, device=SETTINGS.embedding_device)
+    if SETTINGS.tei_endpoint is not None:
+        from openai import AsyncOpenAI
+        client = AsyncOpenAI(base_url=SETTINGS.tei_endpoint, api_key="none")
+    else:
+        from sentence_transformers import SentenceTransformer
+        client = SentenceTransformer(SETTINGS.embedding_name, device=SETTINGS.embedding_device)
+    return client
 
 
 def create_generate_model():

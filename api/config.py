@@ -39,7 +39,7 @@ class Settings(BaseModel):
     )
     engine: Optional[str] = Field(
         default=get_env("ENGINE", "default"),
-        description="Choices are ['default', 'vllm', 'llama.cpp'].",
+        description="Choices are ['default', 'vllm', 'llama.cpp', 'tgi'].",
     )
 
     # model related
@@ -239,10 +239,24 @@ class Settings(BaseModel):
         description="RoPE frequency scaling factor",
     )
 
-    # support for tgi
+    # support for tgi: https://github.com/huggingface/text-generation-inference
     tgi_endpoint: Optional[str] = Field(
         default=get_env("TGI_ENDPOINT", None),
-        description="Text Generate Inference Endpoint.",
+        description="Text Generation Inference Endpoint.",
+    )
+
+    # support for tei: https://github.com/huggingface/text-embeddings-inference
+    tei_endpoint: Optional[str] = Field(
+        default=get_env("TEI_ENDPOINT", None),
+        description="Text Embeddings Inference Endpoint.",
+    )
+    max_concurrent_requests: Optional[int] = Field(
+        default=int(get_env("MAX_CONCURRENT_REQUESTS", 256)),
+        description="The maximum amount of concurrent requests for this particular deployment."
+    )
+    max_client_batch_size: Optional[int] = Field(
+        default=int(get_env("MAX_CLIENT_BATCH_SIZE", 32)),
+        description="Control the maximum number of inputs that a client can send in a single request."
     )
 
 
