@@ -20,6 +20,9 @@
 
 ## 📢 新闻
 
++ 【2023.12.06】 添加 [TGI](https://github.com/huggingface/text-generation-inference) 生成接口转发和 [TEI](https://github.com/huggingface/text-embeddings-inference) embedding 接口转发
+
+
 + 【2023.12.06】 添加 [SUS-Chat-34B](https://huggingface.co/SUSTech/SUS-Chat-34B) 模型支持，[启动方式链接](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#suschat)
 
 
