@@ -1215,7 +1215,11 @@ class SusChatTemplate(BaseTemplate):
     @property
     def template(self) -> str:
         return (
+            "{% if messages[0]['role'] == 'system' %}"
+            "{{ messages[0]['content'] }}"
+            "{% else %}"
             "{{ system_prompt }}"
+            "{% endif %}"
             "{% for message in messages %}"
             "{% if message['role'] == 'user' %}"
             "{{ '### Human: ' + message['content'] + '\\n\\n### Assistant: ' }}"
