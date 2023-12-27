@@ -54,7 +54,7 @@ async def create_embeddings(
             for j in range(0, len(texts), SETTINGS.max_client_batch_size):
                 tasks.append(
                     client.embeddings.create(
-                        input=texts[j: j + SETTINGS.max_client_batch_size],
+                        input=[text[:510] for text in texts[j: j + SETTINGS.max_client_batch_size]],
                         model=request.model,
                     )
                 )
