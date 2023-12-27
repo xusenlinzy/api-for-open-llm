@@ -240,9 +240,7 @@ def process_qwen_messages(
                         content = f"Thought: 我可以使用 {f_name} API。"
                     else:
                         content = f"Thought: I can use {f_name}."
-                        
-                if func_call:
-                    content = f"\n{content}\nAction: {f_name}\nAction Input: {f_args}"
+
             if messages[-1]["role"] == Role.USER:
                 messages.append(
                     ChatCompletionAssistantMessageParam(role="assistant", content=content.lstrip("\n").rstrip())
