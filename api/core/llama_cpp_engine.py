@@ -97,6 +97,7 @@ class LlamaCppEngine:
             index=0,
             message=message,
             finish_reason="stop",
+            logprobs=None,
         )
         usage = model_parse(CompletionUsage, completion["usage"])
         return ChatCompletion(
@@ -127,6 +128,7 @@ class LlamaCppEngine:
                     index=0,
                     delta=ChoiceDelta(role="assistant", content=""),
                     finish_reason=None,
+                    logprobs=None,
                 )
                 yield ChatCompletionChunk(
                     id=f"chat{_id}",
@@ -145,6 +147,7 @@ class LlamaCppEngine:
                 index=0,
                 delta=delta,
                 finish_reason=output["choices"][0]["finish_reason"],
+                logprobs=None,
             )
             yield ChatCompletionChunk(
                 id=f"chat{_id}",

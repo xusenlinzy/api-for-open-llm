@@ -154,6 +154,7 @@ async def create_chat_completion_stream(generator: AsyncIterator, params: Dict[s
             index=i,
             delta=ChoiceDelta(role="assistant", content=""),
             finish_reason=None,
+            logprobs=None,
         )
         yield ChatCompletionChunk(
             id=request_id,
@@ -179,6 +180,7 @@ async def create_chat_completion_stream(generator: AsyncIterator, params: Dict[s
                     index=i,
                     delta=ChoiceDelta(content=delta_text),
                     finish_reason=output.finish_reason,
+                    logprobs=None,
                 )
                 yield ChatCompletionChunk(
                     id=request_id,
@@ -193,6 +195,7 @@ async def create_chat_completion_stream(generator: AsyncIterator, params: Dict[s
                         index=i,
                         delta=ChoiceDelta(),
                         finish_reason="stop",
+                        logprobs=None,
                     )
                     yield ChatCompletionChunk(
                         id=request_id,

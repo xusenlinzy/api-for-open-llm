@@ -395,6 +395,7 @@ class DefaultEngine(ABC):
                     index=0,
                     delta=ChoiceDelta(role="assistant", content=""),
                     finish_reason=None,
+                    logprobs=None,
                 )
                 yield ChatCompletionChunk(
                     id=f"chat{_id}",
@@ -440,7 +441,8 @@ class DefaultEngine(ABC):
             choice = ChunkChoice(
                 index=0,
                 delta=delta,
-                finish_reason=finish_reason
+                finish_reason=finish_reason,
+                logprobs=None,
             )
             yield ChatCompletionChunk(
                 id=f"chat{_id}",
@@ -454,7 +456,8 @@ class DefaultEngine(ABC):
             choice = ChunkChoice(
                 index=0,
                 delta=ChoiceDelta(),
-                finish_reason="stop"
+                finish_reason="stop",
+                logprobs=None,
             )
             yield ChatCompletionChunk(
                 id=f"chat{_id}",
@@ -518,6 +521,7 @@ class DefaultEngine(ABC):
             index=0,
             message=message,
             finish_reason=finish_reason,
+            logprobs=None,
         )
         usage = model_parse(CompletionUsage, last_output["usage"])
         return ChatCompletion(
