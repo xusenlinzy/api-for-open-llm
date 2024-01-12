@@ -86,7 +86,7 @@ class HuggingFaceLLM(LLM):
     model_path: str
     """The path to the HuggingFace Transformers model file."""
 
-    load_model_kwargs: Optional[dict] = None
+    load_model_kwargs: Optional[dict] = {}
     """Keyword arguments to pass to load the model."""
 
     context_length: Optional[int] = None
