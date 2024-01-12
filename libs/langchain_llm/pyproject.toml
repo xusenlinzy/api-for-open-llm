@@ -1,0 +1,25 @@
+[tool.poetry]
+name = "langchain-llm"
+version = "0.2.0"
+description = "langchain llm wrapper"
+authors = ["xusenlin <xusenlin@dnect.cn>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.8.1,<4.0"
+openai = ">=1.6.1"
+langchain = ">=0.1.0"
+sentencepiece = ">=0.1.98"
+tiktoken = ">=0.4.0"
+loguru = ">=0.7.0"
+transformers = ">=4.36.0"
+peft = ">=0.4.0"
+accelerate = ">=0.20.3"
+transformers_stream_generator = ">=0.0.4"
+cpm_kernels = ">=1.0.11"
+einops = ">=0.7.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
