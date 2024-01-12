@@ -104,8 +104,7 @@ def _configure_quantization(
         )
         logger.info("Quantizing model to 4 bit.")
 
-    if load_in_8bits or load_in_4bits:
-        config_kwargs["device_map"] = {"": get_current_device()}
+    config_kwargs["device_map"] = {"": get_current_device()}
 
 
 def patch_tokenizer(tokenizer: "PreTrainedTokenizer") -> None:
@@ -145,8 +144,8 @@ def patch_config(
 
     _configure_quantization(
         config_kwargs,
-        kwargs.get("load_in_4bit", False),
         kwargs.get("load_in_8bit", False),
+        kwargs.get("load_in_4bit", False),
     )
 
 

@@ -103,3 +103,28 @@ messages = [
 ]
 print(chat_llm.call_as_openai(messages))
 ```
+
+## load_model_kwargs
+
++ `model_name_or_path` [str]
+
+
++ `use_fast_tokenizer` [bool]
+
+
++ `device_map` [str]
+
+
++ `dtype` [str]: "half", "bfloat16", "float32"
+
+
++ `load_in_8bit` [bool]: Load model in 8 bit.
+
+
++ load_in_4bit [bool]: Load model in 4 bit.
+
+
++ `rope_scaling` [str]: Which scaling strategy should be adopted for the RoPE embeddings.
+
+
++ `flash_attn` [bool]: Enable FlashAttention-2.
