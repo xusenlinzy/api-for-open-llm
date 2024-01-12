@@ -1,7 +1,14 @@
 import json
 from abc import ABC
 from functools import lru_cache
-from typing import List, Union, Optional, Dict, Any, Tuple
+from typing import (
+    List,
+    Union,
+    Optional,
+    Dict,
+    Any,
+    Tuple,
+)
 
 from openai.types.chat import ChatCompletionMessageParam
 

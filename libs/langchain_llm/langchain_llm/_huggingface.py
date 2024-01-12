@@ -86,9 +86,6 @@ class HuggingFaceLLM(LLM):
     model_path: str
     """The path to the HuggingFace Transformers model file."""
 
-    adapter_model_path: Optional[str] = None
-    """The path to the LoRA model. If None, no LoRa is loaded."""
-
     load_model_kwargs: Optional[dict] = None
     """Keyword arguments to pass to load the model."""
 
@@ -131,15 +128,13 @@ class HuggingFaceLLM(LLM):
     @root_validator()
     def validate_environment(cls, values: Dict) -> Dict:
         """Validate that python package exists in environment."""
-        from .adapters.model import load_model
+        from .adapters.model import load_model_and_tokenizer
 
         values["model_name"] = values["model_name"].lower()
         model_path = values["model_path"]
         try:
-            values["model"], values["tokenizer"] = load_model(
-                model_name=values["model_name"],
+            values["model"], values["tokenizer"] = load_model_and_tokenizer(
                 model_name_or_path=model_path,
-                adapter_model=values["adapter_model_path"],
                 **values["load_model_kwargs"],
             )
         except Exception as e:
