@@ -170,18 +170,6 @@ class HuggingFaceLLM(LLM):
             values["context_length"] = get_context_length(values["model"].config)
             logger.info(f"Context length is set to : {values['context_length']}")
 
-        # fix the tokenizer by adding the end-of-sequence (eos) token and the padding (pad) token if they are missing.
-        if values["tokenizer"].eos_token_id is None:
-            values["tokenizer"].eos_token = "<|endoftext|>"
-            logger.info(f"Add eos token: {values['tokenizer'].eos_token}")
-
-        if values["tokenizer"].pad_token_id is None:
-            if values["tokenizer"].unk_token_id is not None:
-                values["tokenizer"].pad_token = values["tokenizer"].unk_token
-            else:
-                values["tokenizer"].pad_token = values["tokenizer"].eos_token
-            logger.info(f"Add pad token: {values['tokenizer'].pad_token}")
-
         return values
 
     @property

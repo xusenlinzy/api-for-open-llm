@@ -78,6 +78,14 @@ class ChatCompletionCreateParams(BaseModel):
     or exclusive selection of the relevant token.
     """
 
+    logprobs: Optional[bool] = False
+    """Whether to return log probabilities of the output tokens or not.
+
+    If true, returns the log probabilities of each output token returned in the
+    `content` of `message`. This option is currently not available on the
+    `gpt-4-vision-preview` model.
+    """
+
     max_tokens: Optional[int] = None
     """The maximum number of [tokens](/tokenizer) to generate in the chat completion.
 
@@ -144,6 +152,13 @@ class ChatCompletionCreateParams(BaseModel):
 
     Currently, only functions are supported as a tool. Use this to provide a list of
     functions the model may generate JSON inputs for.
+    """
+
+    top_logprobs: Optional[int] = None
+    """
+    An integer between 0 and 5 specifying the number of most likely tokens to return
+    at each token position, each with an associated log probability. `logprobs` must
+    be set to `true` if this parameter is used.
     """
 
     top_p: Optional[float] = 1.0

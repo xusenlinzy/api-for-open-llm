@@ -112,6 +112,17 @@ def patch_tokenizer(tokenizer: "PreTrainedTokenizer") -> None:
     if "PreTrainedTokenizerBase" not in str(tokenizer._pad.__func__):
         tokenizer._pad = MethodType(PreTrainedTokenizerBase._pad, tokenizer)
 
+    if tokenizer.eos_token_id is None:
+        tokenizer.eos_token = "<|endoftext|>"
+        logger.info(f"Add eos token: {tokenizer.eos_token}")
+
+    if tokenizer.pad_token_id is None:
+        if tokenizer.unk_token_id is not None:
+            tokenizer.pad_token = tokenizer.unk_token
+        else:
+            tokenizer.pad_token = tokenizer.eos_token
+        logger.info(f"Add pad token: {tokenizer.pad_token}")
+
 
 def patch_config(
     config: "PretrainedConfig",
