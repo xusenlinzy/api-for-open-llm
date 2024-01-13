@@ -4,6 +4,7 @@ from typing import (
     TYPE_CHECKING,
     Optional,
     Tuple,
+    Any,
 )
 
 from transformers import (
@@ -26,7 +27,7 @@ def load_model_and_tokenizer(
     model_name_or_path: str,
     use_fast_tokenizer: Optional[bool] = False,
     dtype: Optional[str] = None,
-    device_map: Optional[str] = None,
+    device_map: Optional[Any] = None,
     load_in_8bit: Optional[bool] = False,
     load_in_4bit: Optional[bool] = False,
     rope_scaling: Optional[str] = None,
@@ -58,7 +59,7 @@ def load_model_and_tokenizer(
     )
 
     if device_map:
-        config_kwargs["device_map"] = "auto"
+        config_kwargs["device_map"] = device_map
 
     model = AutoModelForCausalLM.from_pretrained(
         model_name_or_path,
