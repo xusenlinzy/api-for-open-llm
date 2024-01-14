@@ -153,4 +153,11 @@ chat_llm = ChatHuggingFace(
 
 
 + `flash_attn`: Enable FlashAttention-2.
-+ 
+
+## Merge Lora model
+
+```python
+from langchain_llm import apply_lora
+
+apply_lora("base_model_path", "lora_path", "target_model_path")
+```

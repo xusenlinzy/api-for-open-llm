@@ -594,7 +594,7 @@ class ChatHuggingFace(BaseChatModel):
                     token=chunk.text, verbose=self.verbose, log_probs=logprobs
                 )
 
-    def _to_chat_prompt(self, messages: List[BaseMessage]) -> Union[List[int], Dict[str, Any]]:
+    def _to_chat_prompt(self, messages: List[BaseMessage]) -> List[Dict]:
         """Convert a list of messages into a prompt format expected by wrapped LLM."""
         if not messages:
             raise ValueError("at least one HumanMessage must be provided")

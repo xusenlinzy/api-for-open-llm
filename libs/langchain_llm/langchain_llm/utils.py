@@ -3,7 +3,7 @@ from typing import Optional
 import torch
 from loguru import logger
 from peft import PeftModel
-from transformers import AutoTokenizer, AutoModelForCausalLM, PreTrainedModel
+from transformers import AutoTokenizer, AutoModelForCausalLM
 
 
 def apply_lora(
@@ -12,7 +12,7 @@ def apply_lora(
     target_model_path: str,
     max_shard_size: Optional[str] = "2GB",
     safe_serialization: Optional[bool] = True,
-) -> PreTrainedModel:
+):
 
     logger.info(f"Loading the base model from {base_model_path}")
     base = AutoModelForCausalLM.from_pretrained(
