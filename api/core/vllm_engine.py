@@ -85,10 +85,8 @@ class VllmEngine:
             return build_qwen_chat_input(
                 self.tokenizer,
                 messages,
-                self.max_model_len,
-                max_tokens,
-                functions,
-                tools,
+                functions=functions,
+                tools=tools,
             )
         else:
             return self.prompt_adapter.apply_chat_template(messages)

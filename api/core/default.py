@@ -253,7 +253,7 @@ class DefaultEngine(ABC):
             )
         elif check_is_qwen(self.model):
             inputs = build_qwen_chat_input(
-                self.tokenizer, messages, self.context_len, max_new_tokens, functions, tools,
+                self.tokenizer, messages, functions=functions, tools=tools,
             )
         elif check_is_xverse(self.model):
             inputs = build_xverse_chat_input(
