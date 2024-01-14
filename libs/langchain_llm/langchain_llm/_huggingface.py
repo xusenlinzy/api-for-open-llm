@@ -472,6 +472,9 @@ class ChatHuggingFace(BaseChatModel):
     chat_template: Optional[str] = None
     """Chat template for generating completions."""
 
+    max_window_size: Optional[int] = 6144
+    """The maximum window size"""
+
     construct_prompt: bool = True
 
     prompt_adapter: Optional[BaseTemplate] = None
@@ -506,7 +509,7 @@ class ChatHuggingFace(BaseChatModel):
 
     def _get_parameters(
         self,
-        inputs: Union[List[int], Dict[str, Any]],
+        messages: Union[List[BaseMessage], List[Dict[str, Any]]],
         stop: Optional[List[str]] = None,
         **kwargs: Any,
     ) -> Dict[str, Any]:
@@ -536,7 +539,14 @@ class ChatHuggingFace(BaseChatModel):
         params["stop_token_ids"] = list(set(_stop_token_ids))
 
         params = {**params, **kwargs}
-        params.update(dict(inputs=inputs, prompt=None))
+
+        llm_input = self._apply_chat_template(
+            messages,
+            max_new_tokens=params.get("max_tokens"),
+            functions=params.get("functions"),
+            tools=params.get("tools"),
+        )
+        params.update(dict(inputs=llm_input, prompt=None))
 
         return params
 
@@ -569,8 +579,8 @@ class ChatHuggingFace(BaseChatModel):
         **kwargs: Any,
     ) -> Iterator[ChatGenerationChunk]:
 
-        llm_input = self._to_chat_prompt(messages)
-        params = self._get_parameters(llm_input, stop, **kwargs)
+        messages = self._to_chat_prompt(messages)
+        params = self._get_parameters(messages, stop, **kwargs)
         result = self.llm.inference_fn(self.llm.model, self.llm.tokenizer, params)
         for part in result:
             logprobs = part.get("logprobs", None)
@@ -592,9 +602,7 @@ class ChatHuggingFace(BaseChatModel):
         if not isinstance(messages[-1], HumanMessage):
             raise ValueError("last message must be a HumanMessage")
 
-        messages_dicts = [self._to_chatml_format(m) for m in messages]
-
-        return self._apply_chat_template(messages_dicts)
+        return [self._to_chatml_format(m) for m in messages]
 
     def _apply_chat_template(
         self,
@@ -655,7 +663,7 @@ class ChatHuggingFace(BaseChatModel):
             )
         elif check_is_qwen(self.llm.model):
             inputs = build_qwen_chat_input(
-                self.llm.tokenizer, messages, self.llm.context_length, max_new_tokens, functions, tools,
+                self.llm.tokenizer, messages, self.max_window_size, functions, tools,
             )
         elif check_is_xverse(self.llm.model):
             inputs = build_xverse_chat_input(
@@ -692,8 +700,8 @@ class ChatHuggingFace(BaseChatModel):
         """
         Creates a completion based on the given parameters.
         """
-        llm_input = self._apply_chat_template(messages)
-        params = self._get_parameters(llm_input, stop, **kwargs)
+
+        params = self._get_parameters(messages, stop, **kwargs)
         result = self.llm.inference_fn(self.llm.model, self.llm.tokenizer, params)
 
         last_output = None
@@ -758,8 +766,8 @@ class ChatHuggingFace(BaseChatModel):
         """
         Generates a stream of completions based on the given parameters.
         """
-        llm_input = self._apply_chat_template(messages)
-        params = self._get_parameters(llm_input, stop, **kwargs)
+
+        params = self._get_parameters(messages, stop, **kwargs)
         result = self.llm.inference_fn(self.llm.model, self.llm.tokenizer, params)
 
         _id, _created, _model = None, None, self.llm.model_name

@@ -104,27 +104,53 @@ messages = [
 print(chat_llm.call_as_openai(messages))
 ```
 
-## load_model_kwargs
 
-+ `model_name_or_path` [str]
+## Custom Chat template
+
+```python
+from langchain_llm import BaseTemplate, ChatHuggingFace
+
+class CustomTemplate(BaseTemplate):
+    
+    @property
+    def template(self) -> str:
+        return (
+            "{% for message in messages %}"
+            "{{ '<|im_start|>' + message['role'] + '\\n' + message['content'] + '<|im_end|>' + '\\n' }}"
+            "{% endfor %}"
+            "{% if add_generation_prompt %}"
+            "{{ '<|im_start|>assistant\\n' }}"
+            "{% endif %}"
+        )
+
+chat_llm = ChatHuggingFace(
+    llm=llm, 
+    prompt_adapter=CustomTemplate()
+)
+```
+
+## Load Model Kwargs
+
++ `model_name_or_path`: model name or path.
 
 
-+ `use_fast_tokenizer` [bool]
++ `use_fast_tokenizer`: default false.
 
 
-+ `device_map` [str]
++ `device_map`: "auto"、"cuda:0" etc.
 
 
-+ `dtype` [str]: "half", "bfloat16", "float32"
++ `dtype`: "half", "bfloat16", "float32".
 
 
-+ `load_in_8bit` [bool]: Load model in 8 bit.
++ `load_in_8bit`: Load model in 8 bit.
 
 
-+ load_in_4bit [bool]: Load model in 4 bit.
++ `load_in_4bit`: Load model in 4 bit.
 
 
-+ `rope_scaling` [str]: Which scaling strategy should be adopted for the RoPE embeddings.
++ `rope_scaling`: Which scaling strategy should be adopted for the RoPE embeddings. Literal["linear", "dynamic"].
 
 
-+ `flash_attn` [bool]: Enable FlashAttention-2.
++ `flash_attn`: Enable FlashAttention-2.
++ 

@@ -112,6 +112,9 @@ class ChatVLLM(BaseChatModel):
     chat_template: Optional[str] = None
     """Chat template for generating completions."""
 
+    max_window_size: Optional[int] = 6144
+    """The maximum window size"""
+
     construct_prompt: bool = True
 
     prompt_adapter: Optional[BaseTemplate] = None
@@ -211,7 +214,6 @@ class ChatVLLM(BaseChatModel):
     def _apply_chat_template(
         self,
         messages: Union[List[ChatCompletionMessageParam], Dict[str, Any]],
-        max_new_tokens: Optional[int] = 256,
         functions: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
         tools: Optional[List[Dict[str, Any]]] = None,
     ) -> Union[str, List[int]]:
@@ -220,7 +222,6 @@ class ChatVLLM(BaseChatModel):
 
         Args:
             messages (List[ChatCompletionMessageParam]): List of chat completion message parameters.
-            max_new_tokens (Optional[int], optional): Maximum number of new tokens to generate. Defaults to 256.
             functions (Optional[Union[Dict[str, Any], List[Dict[str, Any]]]], optional): Functions to apply to the messages. Defaults to None.
             tools (Optional[List[Dict[str, Any]]], optional): Tools to apply to the messages. Defaults to None.
 
@@ -243,8 +244,7 @@ class ChatVLLM(BaseChatModel):
             return build_qwen_chat_input(
                 self.tokenizer,
                 messages,
-                8192,
-                max_new_tokens,
+                self.max_window_size,
                 functions,
                 tools,
             )
@@ -279,7 +279,11 @@ class ChatVLLM(BaseChatModel):
         """
         from vllm import SamplingParams
 
-        llm_input = self._apply_chat_template(messages)
+        llm_input = self._apply_chat_template(
+            messages,
+            functions=kwargs.get("functions"),
+            tools=kwargs.get("tools"),
+        )
         params = self._get_parameters(stop, **kwargs)
 
         # build sampling parameters
