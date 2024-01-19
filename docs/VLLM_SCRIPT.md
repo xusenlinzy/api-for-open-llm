@@ -115,6 +115,8 @@ python server.py
 
 + [internlm](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/VLLM_SCRIPT.md#internlm)      
 
++ [internlm2](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/VLLM_SCRIPT.md#internlm2)      
+
 
 ### Qwen-7b-chat
 
@@ -134,6 +136,16 @@ internlm-chat-7b:
 ```shell
 MODEL_NAME=internlm
 MODEL_PATH=internlm/internlm-chat-7b
+ENGINE=vllm
+```
+
+### InternLM2
+
+internlm2-chat-20b:
+
+```shell
+MODEL_NAME=internlm2
+MODEL_PATH=internlm/internlm2-chat-20b
 ENGINE=vllm
 ```
 

@@ -28,3 +28,6 @@
 
 
 + 【2023.06.12】 使用 [m3e](https://huggingface.co/moka-ai/m3e-base) 中文嵌入模型（在中文文本分类和文本检索上都优于 `openai-ada-002`）
+
+
++ 【2024.01.19】 添加 [InternLM2](https://github.com/InternLM/InternLM) 模型支持，[启动方式](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#internlm2)

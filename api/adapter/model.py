@@ -500,6 +500,16 @@ class InternLMModelAdapter(BaseModelAdapter):
         return "internlm/internlm-chat-7b"
 
 
+class InternLM2ModelAdapter(BaseModelAdapter):
+    """ https://github.com/InternLM/InternLM """
+
+    model_names = ["internlm2"]
+
+    @property
+    def default_model_name_or_path(self):
+        return "internlm/internlm2-chat-20b"
+
+
 class StarCodeModelAdapter(BaseModelAdapter):
     """ https://github.com/bigcode-project/starcoder """
 
@@ -573,6 +583,7 @@ register_model_adapter(OpenBuddyFalconModelAdapter)
 register_model_adapter(AnimaModelAdapter)
 register_model_adapter(BaiChuanModelAdapter)
 register_model_adapter(InternLMModelAdapter)
+register_model_adapter(InternLM2ModelAdapter)
 register_model_adapter(AquilaModelAdapter)
 register_model_adapter(QwenModelAdapter)
 register_model_adapter(XverseModelAdapter)

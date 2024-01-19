@@ -74,6 +74,7 @@
 |           [qwen-7b-chat](https://github.com/QwenLM/Qwen-7B)            |     Qwen     |    7B    | en, zh |                 [Qwen/Qwen-7B-Chat](https://huggingface.co/baichuan-inc/Qwen/Qwen-7B-Chat)                  |
 |   [baichuan-13b-chat](https://github.com/baichuan-inc/Baichuan-13B)    |   Baichuan   |   13B    | en, zh |           [baichuan-inc/Baichuan-13B-Chat](https://huggingface.co/baichuan-inc/Baichuan-13B-Chat)           |
 |            [InternLM](https://github.com/InternLM/InternLM)            |   InternLM   |    7B    | en, zh |                [internlm/internlm-chat-7b](https://huggingface.co/internlm/internlm-chat-7b)                |
+|           [InternLM2](https://github.com/InternLM/InternLM)           |  InternLM2   |   20B    | en, zh |        [internlm/internlm2-chat-20b](https://huggingface.co/internlm/internlm2-chat-20b)                     |
 |            [ChatGLM2](https://github.com/THUDM/ChatGLM2-6B)            |     GLM      |  6/130B  | en, zh |                        [THUDM/chatglm2-6b](https://huggingface.co/THUDM/chatglm2-6b)                        |
 |       [baichaun-7b](https://github.com/baichuan-inc/baichuan-7B)       |   Baichuan   |    7B    | en, zh |                 [baichuan-inc/baichuan-7B](https://huggingface.co/baichuan-inc/baichuan-7B)                 |
 |         [Guanaco](https://github.com/artidoro/qlora/tree/main)         |    LLaMA     | 7/33/65B |   en   |           [timdettmers/guanaco-33b-merged](https://huggingface.co/timdettmers/guanaco-33b-merged)           |

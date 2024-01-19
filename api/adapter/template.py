@@ -739,6 +739,34 @@ class InternLMTemplate(BaseTemplate):
         )
 
 
+class InternLM2Template(BaseTemplate):
+
+    name = "internlm2"
+    allow_models = ["internlm2"]
+    stop = {
+        "strings": ["</s>", "[UNUSED_TOKEN_145]"],
+    }
+
+    @property
+    def template(self) -> str:
+        """ The output should look something like:
+
+        <s>[UNUSED_TOKEN_146]user\\n{Prompt}[UNUSED_TOKEN_145]\\n
+        [UNUSED_TOKEN_146]assistant\\n{Answer}[UNUSED_TOKEN_145]
+        <s>[UNUSED_TOKEN_146]user\\n{Prompt}[UNUSED_TOKEN_145]\\n
+        [UNUSED_TOKEN_146]assistant\\n{Answer}
+        """
+        return (
+            "{% for message in messages %}"
+            "{% if message['role'] == 'user' %}"
+            "{{ '<s>[UNUSED_TOKEN_146]user\\n' + message['content'] + '[UNUSED_TOKEN_145]\\n[UNUSED_TOKEN_146]assistant\\n' }}"
+            "{% elif message['role'] == 'assistant' %}"
+            "{{ message['content'] + '[UNUSED_TOKEN_145]\\n' }}"
+            "{% endif %}"
+            "{% endfor %}"
+        )
+
+
 class BaiChuanTemplate(BaseTemplate):
 
     name = "baichuan"
@@ -1274,6 +1302,7 @@ register_prompt_adapter(FireflyTemplate)
 register_prompt_adapter(FireflyForQwenTemplate)
 register_prompt_adapter(HuatuoTemplate)
 register_prompt_adapter(InternLMTemplate)
+register_prompt_adapter(InternLM2Template)
 register_prompt_adapter(Llama2Template)
 register_prompt_adapter(MixtralTemplate)
 register_prompt_adapter(MossTemplate)

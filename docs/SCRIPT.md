@@ -144,6 +144,8 @@ python server.py
 
 + [internlm](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#internlm)      
 
++ [internlm2](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#internlm2)      
+
 + [baichuan-7b](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#baichuan-7b)    
 
 + [openbuddy](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#openbuddy)      
@@ -254,6 +256,16 @@ internlm-chat-7b:
 MODEL_NAME=internlm
 MODEL_PATH=internlm/internlm-chat-7b
 ```
+
+### InternLM2
+
+internlm2-chat-20b:
+
+```shell
+MODEL_NAME=internlm2
+MODEL_PATH=internlm/internlm2-chat-20b
+```
+
 
 ### StarChat
 
