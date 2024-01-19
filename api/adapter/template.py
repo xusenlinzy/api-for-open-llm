@@ -721,10 +721,12 @@ Buddy strictly refuses to discuss harmful, political, NSFW, illegal, abusive, of
 class InternLMTemplate(BaseTemplate):
 
     name = "internlm"
-    allow_models = ["internlm"]
     stop = {
         "strings": ["</s>", "<eoa>"],
     }
+
+    def match(self, name) -> bool:
+        return name.startswith("internlm") and not name.startswith("internlm2")
 
     @property
     def template(self) -> str:
@@ -749,7 +751,6 @@ class InternLMTemplate(BaseTemplate):
 class InternLM2Template(BaseTemplate):
 
     name = "internlm2"
-    allow_models = ["internlm2"]
     system_prompt = (
         "You are an AI assistant whose name is InternLM (书生·浦语).\n"
         "- InternLM (书生·浦语) is a conversational language model that is developed by Shanghai AI Laboratory (上海人工智能实验室). It is designed to be helpful, honest, and harmless.\n"
@@ -758,6 +759,9 @@ class InternLM2Template(BaseTemplate):
     stop = {
         "strings": ["</s>", "[UNUSED_TOKEN_145]"],
     }
+
+    def match(self, name) -> bool:
+        return name.startswith("internlm2")
 
     @property
     def template(self) -> str:
