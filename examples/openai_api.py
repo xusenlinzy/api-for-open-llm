@@ -24,7 +24,7 @@ MODEL_LIST = {
     "chat":
         {
             # 模型名称
-            "chatglm3-6b": {
+            "qwen-7b-chat": {
                 "addtional_names": ["gpt-3.5-turbo"],  # 其他允许访问该模型的名称，比如chatgpt-next-web使用gpt-3.5-turbo，则需要加入到此处
                 "base_url": "http://192.168.20.59:7891/v1",  # 实际访问该模型的接口地址
                 "api_key": "xxx"
@@ -89,12 +89,36 @@ async def create_chat_completion(request: ChatCompletionCreateParams):
         api_key=MODEL_LIST["chat"][model]["api_key"],
         base_url=MODEL_LIST["chat"][model]["base_url"],
     )
-    request.model = "gpt-3.5-turbo"
-    response = await client.chat.completions.create(**request.model_dump(exclude_none=True))
+
+    params = request.dict(
+        exclude_none=True,
+        include={
+            "messages",
+            "model",
+            "frequency_penalty",
+            "function_call",
+            "functions",
+            "logit_bias",
+            "logprobs",
+            "max_tokens",
+            "n",
+            "presence_penalty",
+            "seed",
+            "stop",
+            "temperature",
+            "tool_choice",
+            "tools",
+            "top_logprobs",
+            "top_p",
+            "user",
+            "stream",
+        }
+    )
+    response = await client.chat.completions.create(**params)
 
     async def chat_completion_stream_generator():
         async for chunk in response:
-            yield chunk.model_dump_json()
+            yield chunk.json()
         yield "[DONE]"
 
     if request.stream:
@@ -113,12 +137,34 @@ async def create_completion(request: CompletionCreateParams):
         api_key=MODEL_LIST["completion"][model]["api_key"],
         base_url=MODEL_LIST["completion"][model]["base_url"],
     )
-    request.model = "gpt-3.5-turbo"
-    response = await client.completions.create(**request.model_dump(exclude_none=True))
+
+    params = request.dict(
+        exclude_none=True,
+        include={
+            "prompt",
+            "model",
+            "best_of",
+            "echo",
+            "frequency_penalty",
+            "logit_bias",
+            "logprobs",
+            "max_tokens",
+            "n",
+            "presence_penalty",
+            "seed",
+            "stop",
+            "suffix",
+            "temperature",
+            "top_p",
+            "user",
+            "stream",
+        }
+    )
+    response = await client.completions.create(**params)
 
     async def generate_completion_stream_generator():
         async for chunk in response:
-            yield chunk.model_dump_json()
+            yield chunk.json()
         yield "[DONE]"
 
     if request.stream:
@@ -133,7 +179,7 @@ async def create_embeddings(request: EmbeddingCreateParams):
         api_key=MODEL_LIST["embedding"]["api_key"],
         base_url=MODEL_LIST["embedding"]["base_url"],
     )
-    embeddings = await client.embeddings.create(**request.model_dump(exclude_none=True))
+    embeddings = await client.embeddings.create(**request.dict(exclude_none=True))
     return embeddings
 
 

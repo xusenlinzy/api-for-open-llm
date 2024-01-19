@@ -64,7 +64,7 @@ class LlamaCppEngine:
             messages = self.prompt_adapter.postprocess_messages(messages, functions, tools)
         return self.prompt_adapter.apply_chat_template(messages)
 
-    def create_completion(self, prompt, **kwargs) -> Union[Iterator, Dict[str, Any]]:
+    def create_completion(self, prompt, **kwargs) -> Union[Iterator[dict], Dict[str, Any]]:
         """
         Creates a completion using the specified prompt and additional keyword arguments.
 
@@ -109,7 +109,7 @@ class LlamaCppEngine:
             usage=usage,
         )
 
-    def _create_chat_completion_stream(self, prompt, **kwargs) -> Iterator:
+    def _create_chat_completion_stream(self, prompt, **kwargs) -> Iterator[ChatCompletionChunk]:
         """
         Generates a stream of chat completion chunks based on the given prompt.
 
@@ -157,7 +157,7 @@ class LlamaCppEngine:
                 object="chat.completion.chunk",
             )
 
-    def create_chat_completion(self, prompt, **kwargs) -> Union[Iterator, ChatCompletion]:
+    def create_chat_completion(self, prompt, **kwargs) -> Union[Iterator[ChatCompletionChunk], ChatCompletion]:
         return (
             self._create_chat_completion_stream(prompt, **kwargs)
             if kwargs.get("stream", False)

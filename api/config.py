@@ -134,13 +134,14 @@ class Settings(BaseModel):
         default=get_env("PROMPT_NAME", None),
         description="Chat template for generating completions."
     )
-    patch_type: Optional[str] = Field(
-        default=get_env("PATCH_TYPE", None),
-        description="Patch type for generating completions."
+
+    rope_scaling: Optional[str] = Field(
+        default=get_env("ROPE_SCALING", None),
+        description="RoPE Scaling."
     )
-    alpha: Optional[Union[str, float]] = Field(
-        default=get_env("ALPHA", "auto"),
-        description="Alpha for generating completions."
+    flash_attn: Optional[bool] = Field(
+        default=get_bool_env("FLASH_ATTN", "auto"),
+        description="Use flash attention."
     )
 
     # vllm related
@@ -178,7 +179,7 @@ class Settings(BaseModel):
 
     # support for transformers.TextIteratorStreamer
     use_streamer_v2: Optional[bool] = Field(
-        default=get_bool_env("USE_STREAMER_V2"),
+        default=get_bool_env("USE_STREAMER_V2", "true"),
         description="Support for transformers.TextIteratorStreamer."
     )
 

@@ -118,6 +118,8 @@ python server.py
 
 **环境变量修改内容参考下面**
 
++ [internlm2](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#internlm2)  
+
 + [sus-chat](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#suschat)
 
 + [deepseek](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#deepseekchat)
@@ -467,3 +469,15 @@ MODEL_NAME=sus-chat
 MODEL_PATH=SUSTech/SUS-Chat-34B
 DEVICE_MAP=auto
 ```
+
+### InternLM2
+
+internlm2-chat-20b:
+
+```shell
+MODEL_NAME=internlm2
+MODEL_PATH=internlm/internlm2-chat-20b
+DEVICE_MAP=auto
+```
+
+

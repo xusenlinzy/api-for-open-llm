@@ -1,3 +1,5 @@
+""" this file is overdated and will be used """
+
 import os
 import sys
 from typing import List, Optional, Any, Dict, Tuple
@@ -277,7 +279,7 @@ def get_model_adapter(model_name: str) -> BaseModelAdapter:
     raise ValueError(f"No valid model adapter for {model_name}")
 
 
-def load_model(
+def load_model_and_tokenizer_old(
     model_name: str,
     model_name_or_path: Optional[str] = None,
     adapter_model: Optional[str] = None,

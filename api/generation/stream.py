@@ -3,7 +3,11 @@ import time
 import uuid
 from threading import Thread
 from types import MethodType
-from typing import Iterable, Dict, Any
+from typing import (
+    Iterable,
+    Dict,
+    Any,
+)
 
 import torch
 from transformers import (

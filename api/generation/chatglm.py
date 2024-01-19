@@ -2,7 +2,13 @@ import gc
 import re
 import time
 import uuid
-from typing import List, Union, Dict, Any, Iterator
+from typing import (
+    List,
+    Union,
+    Dict,
+    Any,
+    Iterator,
+)
 
 import torch
 from loguru import logger

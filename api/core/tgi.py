@@ -1,5 +1,9 @@
 import json
-from typing import Optional, List, AsyncIterator
+from typing import (
+    Optional,
+    List,
+    AsyncIterator,
+)
 
 from aiohttp import ClientSession
 from openai.types.chat import ChatCompletionMessageParam

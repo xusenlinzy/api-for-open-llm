@@ -75,7 +75,9 @@ async def handle_request(
     if isinstance(request.stop, str):
         request.stop = [request.stop]
 
-    if chat and ("qwen" in SETTINGS.model_name.lower() and request.functions):
+    if chat and (
+        "qwen" in SETTINGS.model_name.lower() and (request.functions is not None or request.tools is not None)
+    ):
         request.stop.append("Observation:")
 
     request.stop = list(set(_stop + request.stop))

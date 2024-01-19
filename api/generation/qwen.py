@@ -1,6 +1,13 @@
 import json
 from copy import deepcopy
-from typing import List, Union, Optional, Dict, Any, Tuple
+from typing import (
+    List,
+    Union,
+    Optional,
+    Dict,
+    Any,
+    Tuple,
+)
 
 from loguru import logger
 from openai.types.chat import (
@@ -208,18 +215,16 @@ def process_qwen_messages(
                 if functions or tool_calls:
                     content = f"Thought: I now know the final answer.\nFinal Answer: {content}"
 
-            if messages[-1]["role"] == Role.USER:
+            if messages[-1]["role"] in [Role.USER, Role.SYSTEM]:
                 messages.append(
                     ChatCompletionAssistantMessageParam(role="assistant", content=content.lstrip("\n").rstrip())
                 )
             else:
                 messages[-1]["content"] += content
-        elif role == Role.USER:
+        elif role in [Role.USER, Role.SYSTEM]:
             messages.append(
                 ChatCompletionUserMessageParam(role="user", content=content.lstrip("\n").rstrip())
             )
-        else:
-            raise ValueError(f"Invalid messages: Incorrect role {role}.")
 
     query = _TEXT_COMPLETION_CMD
     if messages[-1]["role"] == Role.USER:

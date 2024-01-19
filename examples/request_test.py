@@ -46,4 +46,4 @@ if __name__ == "__main__":
             "content": "你好，给我讲一个故事，大概100字"
         }
     ]
-    create_chat_completion("baichuan2-13b", chat_messages, stream=False)
+    create_chat_completion("qwen-7b-chat", chat_messages, stream=False)

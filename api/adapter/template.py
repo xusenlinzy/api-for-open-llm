@@ -1,7 +1,14 @@
 import json
 from abc import ABC
 from functools import lru_cache
-from typing import List, Union, Optional, Dict, Any, Tuple
+from typing import (
+    List,
+    Union,
+    Optional,
+    Dict,
+    Any,
+    Tuple,
+)
 
 from openai.types.chat import ChatCompletionMessageParam
 
@@ -739,6 +746,38 @@ class InternLMTemplate(BaseTemplate):
         )
 
 
+class InternLM2Template(BaseTemplate):
+
+    name = "internlm2"
+    allow_models = ["internlm2"]
+    system_prompt = (
+        "You are an AI assistant whose name is InternLM (书生·浦语).\n"
+        "- InternLM (书生·浦语) is a conversational language model that is developed by Shanghai AI Laboratory (上海人工智能实验室). It is designed to be helpful, honest, and harmless.\n"
+        "- InternLM (书生·浦语) can understand and communicate fluently in the language chosen by the user such as English and 中文."
+    )
+    stop = {
+        "strings": ["</s>", "[UNUSED_TOKEN_145]"],
+    }
+
+    @property
+    def template(self) -> str:
+        return (
+            "{% if messages[0]['role'] == 'system' %}"
+            "{{ '<s>[UNUSED_TOKEN_146]' + 'system\\n' + messages[0]['content'] + '[UNUSED_TOKEN_145]' + '\\n' }}"
+            "{% else %}"
+            "{{ '<s>[UNUSED_TOKEN_146]' + 'system\\n' + system_prompt + '[UNUSED_TOKEN_145]' + '\\n' }}"
+            "{% endif %}"
+            "{% for message in messages %}"
+            "{% if messages[0]['role'] != 'system' %}"
+            "{{ '[UNUSED_TOKEN_146]' + message['role'] + '\\n' + message['content'] + '[UNUSED_TOKEN_145]' + '\\n' }}"
+            "{% endif %}"
+            "{% endfor %}"
+            "{% if add_generation_prompt %}"
+            "{{ '[UNUSED_TOKEN_146]assistant\\n' }}"
+            "{% endif %}"
+        )
+
+
 class BaiChuanTemplate(BaseTemplate):
 
     name = "baichuan"
@@ -1260,36 +1299,54 @@ class MixtralTemplate(BaseTemplate):
 
 register_prompt_adapter(AlpacaTemplate)
 register_prompt_adapter(AquilaChatTemplate)
+
 register_prompt_adapter(BaiChuanTemplate)
 register_prompt_adapter(BaiChuan2Template)
 register_prompt_adapter(BelleTemplate)
 register_prompt_adapter(BlueLMTemplate)
+
 register_prompt_adapter(ChatglmTemplate)
 register_prompt_adapter(Chatglm2Template)
 register_prompt_adapter(Chatglm3Template)
 register_prompt_adapter(ChineseAlpaca2Template)
+
 register_prompt_adapter(DeepseekTemplate)
 register_prompt_adapter(DeepseekCoderTemplate)
+
 register_prompt_adapter(FireflyTemplate)
 register_prompt_adapter(FireflyForQwenTemplate)
+
 register_prompt_adapter(HuatuoTemplate)
+
 register_prompt_adapter(InternLMTemplate)
+register_prompt_adapter(InternLM2Template)
+
 register_prompt_adapter(Llama2Template)
+
 register_prompt_adapter(MixtralTemplate)
 register_prompt_adapter(MossTemplate)
+
 register_prompt_adapter(OctopackTemplate)
 register_prompt_adapter(OpenBuddyTemplate)
 register_prompt_adapter(OrionStarTemplate)
+
 register_prompt_adapter(PhindTemplate)
 register_prompt_adapter(PhoenixTemplate)
+
 register_prompt_adapter(QwenTemplate)
+
 register_prompt_adapter(StarChatTemplate)
 register_prompt_adapter(SusChatTemplate)
+
 register_prompt_adapter(VicunaTemplate)
+
 register_prompt_adapter(XuanYuanTemplate)
 register_prompt_adapter(XverseTemplate)
+
 register_prompt_adapter(YiAITemplate)
+
 register_prompt_adapter(ZephyrTemplate)
+
 register_prompt_adapter(BaseTemplate)
 
 
@@ -1299,6 +1356,6 @@ if __name__ == '__main__':
         {"role": "assistant", "content": "I'm doing great. How can I help you today?"},
         {"role": "user", "content": "I'd like to show off how chat templating works!"},
     ]
-    template = get_prompt_adapter(prompt_name="mixtral")
+    template = get_prompt_adapter(prompt_name="internlm2")
     messages = template.postprocess_messages(chat)
     print(template.apply_chat_template(messages))

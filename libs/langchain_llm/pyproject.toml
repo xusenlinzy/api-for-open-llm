@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "langchain-llm"
-version = "0.2.0"
+version = "0.1.19"
 description = "langchain llm wrapper"
 authors = ["xusenlin <xusenlin@dnect.cn>"]
 readme = "README.md"

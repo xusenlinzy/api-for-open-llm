@@ -67,7 +67,7 @@ class DefaultEngine(ABC):
         context_len: Optional[int] = None,
         prompt_name: Optional[str] = None,
         use_streamer_v2: Optional[bool] = False,
-    ):
+    ) -> None:
         """
         Initialize the Default class.
 
@@ -82,7 +82,7 @@ class DefaultEngine(ABC):
         """
         self.model = model
         self.tokenizer = tokenizer
-        self.device = model.device if hasattr(model, "device") else device
+        self.device = model.device if hasattr(model, "device") else torch.device(device)
 
         self.model_name = model_name.lower()
         self.prompt_name = prompt_name.lower() if prompt_name is not None else None
@@ -92,9 +92,9 @@ class DefaultEngine(ABC):
         self.prompt_adapter = get_prompt_adapter(self.model_name, prompt_name=self.prompt_name)
 
         self._prepare_for_generate()
-        self._fix_tokenizer()
+        self._patch_tokenizer()
 
-    def _prepare_for_generate(self):
+    def _prepare_for_generate(self) -> None:
         """
         Prepare the object for text generation.
 
@@ -117,7 +117,7 @@ class DefaultEngine(ABC):
         if self.context_len is None:
             self.context_len = get_context_length(self.model.config)
 
-    def _check_construct_prompt(self):
+    def _check_construct_prompt(self) -> None:
         """ Check whether to need to construct prompts or inputs. """
         self.construct_prompt = self.prompt_name is not None
         if "chatglm3" in self.model_name:
@@ -131,21 +131,14 @@ class DefaultEngine(ABC):
         else:
             self.construct_prompt = True
 
-    def _fix_tokenizer(self):
+    def _patch_tokenizer(self) -> None:
         """ 
         Fix the tokenizer by adding the end-of-sequence (eos) token 
         and the padding (pad) token if they are missing.
         """
-        if self.tokenizer.eos_token_id is None:
-            self.tokenizer.eos_token = "<|endoftext|>"
-            logger.info(f"Add eos token: {self.tokenizer.eos_token}")
+        from api.adapter.patcher import patch_tokenizer
 
-        if self.tokenizer.pad_token_id is None:
-            if self.tokenizer.unk_token_id is not None:
-                self.tokenizer.pad_token = self.tokenizer.unk_token
-            else:
-                self.tokenizer.pad_token = self.tokenizer.eos_token
-            logger.info(f"Add pad token: {self.tokenizer.pad_token}")
+        patch_tokenizer(self.tokenizer)
 
     def convert_to_inputs(
         self,
@@ -263,7 +256,7 @@ class DefaultEngine(ABC):
             raise NotImplementedError
         return inputs
 
-    def _generate(self, params: Dict[str, Any]) -> Iterator:
+    def _generate(self, params: Dict[str, Any]) -> Iterator[dict]:
         """
         Generates text based on the given parameters.
 
@@ -302,7 +295,7 @@ class DefaultEngine(ABC):
                 "error_code": ErrorCode.INTERNAL_ERROR,
             }
 
-    def _create_completion_stream(self, params: Dict[str, Any]) -> Iterator:
+    def _create_completion_stream(self, params: Dict[str, Any]) -> Iterator[Completion]:
         """
         Generates a stream of completions based on the given parameters.
 
@@ -372,7 +365,7 @@ class DefaultEngine(ABC):
             usage=usage,
         )
 
-    def _create_chat_completion_stream(self, params: Dict[str, Any]) -> Iterator:
+    def _create_chat_completion_stream(self, params: Dict[str, Any]) -> Iterator[ChatCompletionChunk]:
         """
         Creates a chat completion stream.
 
@@ -537,7 +530,7 @@ class DefaultEngine(ABC):
         self,
         params: Optional[Dict[str, Any]] = None,
         **kwargs: Any,
-    ) -> Union[Iterator, Completion]:
+    ) -> Union[Iterator[Completion], Completion]:
         params = params or {}
         params.update(kwargs)
         return (
@@ -550,7 +543,7 @@ class DefaultEngine(ABC):
         self,
         params: Optional[Dict[str, Any]] = None,
         **kwargs,
-    ) -> Union[Iterator, ChatCompletion]:
+    ) -> Union[Iterator[ChatCompletionChunk], ChatCompletion]:
         params = params or {}
         params.update(kwargs)
         return (

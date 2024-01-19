@@ -5,7 +5,7 @@
 ### Install
 
 ```shell
-pip install langchain_llm
+pip install langchain_llm==0.1.19
 ```
 
 ## Inference Usage

@@ -105,6 +105,8 @@ python server.py
 
 **环境变量修改内容参考下面**
 
++ [internlm2](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/VLLM_SCRIPT.md#internlm2)    
+
 + [code-llama](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/VLLM_SCRIPT.md#code-llama) 
 
 + [sqlcoder](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/VLLM_SCRIPT.md#sqlcoder) 
@@ -183,4 +185,15 @@ MODEL_NAME=xwin-7b
 MODEL_PATH=Xwin-LM/Xwin-LM-7B-V0.1
 PROMPT_NAME=vicuna
 ENGINE=vllm
+```
+
+### InternLM2
+
+internlm2-chat-20b:
+
+```shell
+MODEL_NAME=internlm2
+MODEL_PATH=internlm/internlm2-chat-20b
+ENGINE=vllm
+TENSOR_PARALLEL_SIZE=2
 ```

@@ -53,7 +53,6 @@ class VllmEngine:
     def apply_chat_template(
         self,
         messages: List[ChatCompletionMessageParam],
-        max_tokens: Optional[int] = 256,
         functions: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
         tools: Optional[List[Dict[str, Any]]] = None,
     ) -> Union[str, List[int]]:
@@ -62,7 +61,6 @@ class VllmEngine:
 
         Args:
             messages: A list of ChatCompletionMessageParam objects representing the chat messages.
-            max_tokens: The maximum number of tokens in the output (optional, default=256).
             functions: A dictionary or list of dictionaries representing the functions to be applied (optional).
             tools: A list of dictionaries representing the tools to be used (optional).
 
@@ -117,7 +115,6 @@ class VllmEngine:
         if isinstance(prompt_or_messages, list):
             prompt_or_messages = self.apply_chat_template(
                 prompt_or_messages,
-                max_tokens,
                 functions=params.get("functions"),
                 tools=params.get("tools"),
             )

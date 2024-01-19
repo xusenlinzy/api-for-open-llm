@@ -33,24 +33,26 @@ def create_embedding_model():
 def create_generate_model():
     """ get generate model for chat or completion. """
     from api.core.default import DefaultEngine
-    from api.adapter.model import load_model
-
-    if SETTINGS.patch_type == "attention":
-        from api.utils.patches import apply_attention_patch
-
-        apply_attention_patch(use_memory_efficient_attention=True)
-    if SETTINGS.patch_type == "ntk":
-        from api.utils.patches import apply_ntk_scaling_patch
-
-        apply_ntk_scaling_patch(SETTINGS.alpha)
+    from api.adapter.loader import load_model_and_tokenizer
 
     include = {
-        "model_name", "quantize", "device", "device_map", "num_gpus", "pre_seq_len",
-        "load_in_8bit", "load_in_4bit", "using_ptuning_v2", "dtype", "resize_embeddings"
+        "model_name",
+        "quantize",
+        "device",
+        "device_map",
+        "num_gpus",
+        "pre_seq_len",
+        "load_in_8bit",
+        "load_in_4bit",
+        "using_ptuning_v2",
+        "dtype",
+        "resize_embeddings",
+        "rope_scaling",
+        "flash_attn",
     }
     kwargs = model_dump(SETTINGS, include=include)
 
-    model, tokenizer = load_model(
+    model, tokenizer = load_model_and_tokenizer(
         model_name_or_path=SETTINGS.model_path,
         adapter_model=SETTINGS.adapter_model_path,
         **kwargs,
@@ -80,8 +82,12 @@ def create_vllm_engine():
         return None
 
     include = {
-        "tokenizer_mode", "trust_remote_code", "tensor_parallel_size",
-        "dtype", "gpu_memory_utilization", "max_num_seqs",
+        "tokenizer_mode",
+        "trust_remote_code",
+        "tensor_parallel_size",
+        "dtype",
+        "gpu_memory_utilization",
+        "max_num_seqs",
     }
     kwargs = model_dump(SETTINGS, include=include)
     engine_args = AsyncEngineArgs(
@@ -120,8 +126,15 @@ def create_llama_cpp_engine():
         return None
 
     include = {
-        "n_gpu_layers", "main_gpu", "tensor_split", "n_batch", "n_threads",
-        "n_threads_batch", "rope_scaling_type", "rope_freq_base", "rope_freq_scale"
+        "n_gpu_layers",
+        "main_gpu",
+        "tensor_split",
+        "n_batch",
+        "n_threads",
+        "n_threads_batch",
+        "rope_scaling_type",
+        "rope_freq_base",
+        "rope_freq_scale",
     }
     kwargs = model_dump(SETTINGS, include=include)
     engine = Llama(
