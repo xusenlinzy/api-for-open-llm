@@ -757,7 +757,7 @@ class InternLM2Template(BaseTemplate):
         "- InternLM (书生·浦语) can understand and communicate fluently in the language chosen by the user such as English and 中文."
     )
     stop = {
-        "strings": ["</s>", "[UNUSED_TOKEN_145]"],
+        "strings": ["</s>", "<|im_end|>"],
     }
 
     def match(self, name) -> bool:
@@ -767,17 +767,17 @@ class InternLM2Template(BaseTemplate):
     def template(self) -> str:
         return (
             "{% if messages[0]['role'] == 'system' %}"
-            "{{ '<s>[UNUSED_TOKEN_146]' + 'system\\n' + messages[0]['content'] + '[UNUSED_TOKEN_145]' + '\\n' }}"
+            "{{ '<s><|im_start|>' + 'system\\n' + messages[0]['content'] + '<|im_end|>' + '\\n' }}"
             "{% else %}"
-            "{{ '<s>[UNUSED_TOKEN_146]' + 'system\\n' + system_prompt + '[UNUSED_TOKEN_145]' + '\\n' }}"
+            "{{ '<s><|im_start|>' + 'system\\n' + system_prompt + '<|im_end|>' + '\\n' }}"
             "{% endif %}"
             "{% for message in messages %}"
             "{% if messages[0]['role'] != 'system' %}"
-            "{{ '[UNUSED_TOKEN_146]' + message['role'] + '\\n' + message['content'] + '[UNUSED_TOKEN_145]' + '\\n' }}"
+            "{{ '<|im_start|>' + message['role'] + '\\n' + message['content'] + '<|im_end|>' + '\\n' }}"
             "{% endif %}"
             "{% endfor %}"
             "{% if add_generation_prompt %}"
-            "{{ '[UNUSED_TOKEN_146]assistant\\n' }}"
+            "{{ '<|im_start|>assistant\\n' }}"
             "{% endif %}"
         )
 
