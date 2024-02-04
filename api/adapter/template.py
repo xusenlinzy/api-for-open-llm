@@ -34,12 +34,14 @@ def _compile_jinja_template(chat_template: str):
         from jinja2.exceptions import TemplateError
         from jinja2.sandbox import ImmutableSandboxedEnvironment
     except ImportError:
-        raise ImportError("apply_chat_template requires jinja2 to be installed.")
+        raise ImportError(
+            "apply_chat_template requires jinja2 to be installed.")
 
     def raise_exception(message):
         raise TemplateError(message)
 
-    jinja_env = ImmutableSandboxedEnvironment(trim_blocks=True, lstrip_blocks=True)
+    jinja_env = ImmutableSandboxedEnvironment(
+        trim_blocks=True, lstrip_blocks=True)
     jinja_env.globals["raise_exception"] = raise_exception
     return jinja_env.from_string(chat_template)
 
@@ -105,7 +107,8 @@ class BaseTemplate(ABC):
     def postprocess_messages(
         self,
         messages: List[ChatCompletionMessageParam],
-        functions: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
+        functions: Optional[Union[Dict[str, Any],
+                                  List[Dict[str, Any]]]] = None,
         tools: Optional[List[Dict[str, Any]]] = None,
     ) -> List[Dict[str, Any]]:
         return messages
@@ -113,7 +116,8 @@ class BaseTemplate(ABC):
     def parse_assistant_response(
         self,
         output: str,
-        functions: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
+        functions: Optional[Union[Dict[str, Any],
+                                  List[Dict[str, Any]]]] = None,
         tools: Optional[List[Dict[str, Any]]] = None,
     ) -> Tuple[str, Optional[Union[str, Dict[str, Any]]]]:
         return output, None
@@ -147,7 +151,8 @@ class QwenTemplate(BaseTemplate):
     system_prompt = "<|im_start|>system\nYou are a helpful assistant.<|im_end|>\n"
     allow_models = ["qwen"]
     stop = {
-        "token_ids": [151643, 151644, 151645],  # "<|endoftext|>", "<|im_start|>", "<|im_end|>"
+        # "<|endoftext|>", "<|im_start|>", "<|im_end|>"
+        "token_ids": [151643, 151644, 151645],
         "strings": ["<|endoftext|>", "<|im_end|>"],
     }
     function_call_available = True
@@ -170,7 +175,8 @@ class QwenTemplate(BaseTemplate):
     def parse_assistant_response(
         self,
         output: str,
-        functions: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
+        functions: Optional[Union[Dict[str, Any],
+                                  List[Dict[str, Any]]]] = None,
         tools: Optional[List[Dict[str, Any]]] = None,
     ) -> Tuple[str, Optional[Union[str, Dict[str, Any]]]]:
         func_name, func_args = "", ""
@@ -244,25 +250,30 @@ class Llama2Template(BaseTemplate):
         """
         template = (
             "{% if messages[0]['role'] == 'system' %}"
-            "{% set loop_messages = messages[1:] %}"  # Extract system message if it's present
+            # Extract system message if it's present
+            "{% set loop_messages = messages[1:] %}"
             "{% set system_message = messages[0]['content'] %}"
             "{% elif USE_DEFAULT_PROMPT == true and not '<<SYS>>' in messages[0]['content'] %}"
-            "{% set loop_messages = messages %}"  # Or use the default system message if the flag is set
+            # Or use the default system message if the flag is set
+            "{% set loop_messages = messages %}"
             "{% set system_message = 'DEFAULT_SYSTEM_MESSAGE' %}"
             "{% else %}"
             "{% set loop_messages = messages %}"
             "{% set system_message = false %}"
             "{% endif %}"
-            "{% for message in loop_messages %}"  # Loop over all non-system messages
+            # Loop over all non-system messages
+            "{% for message in loop_messages %}"
             "{% if (message['role'] == 'user') != (loop.index0 % 2 == 0) %}"
             "{{ raise_exception('Conversation roles must alternate user/assistant/user/assistant/...') }}"
             "{% endif %}"
-            "{% if loop.index0 == 0 and system_message != false %}"  # Embed system message in first message
+            # Embed system message in first message
+            "{% if loop.index0 == 0 and system_message != false %}"
             "{% set content = '<<SYS>>\\n' + system_message + '\\n<</SYS>>\\n\\n' + message['content'] %}"
             "{% else %}"
             "{% set content = message['content'] %}"
             "{% endif %}"
-            "{% if message['role'] == 'user' %}"  # After all of that, handle messages/roles in a fairly normal way
+            # After all of that, handle messages/roles in a fairly normal way
+            "{% if message['role'] == 'user' %}"
             "{{ '<s>' + '[INST] ' + content.strip() + ' [/INST]' }}"
             "{% elif message['role'] == 'system' %}"
             "{{ '<<SYS>>\\n' + content.strip() + '\\n<</SYS>>\\n\\n' }}"
@@ -272,7 +283,8 @@ class Llama2Template(BaseTemplate):
             "{% endfor %}"
         )
         template = template.replace("USE_DEFAULT_PROMPT", "true")
-        default_message = self.system_prompt.replace("\n", "\\n").replace("'", "\\'")
+        default_message = self.system_prompt.replace(
+            "\n", "\\n").replace("'", "\\'")
         return template.replace("DEFAULT_SYSTEM_MESSAGE", default_message)
 
 
@@ -393,7 +405,8 @@ class Chatglm3Template(BaseTemplate):
     def postprocess_messages(
         self,
         messages: List[ChatCompletionMessageParam],
-        functions: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
+        functions: Optional[Union[Dict[str, Any],
+                                  List[Dict[str, Any]]]] = None,
         tools: Optional[List[Dict[str, Any]]] = None,
     ) -> List[Dict[str, Any]]:
         _messages = messages
@@ -421,7 +434,8 @@ class Chatglm3Template(BaseTemplate):
                 if content is not None:
                     for response in content.split("<|assistant|>"):
                         if "\n" in response:
-                            metadata, sub_content = response.split("\n", maxsplit=1)
+                            metadata, sub_content = response.split(
+                                "\n", maxsplit=1)
                         else:
                             metadata, sub_content = "", response
                         messages.append(
@@ -443,7 +457,8 @@ class Chatglm3Template(BaseTemplate):
     def parse_assistant_response(
         self,
         output: str,
-        functions: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
+        functions: Optional[Union[Dict[str, Any],
+                                  List[Dict[str, Any]]]] = None,
         tools: Optional[List[Dict[str, Any]]] = None,
     ) -> Tuple[str, Optional[Union[str, Dict[str, Any]]]]:
         content = ""
@@ -1201,23 +1216,23 @@ class HuatuoTemplate(BaseTemplate):
 
 
 class OrionStarTemplate(BaseTemplate):
-    """ https://huggingface.co/OrionStarAI/OrionStar-Yi-34B-Chat/blob/fc0420da8cd5ea5b8f36760c1b14e0a718447e1f/generation_utils.py#L5 """
+    """ https://huggingface.co/OrionStarAI/Orion-14B-Chat/blob/4de9f928abf60f8f3a3f4d7f972f4807aa57c573/generation_utils.py#L12 """
 
     name = "orionstar"
-    allow_models = ["orionstar"]
+    allow_models = ["orion"]
     stop = {
-        "strings": ["<|endoftext|>"],
+        "strings": ["</s>"],
     }
 
     @property
     def template(self) -> str:
         return (
-            "{{ '<|startoftext|>' }}"
+            "{{ '<s>' }}"
             "{% for message in messages %}"
             "{% if message['role'] == 'user' %}"
-            "{{ 'Human: ' + message['content'] + '\\n\\nAssistant: <|endoftext|>' }}"
+            "{{ 'Human: ' + message['content'] + '\\n\\nAssistant: </s>' }}"
             "{% elif message['role'] == 'assistant' %}"
-            "{{ message['content'] + '<|endoftext|>' }}"
+            "{{ message['content'] + '</s>>' }}"
             "{% endif %}"
             "{% endfor %}"
         )
@@ -1230,7 +1245,8 @@ class YiAITemplate(BaseTemplate):
     allow_models = ["yi"]
     stop = {
         "strings": ["<|endoftext|>", "<|im_end|>"],
-        "token_ids": [2, 6, 7, 8],  # "<|endoftext|>", "<|im_start|>", "<|im_end|>", "<|im_sep|>"
+        # "<|endoftext|>", "<|im_start|>", "<|im_end|>", "<|im_sep|>"
+        "token_ids": [2, 6, 7, 8],
     }
 
     @property
