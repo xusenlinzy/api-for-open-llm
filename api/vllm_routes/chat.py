@@ -184,12 +184,12 @@ async def create_chat_completion_stream(generator: AsyncIterator, params: Dict[s
                 previous_num_tokens[i] = len(output.token_ids)
 
                 finish_reason = output.finish_reason
-                call_info = None
-                delta = ChoiceDelta()
+                delta = None
 
                 if finish_reason is None:
                     delta = ChoiceDelta(content=delta_text)
                 elif functions or tools:
+                    call_info = None
                     try:
                         res, call_info = engine.prompt_adapter.parse_assistant_response(
                             output.text, functions, tools,
