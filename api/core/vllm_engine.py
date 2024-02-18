@@ -79,7 +79,7 @@ class VllmEngine:
             return self.tokenizer.build_chat_input(
                 query, history=messages[:-1], role=role
             )["input_ids"][0].tolist()
-        elif "qwen" in self.model_name:
+        elif self.model_name.startswith("qwen") and not self.model_name.startswith("qwen1.5"):
             return build_qwen_chat_input(
                 self.tokenizer,
                 messages,
