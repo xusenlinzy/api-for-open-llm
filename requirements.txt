@@ -8,7 +8,7 @@ tenacity
 sentencepiece
 tiktoken
 loguru
-transformers>=4.36.0
+transformers>=4.37.0
 peft>=0.4.0
 accelerate>=0.20.3
 sentence-transformers
