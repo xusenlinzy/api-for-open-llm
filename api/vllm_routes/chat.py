@@ -19,7 +19,11 @@ from openai.types.chat import (
 )
 from openai.types.chat.chat_completion import Choice
 from openai.types.chat.chat_completion_chunk import Choice as ChunkChoice
-from openai.types.chat.chat_completion_chunk import ChoiceDelta
+from openai.types.chat.chat_completion_chunk import (
+    ChoiceDelta,
+    ChoiceDeltaFunctionCall,
+    ChoiceDeltaToolCall
+)
 from openai.types.chat.chat_completion_message import FunctionCall
 from openai.types.chat.chat_completion_message_tool_call import ChatCompletionMessageToolCall
 from openai.types.completion_usage import CompletionUsage
@@ -63,7 +67,7 @@ async def create_chat_completion(
     generator = engine.generate(params, request_id)
 
     if request.stream:
-        iterator = create_chat_completion_stream(generator, params, request_id)
+        iterator = create_chat_completion_stream(generator, params, request_id, engine)
         send_chan, recv_chan = anyio.create_memory_object_stream(10)
         return EventSourceResponse(
             recv_chan,
@@ -146,7 +150,7 @@ async def create_chat_completion(
         )
 
 
-async def create_chat_completion_stream(generator: AsyncIterator, params: Dict[str, Any], request_id: str) -> AsyncIterator:
+async def create_chat_completion_stream(generator: AsyncIterator, params: Dict[str, Any], request_id: str, engine: VllmEngine) -> AsyncIterator:
     n = params.get("n", 1)
     for i in range(n):
         # First chunk with role
@@ -164,6 +168,9 @@ async def create_chat_completion_stream(generator: AsyncIterator, params: Dict[s
             object="chat.completion.chunk",
         )
 
+        functions = params.get("functions", None)
+        tools = params.get("tools", None)
+
         previous_texts = [""] * n
         previous_num_tokens = [0] * n
         async for res in generator:
@@ -176,10 +183,43 @@ async def create_chat_completion_stream(generator: AsyncIterator, params: Dict[s
                 previous_texts[i] = output.text
                 previous_num_tokens[i] = len(output.token_ids)
 
+                finish_reason = output.finish_reason
+                delta = None
+
+                if finish_reason is None:
+                    delta = ChoiceDelta(content=delta_text)
+                elif functions or tools:
+                    call_info = None
+                    try:
+                        res, call_info = engine.prompt_adapter.parse_assistant_response(
+                            output.text, functions, tools,
+                        )
+                    except Exception as e:
+                        traceback.print_exc()
+                        logger.warning("Failed to parse tool call")
+
+                    if isinstance(call_info, dict) and "arguments" in call_info:
+                        finish_reason = "function_call"
+                        function_call = ChoiceDeltaFunctionCall(**call_info)
+                        delta = ChoiceDelta(
+                            role="assistant",
+                            content=delta_text,
+                            function_call=function_call
+                        )
+                    elif isinstance(call_info, dict) and "function" in call_info:
+                        finish_reason = "tool_calls"
+                        call_info["index"] = 0
+                        tool_calls = [model_parse(ChoiceDeltaToolCall, call_info)]
+                        delta = ChoiceDelta(
+                            role="assistant",
+                            content=delta_text,
+                            tool_calls=tool_calls,
+                        )
+                
                 choice = ChunkChoice(
                     index=i,
-                    delta=ChoiceDelta(content=delta_text),
-                    finish_reason=output.finish_reason,
+                    delta=delta or ChoiceDelta(),
+                    finish_reason=finish_reason,
                     logprobs=None,
                 )
                 yield ChatCompletionChunk(
@@ -189,18 +229,3 @@ async def create_chat_completion_stream(generator: AsyncIterator, params: Dict[s
                     model=params.get("model", "llm"),
                     object="chat.completion.chunk",
                 )
-
-                if output.finish_reason is not None:
-                    choice = ChunkChoice(
-                        index=i,
-                        delta=ChoiceDelta(),
-                        finish_reason="stop",
-                        logprobs=None,
-                    )
-                    yield ChatCompletionChunk(
-                        id=request_id,
-                        choices=[choice],
-                        created=int(time.time()),
-                        model=params.get("model", "llm"),
-                        object="chat.completion.chunk",
-                    )
