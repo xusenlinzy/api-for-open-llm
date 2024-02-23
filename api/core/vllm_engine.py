@@ -95,8 +95,13 @@ class VllmEngine:
         token_ids: Optional[List[int]] = None,
         max_tokens: Optional[int] = 256,
     ) -> List[int]:
-        max_input_tokens = self.max_model_len - max_tokens
         input_ids = token_ids or self.tokenizer(prompt).input_ids
+        input_len = len(input_ids)
+        min_max_tokens = 256
+        if input_len > self.max_model_len - min_max_tokens:
+            max_input_tokens = self.max_model_len - min_max_tokens
+        else:
+            max_input_tokens = max(self.max_model_len - max_tokens, input_len)
         return input_ids[-max_input_tokens:]
 
     def generate(self, params: Dict[str, Any], request_id: str) -> AsyncIterator:
