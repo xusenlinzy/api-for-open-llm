@@ -216,6 +216,31 @@ class QwenTemplate(BaseTemplate):
         return output, None
 
 
+class Qwen2Template(BaseTemplate):
+
+    name = "qwen2"
+    system_prompt = ""
+    allow_models = ["qwen2"]
+    stop = {
+        "strings": ["<|endoftext|>", "<|im_end|>"],
+    }
+
+    @property
+    def template(self) -> str:
+        """ This template formats inputs in the standard ChatML format. See
+        https://github.com/openai/openai-python/blob/main/chatml.md
+        """
+        return (
+            "{{ system_prompt }}"
+            "{% for message in messages %}"
+            "{{ '<|im_start|>' + message['role'] + '\\n' + message['content'] + '<|im_end|>' + '\\n' }}"
+            "{% endfor %}"
+            "{% if add_generation_prompt %}"
+            "{{ '<|im_start|>assistant\\n' }}"
+            "{% endif %}"
+        )
+
+
 class Llama2Template(BaseTemplate):
 
     name = "llama2"
@@ -1354,6 +1379,7 @@ register_prompt_adapter(PhindTemplate)
 register_prompt_adapter(PhoenixTemplate)
 
 register_prompt_adapter(QwenTemplate)
+register_prompt_adapter(Qwen2Template)
 
 register_prompt_adapter(StarChatTemplate)
 register_prompt_adapter(SusChatTemplate)
