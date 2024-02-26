@@ -20,6 +20,8 @@
 
 ## 📢 新闻
 
++ 【2024.02.26】 QWEN2 模型需要修改环境变量 `MODEL_NAME=qwen2`  `PROMPT_NAME=qwen2`
+
 + 【2024.01.19】 添加 [InternLM2](https://github.com/InternLM/InternLM) 模型支持，[启动方式](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md#internlm2)
 
 
