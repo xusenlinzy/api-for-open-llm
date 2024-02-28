@@ -219,7 +219,6 @@ class QwenTemplate(BaseTemplate):
 class Qwen2Template(BaseTemplate):
 
     name = "qwen2"
-    system_prompt = ""
     allow_models = ["qwen2"]
     stop = {
         "strings": ["<|endoftext|>", "<|im_end|>"],
@@ -231,13 +230,17 @@ class Qwen2Template(BaseTemplate):
         https://github.com/openai/openai-python/blob/main/chatml.md
         """
         return (
-            "{{ system_prompt }}"
             "{% for message in messages %}"
-            "{{ '<|im_start|>' + message['role'] + '\\n' + message['content'] + '<|im_end|>' + '\\n' }}"
-            "{% endfor %}"
-            "{% if add_generation_prompt %}"
-            "{{ '<|im_start|>assistant\\n' }}"
+            "{% if loop.first and messages[0]['role'] != 'system' %}"
+            "{{ '<|im_start|>system\nYou are a helpful assistant<|im_end|>\n' }}"
             "{% endif %}"
+            "{{'<|im_start|>' + message['role'] + '\n' + message['content']}}"
+            "{% if (loop.last and add_generation_prompt) or not loop.last %}"
+            "{{ '<|im_end|>' + '\n'}}"
+            "{% endif %}"
+            "{% endfor %}"
+            "{% if add_generation_prompt and messages[-1]['role'] != 'assistant' %}"
+            "{{ '<|im_start|>assistant\n' }}{% endif %}"
         )
 
 
@@ -1402,6 +1405,6 @@ if __name__ == '__main__':
         {"role": "assistant", "content": "I'm doing great. How can I help you today?"},
         {"role": "user", "content": "I'd like to show off how chat templating works!"},
     ]
-    template = get_prompt_adapter(prompt_name="internlm2")
+    template = get_prompt_adapter(prompt_name="qwen2")
     messages = template.postprocess_messages(chat)
     print(template.apply_chat_template(messages))
