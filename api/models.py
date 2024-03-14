@@ -76,8 +76,7 @@ def create_vllm_engine():
     try:
         from vllm.engine.arg_utils import AsyncEngineArgs
         from vllm.engine.async_llm_engine import AsyncLLMEngine
-        from vllm.transformers_utils.tokenizer import get_tokenizer
-        from api.core.vllm_engine import VllmEngine
+        from api.core.vllm_engine import VllmEngine, LoRA
     except ImportError:
         return None
 
@@ -88,6 +87,11 @@ def create_vllm_engine():
         "dtype",
         "gpu_memory_utilization",
         "max_num_seqs",
+        "enforce_eager",
+        "max_context_len_to_capture",
+        "max_loras",
+        "max_lora_rank",
+        "lora_extra_vocab_size",
     }
     kwargs = model_dump(SETTINGS, include=include)
     engine_args = AsyncEngineArgs(
@@ -95,25 +99,24 @@ def create_vllm_engine():
         max_num_batched_tokens=SETTINGS.max_num_batched_tokens if SETTINGS.max_num_batched_tokens > 0 else None,
         max_model_len=SETTINGS.context_length if SETTINGS.context_length > 0 else None,
         quantization=SETTINGS.quantization_method,
+        max_cpu_loras=SETTINGS.max_cpu_loras if SETTINGS.max_cpu_loras > 0 else None,
         **kwargs,
     )
     engine = AsyncLLMEngine.from_engine_args(engine_args)
 
-    # A separate tokenizer to map token IDs to strings.
-    tokenizer = get_tokenizer(
-        engine_args.tokenizer,
-        tokenizer_mode=engine_args.tokenizer_mode,
-        trust_remote_code=True,
-    )
-
     logger.info("Using vllm engine")
+
+    lora_modules = []
+    for item in SETTINGS.lora_modules.strip().split("+"):
+        if "=" in item:
+            name, path = item.split("=")
+            lora_modules.append(LoRA(name, path))
 
     return VllmEngine(
         engine,
-        tokenizer,
         SETTINGS.model_name,
         SETTINGS.chat_template,
-        SETTINGS.context_length,
+        lora_modules=lora_modules,
     )
 
 

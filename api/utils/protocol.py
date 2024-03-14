@@ -216,6 +216,16 @@ class ChatCompletionCreateParams(BaseModel):
 
     min_p: Optional[float] = 0.0
 
+    include_stop_str_in_output: Optional[bool] = False
+
+    length_penalty: Optional[float] = 1.0
+
+    guided_json: Optional[Union[str, dict, BaseModel]] = None
+
+    guided_regex: Optional[str] = None
+
+    guided_choice: Optional[List[str]] = None
+
 
 class CompletionCreateParams(BaseModel):
     model: str
@@ -395,6 +405,16 @@ class CompletionCreateParams(BaseModel):
     spaces_between_special_tokens: Optional[bool] = True
 
     min_p: Optional[float] = 0.0
+
+    include_stop_str_in_output: Optional[bool] = False
+
+    length_penalty: Optional[float] = 1.0
+
+    guided_json: Optional[Union[str, dict, BaseModel]] = None
+
+    guided_regex: Optional[str] = None
+
+    guided_choice: Optional[List[str]] = None
 
 
 class EmbeddingCreateParams(BaseModel):

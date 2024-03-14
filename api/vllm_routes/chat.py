@@ -2,11 +2,7 @@ import time
 import traceback
 import uuid
 from functools import partial
-from typing import (
-    Dict,
-    Any,
-    AsyncIterator,
-)
+from typing import AsyncIterator
 
 import anyio
 from fastapi import APIRouter, Depends
@@ -28,7 +24,9 @@ from openai.types.chat.chat_completion_message import FunctionCall
 from openai.types.chat.chat_completion_message_tool_call import ChatCompletionMessageToolCall
 from openai.types.completion_usage import CompletionUsage
 from sse_starlette import EventSourceResponse
+from vllm.model_executor.guided_decoding import get_guided_decoding_logits_processor
 from vllm.outputs import RequestOutput
+from vllm.sampling_params import SamplingParams
 
 from api.core.vllm_engine import VllmEngine
 from api.models import GENERATE_ENGINE
@@ -64,10 +62,64 @@ async def create_chat_completion(
     logger.debug(f"==== request ====\n{params}")
 
     request_id: str = f"chatcmpl-{str(uuid.uuid4())}"
-    generator = engine.generate(params, request_id)
+    prompt = engine.apply_chat_template(
+        request.messages,
+        functions=request.functions,
+        tools=request.tools,
+    )
+
+    if isinstance(prompt, list):
+        prompt, token_ids = None, prompt
+    else:
+        prompt, token_ids = prompt, None
+
+    token_ids = engine.convert_to_inputs(prompt, token_ids, max_tokens=request.max_tokens)
+    result_generator = None
+    try:
+        include = {
+            "n",
+            "presence_penalty",
+            "frequency_penalty",
+            "temperature",
+            "top_p",
+            "repetition_penalty",
+            "min_p",
+            "best_of",
+            "ignore_eos",
+            "use_beam_search",
+            "skip_special_tokens",
+            "spaces_between_special_tokens",
+        }
+        kwargs = model_dump(request, include=include)
+        sampling_params = SamplingParams(
+            stop=request.stop or [],
+            stop_token_ids=request.stop_token_ids or [],
+            max_tokens=request.max_tokens,
+            **kwargs,
+        )
+        lora_request = engine._maybe_get_lora(request.model)
+        guided_decode_logits_processor = (
+            await get_guided_decoding_logits_processor(
+                request,
+                engine.tokenizer,
+            )
+        )
+        if guided_decode_logits_processor:
+            sampling_params.logits_processors = sampling_params.logits_processors or []
+            sampling_params.logits_processors.append(guided_decode_logits_processor)
+
+        result_generator = engine.model.generate(
+            prompt if isinstance(prompt, str) else None,
+            sampling_params,
+            request_id,
+            token_ids,
+            lora_request,
+        )
+    except ValueError as e:
+        traceback.print_exc()
 
     if request.stream:
-        iterator = create_chat_completion_stream(generator, params, request_id, engine)
+        iterator = create_chat_completion_stream(result_generator, request, request_id, engine)
         send_chan, recv_chan = anyio.create_memory_object_stream(10)
         return EventSourceResponse(
             recv_chan,
@@ -81,7 +133,7 @@ async def create_chat_completion(
     else:
         # Non-streaming response
         final_res: RequestOutput = None
-        async for res in generator:
+        async for res in result_generator:
             if raw_request is not None and await raw_request.is_disconnected():
                 await engine.model.abort(request_id)
                 return
@@ -89,17 +141,15 @@ async def create_chat_completion(
 
         assert final_res is not None
         choices = []
-        functions = params.get("functions", None)
-        tools = params.get("tools", None)
         for output in final_res.outputs:
             output.text = output.text.replace("�", "")
 
             finish_reason = output.finish_reason
             function_call = None
-            if functions or tools:
+            if request.functions or request.tools:
                 try:
                     res, function_call = engine.prompt_adapter.parse_assistant_response(
-                        output.text, functions, tools,
+                        output.text, request.functions, request.tools,
                     )
                     output.text = res
                 except Exception as e:
@@ -150,9 +200,13 @@ async def create_chat_completion(
         )
 
 
-async def create_chat_completion_stream(generator: AsyncIterator, params: Dict[str, Any], request_id: str, engine: VllmEngine) -> AsyncIterator:
-    n = params.get("n", 1)
-    for i in range(n):
+async def create_chat_completion_stream(
+    generator: AsyncIterator,
+    request: ChatCompletionCreateParams,
+    request_id: str,
+    engine: VllmEngine,
+) -> AsyncIterator:
+    for i in range(request.n):
         # First chunk with role
         choice = ChunkChoice(
             index=i,
@@ -164,15 +218,12 @@ async def create_chat_completion_stream(generator: AsyncIterator, params: Dict[s
             id=request_id,
             choices=[choice],
             created=int(time.time()),
-            model=params.get("model", "llm"),
+            model=request.model,
             object="chat.completion.chunk",
         )
 
-        functions = params.get("functions", None)
-        tools = params.get("tools", None)
-
-        previous_texts = [""] * n
-        previous_num_tokens = [0] * n
+        previous_texts = [""] * request.n
+        previous_num_tokens = [0] * request.n
         async for res in generator:
             res: RequestOutput
             for output in res.outputs:
@@ -188,11 +239,11 @@ async def create_chat_completion_stream(generator: AsyncIterator, params: Dict[s
 
                 if finish_reason is None:
                     delta = ChoiceDelta(content=delta_text)
-                elif functions or tools:
+                elif request.functions or request.tools:
                     call_info = None
                     try:
                         res, call_info = engine.prompt_adapter.parse_assistant_response(
-                            output.text, functions, tools,
+                            output.text, request.functions, request.tools,
                         )
                     except Exception as e:
                         traceback.print_exc()
@@ -226,6 +277,6 @@ async def create_chat_completion_stream(generator: AsyncIterator, params: Dict[s
                     id=request_id,
                     choices=[choice],
                     created=int(time.time()),
-                    model=params.get("model", "llm"),
+                    model=request.model,
                     object="chat.completion.chunk",
                 )

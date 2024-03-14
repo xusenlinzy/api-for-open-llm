@@ -1,54 +1,165 @@
 import asyncio
+import time
+from dataclasses import dataclass
 from typing import (
     Optional,
     List,
     Dict,
     Any,
-    AsyncIterator,
     Union,
 )
 
-from fastapi import HTTPException
 from loguru import logger
 from openai.types.chat import ChatCompletionMessageParam
-from transformers import PreTrainedTokenizer
+from openai.types.completion_choice import Logprobs
+from openai.types.model import Model
+from pydantic import BaseModel
 from vllm.engine.async_llm_engine import AsyncLLMEngine
-from vllm.sampling_params import SamplingParams
+from vllm.transformers_utils.tokenizer import get_tokenizer
 
 from api.adapter import get_prompt_adapter
 from api.generation import build_qwen_chat_input
+
+
+@dataclass
+class LoRA:
+    name: str
+    local_path: str
+
+
+class ModelList(BaseModel):
+    object: str = "list"
+    data: List[Model] = []
 
 
 class VllmEngine:
     def __init__(
         self,
         model: AsyncLLMEngine,
-        tokenizer: PreTrainedTokenizer,
         model_name: str,
         prompt_name: Optional[str] = None,
-        context_len: Optional[int] = -1,
+        lora_modules: Optional[List[LoRA]] = None,
     ):
         """
         Initializes the VLLMEngine object.
 
         Args:
             model: The AsyncLLMEngine object.
-            tokenizer: The PreTrainedTokenizer object.
             model_name: The name of the model.
             prompt_name: The name of the prompt (optional).
-            context_len: The length of the context (optional, default=-1).
         """
         self.model = model
         self.model_name = model_name.lower()
-        self.tokenizer = tokenizer
         self.prompt_name = prompt_name.lower() if prompt_name is not None else None
         self.prompt_adapter = get_prompt_adapter(self.model_name, prompt_name=self.prompt_name)
 
-        model_config = asyncio.run(self.model.get_model_config())
-        if "qwen" in self.model_name:
-            self.max_model_len = context_len if context_len > 0 else 8192
+        if lora_modules is None:
+            self.lora_requests = []
         else:
-            self.max_model_len = model_config.max_model_len
+            try:
+                from vllm.lora.request import LoRARequest
+                self.lora_requests = [
+                    LoRARequest(
+                        lora_name=lora.name,
+                        lora_int_id=i,
+                        lora_local_path=lora.local_path,
+                    ) for i, lora in enumerate(lora_modules, start=1)
+                ]
+            except ImportError:
+                self.lora_requests = []
+
+        try:
+            event_loop = asyncio.get_running_loop()
+        except RuntimeError:
+            event_loop = None
+
+        if event_loop is not None and event_loop.is_running():
+            # If the current is instanced by Ray Serve,
+            # there is already a running event loop
+            event_loop.create_task(self._post_init())
+        else:
+            # When using single vLLM without engine_use_ray
+            asyncio.run(self._post_init())
+
+    async def _post_init(self):
+        engine_model_config = await self.model.get_model_config()
+        self.max_model_len = engine_model_config.max_model_len
+
+        # A separate tokenizer to map token IDs to strings.
+        self.tokenizer = get_tokenizer(
+            engine_model_config.tokenizer,
+            tokenizer_mode=engine_model_config.tokenizer_mode,
+            trust_remote_code=engine_model_config.trust_remote_code,
+        )
+
+    async def show_available_models(self) -> ModelList:
+        """Show available models. Right now we only have one model."""
+        model_cards = [
+            Model(
+                id=self.model_name,
+                object="model",
+                created=int(time.time()),
+                owned_by="vllm"
+            )
+        ]
+        lora_cards = [
+            Model(
+                id=lora.lora_name,
+                object="model",
+                created=int(time.time()),
+                owned_by="vllm"
+            )
+            for lora in self.lora_requests
+        ]
+        model_cards.extend(lora_cards)
+        return ModelList(data=model_cards)
+
+    def create_logprobs(
+        self,
+        token_ids: List[int],
+        top_logprobs: Optional[List[Optional[Any]]] = None,
+        num_output_top_logprobs: Optional[int] = None,
+        initial_text_offset: int = 0,
+    ):
+        """Create OpenAI-style logprobs."""
+        logprobs = Logprobs()
+        last_token_len = 0
+        if num_output_top_logprobs:
+            logprobs.top_logprobs = []
+
+        for i, token_id in enumerate(token_ids):
+            step_top_logprobs = top_logprobs[i]
+            if step_top_logprobs is not None:
+                token_logprob = step_top_logprobs[token_id].logprob
+            else:
+                token_logprob = None
+
+            token = step_top_logprobs[token_id].decoded_token
+            logprobs.tokens.append(token)
+            logprobs.token_logprobs.append(token_logprob)
+
+            if len(logprobs.text_offset) == 0:
+                logprobs.text_offset.append(initial_text_offset)
+            else:
+                logprobs.text_offset.append(logprobs.text_offset[-1] + last_token_len)
+            last_token_len = len(token)
+
+            if num_output_top_logprobs:
+                logprobs.top_logprobs.append(
+                    {
+                        p.decoded_token: p.logprob
+                        for i, p in step_top_logprobs.items()
+                    }
+                    if step_top_logprobs else None
+                )
+        return logprobs
+
+    def _maybe_get_lora(self, model_name):
+        for lora in self.lora_requests:
+            if model_name == lora.lora_name:
+                logger.info(f"Lora request: {model_name}")
+                return lora
+        return None
 
     def apply_chat_template(
         self,
@@ -103,61 +214,6 @@ class VllmEngine:
         else:
             max_input_tokens = max(self.max_model_len - max_tokens, input_len)
         return input_ids[-max_input_tokens:]
-
-    def generate(self, params: Dict[str, Any], request_id: str) -> AsyncIterator:
-        """
-        Generates text based on the given parameters and request ID.
-
-        Args:
-            params (Dict[str, Any]): A dictionary of parameters for text generation.
-            request_id (str): The ID of the request.
-
-        Yields:
-            Any: The generated text.
-        """
-        max_tokens = params.get("max_tokens", 256)
-        prompt_or_messages = params.get("prompt_or_messages")
-        if isinstance(prompt_or_messages, list):
-            prompt_or_messages = self.apply_chat_template(
-                prompt_or_messages,
-                functions=params.get("functions"),
-                tools=params.get("tools"),
-            )
-
-        if isinstance(prompt_or_messages, list):
-            prompt, token_ids = None, prompt_or_messages
-        else:
-            prompt, token_ids = prompt_or_messages, None
-
-        token_ids = self.convert_to_inputs(prompt, token_ids, max_tokens=max_tokens)
-        try:
-            sampling_params = SamplingParams(
-                n=params.get("n", 1),
-                presence_penalty=params.get("presence_penalty", 0.),
-                frequency_penalty=params.get("frequency_penalty", 0.),
-                temperature=params.get("temperature", 0.9),
-                top_p=params.get("top_p", 0.8),
-                stop=params.get("stop", []),
-                stop_token_ids=params.get("stop_token_ids", []),
-                max_tokens=params.get("max_tokens", 256),
-                repetition_penalty=params.get("repetition_penalty", 1.03),
-                min_p=params.get("min_p", 0.0),
-                best_of=params.get("best_of", 1),
-                ignore_eos=params.get("ignore_eos", False),
-                use_beam_search=params.get("use_beam_search", False),
-                skip_special_tokens=params.get("skip_special_tokens", True),
-                spaces_between_special_tokens=params.get("spaces_between_special_tokens", True),
-            )
-            result_generator = self.model.generate(
-                prompt_or_messages if isinstance(prompt_or_messages, str) else None,
-                sampling_params,
-                request_id,
-                token_ids,
-            )
-        except ValueError as e:
-            raise HTTPException(status_code=400, detail=str(e)) from e
-
-        return result_generator
 
     @property
     def stop(self):

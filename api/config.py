@@ -176,6 +176,37 @@ class Settings(BaseModel):
         default=get_env("QUANTIZATION_METHOD", None),
         description="Quantization method for vllm server."
     )
+    enforce_eager: Optional[bool] = Field(
+        default=get_bool_env("ENFORCE_EAGER"),
+        description="Always use eager-mode PyTorch. If False, will use eager mode and CUDA graph in hybrid for maximal performance and flexibility."
+    )
+    max_context_len_to_capture: Optional[int] = Field(
+        default=int(get_env("MAX_CONTEXT_LEN_TO_CAPTURE", 8192)),
+        description="aximum context length covered by CUDA graphs. When a sequence has context length larger than this, we fall back to eager mode."
+    )
+    max_loras: Optional[int] = Field(
+        default=int(get_env("MAX_LORAS", 1)),
+        description="Max number of LoRAs in a single batch."
+    )
+    max_lora_rank: Optional[int] = Field(
+        default=int(get_env("MAX_LORA_RANK", 32)),
+        description="Max LoRA rank."
+    )
+    lora_extra_vocab_size: Optional[int] = Field(
+        default=int(get_env("LORA_EXTRA_VOCAB_SIZE", 256)),
+        description="Maximum size of extra vocabulary that can be present in a LoRA adapter added to the base model vocabulary."
+    )
+    lora_dtype: Optional[str] = Field(
+        default=get_env("LORA_DTYPE", "auto"),
+        description="Data type for LoRA. If auto, will default to base model dtype."
+    )
+    max_cpu_loras: Optional[int] = Field(
+        default=int(get_env("MAX_CPU_LORAS", -1)),
+        ge=-1,
+    )
+    lora_modules: Optional[str] = Field(
+        default=get_env("LORA_MODULES", ""),
+    )
 
     # support for transformers.TextIteratorStreamer
     use_streamer_v2: Optional[bool] = Field(
