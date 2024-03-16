@@ -5,7 +5,7 @@ from pathlib import Path
 from openai import OpenAI
 
 import streamlit as st
-from langchain.embeddings import OpenAIEmbeddings
+from langchain_community.embeddings import OpenAIEmbeddings
 
 from .utils import FaissDocServer, Embeddings, DOCQA_PROMPT
 
