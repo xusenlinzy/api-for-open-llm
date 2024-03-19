@@ -2,7 +2,7 @@ import importlib
 import os
 from typing import List
 
-from langchain.vectorstores import FAISS
+from langchain_community.vectorstores import FAISS
 from loguru import logger
 from sentence_transformers import SentenceTransformer
 

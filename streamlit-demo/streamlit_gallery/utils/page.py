@@ -24,8 +24,8 @@ class PageGroup:
 
     @property
     def selected(self):
-        params = st.experimental_get_query_params()
-        return params[self._param][0] if self._param in params else self._default
+        params = st.query_params.to_dict()
+        return params[self._param] if self._param in params else self._default
 
     def item(self, label: str, callback: Callable, default=False) -> None:
         self._backup = None
@@ -51,7 +51,7 @@ class PageGroup:
             st.title("🤷 404 Not Found")
 
     def _on_change(self, page: str) -> None:
-        params = st.experimental_get_query_params()
+        params = st.query_params.to_dict()
 
         if self._backup is None:
             if self._param in params:
@@ -60,7 +60,8 @@ class PageGroup:
         else:
             params[self._param] = [self._backup]
 
-        st.experimental_set_query_params(**params)
+        for key in params:
+            st.query_params[key] = params[key]
         st.session_state.messages = []
 
     def _normalize_label(self, label: str) -> str:
