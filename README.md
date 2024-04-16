@@ -20,6 +20,9 @@
 
 ## 📢 新闻
 
++ 【2024.04.16】 支持 `Rerank` 重排序模型，[使用方式](./docs/RAG.md)
+
+
 + 【2024.02.26】 QWEN2 模型需要修改环境变量 `MODEL_NAME=qwen2`  `PROMPT_NAME=qwen2`
 
 
