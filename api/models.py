@@ -56,7 +56,7 @@ def create_rag_models():
             )
         else:
             rag_models.append(None)
-    return rag_models
+    return rag_models if len(rag_models) == 2 else [None, None]
 
 
 def create_hf_llm():

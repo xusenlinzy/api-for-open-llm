@@ -7,6 +7,7 @@ PORT=8000
 
 # llm related
 MODEL_NAME=qwen2
+PROMPT_NAME=qwen2
 MODEL_PATH=Qwen/Qwen1.5-14B-Chat-GPTQ
 
 # rag model related
