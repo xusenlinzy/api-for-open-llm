@@ -12,7 +12,7 @@ from typing import (
 
 from openai.types.chat import ChatCompletionMessageParam
 
-from .._types import Role
+from api.utils.protocol import Role
 
 
 @lru_cache
@@ -34,12 +34,14 @@ def _compile_jinja_template(chat_template: str):
         from jinja2.exceptions import TemplateError
         from jinja2.sandbox import ImmutableSandboxedEnvironment
     except ImportError:
-        raise ImportError("apply_chat_template requires jinja2 to be installed.")
+        raise ImportError(
+            "apply_chat_template requires jinja2 to be installed.")
 
     def raise_exception(message):
         raise TemplateError(message)
 
-    jinja_env = ImmutableSandboxedEnvironment(trim_blocks=True, lstrip_blocks=True)
+    jinja_env = ImmutableSandboxedEnvironment(
+        trim_blocks=True, lstrip_blocks=True)
     jinja_env.globals["raise_exception"] = raise_exception
     return jinja_env.from_string(chat_template)
 
@@ -147,7 +149,8 @@ class QwenTemplate(BaseTemplate):
     system_prompt = "<|im_start|>system\nYou are a helpful assistant.<|im_end|>\n"
     allow_models = ["qwen"]
     stop = {
-        "token_ids": [151643, 151644, 151645],  # "<|endoftext|>", "<|im_start|>", "<|im_end|>"
+        # "<|endoftext|>", "<|im_start|>", "<|im_end|>"
+        "token_ids": [151643, 151644, 151645],
         "strings": ["<|endoftext|>", "<|im_end|>"],
     }
     function_call_available = True
@@ -210,6 +213,34 @@ class QwenTemplate(BaseTemplate):
         return output, None
 
 
+class Qwen2Template(BaseTemplate):
+
+    name = "qwen2"
+    allow_models = ["qwen2"]
+    stop = {
+        "strings": ["<|endoftext|>", "<|im_end|>"],
+    }
+
+    @property
+    def template(self) -> str:
+        """ This template formats inputs in the standard ChatML format. See
+        https://github.com/openai/openai-python/blob/main/chatml.md
+        """
+        return (
+            "{% for message in messages %}"
+            "{% if loop.first and messages[0]['role'] != 'system' %}"
+            "{{ '<|im_start|>system\nYou are a helpful assistant<|im_end|>\n' }}"
+            "{% endif %}"
+            "{{'<|im_start|>' + message['role'] + '\n' + message['content']}}"
+            "{% if (loop.last and add_generation_prompt) or not loop.last %}"
+            "{{ '<|im_end|>' + '\n'}}"
+            "{% endif %}"
+            "{% endfor %}"
+            "{% if add_generation_prompt and messages[-1]['role'] != 'assistant' %}"
+            "{{ '<|im_start|>assistant\n' }}{% endif %}"
+        )
+
+
 class Llama2Template(BaseTemplate):
 
     name = "llama2"
@@ -244,25 +275,30 @@ class Llama2Template(BaseTemplate):
         """
         template = (
             "{% if messages[0]['role'] == 'system' %}"
-            "{% set loop_messages = messages[1:] %}"  # Extract system message if it's present
+            # Extract system message if it's present
+            "{% set loop_messages = messages[1:] %}"
             "{% set system_message = messages[0]['content'] %}"
             "{% elif USE_DEFAULT_PROMPT == true and not '<<SYS>>' in messages[0]['content'] %}"
-            "{% set loop_messages = messages %}"  # Or use the default system message if the flag is set
+            # Or use the default system message if the flag is set
+            "{% set loop_messages = messages %}"
             "{% set system_message = 'DEFAULT_SYSTEM_MESSAGE' %}"
             "{% else %}"
             "{% set loop_messages = messages %}"
             "{% set system_message = false %}"
             "{% endif %}"
-            "{% for message in loop_messages %}"  # Loop over all non-system messages
+            # Loop over all non-system messages
+            "{% for message in loop_messages %}"
             "{% if (message['role'] == 'user') != (loop.index0 % 2 == 0) %}"
             "{{ raise_exception('Conversation roles must alternate user/assistant/user/assistant/...') }}"
             "{% endif %}"
-            "{% if loop.index0 == 0 and system_message != false %}"  # Embed system message in first message
+            # Embed system message in first message
+            "{% if loop.index0 == 0 and system_message != false %}"
             "{% set content = '<<SYS>>\\n' + system_message + '\\n<</SYS>>\\n\\n' + message['content'] %}"
             "{% else %}"
             "{% set content = message['content'] %}"
             "{% endif %}"
-            "{% if message['role'] == 'user' %}"  # After all of that, handle messages/roles in a fairly normal way
+            # After all of that, handle messages/roles in a fairly normal way
+            "{% if message['role'] == 'user' %}"
             "{{ '<s>' + '[INST] ' + content.strip() + ' [/INST]' }}"
             "{% elif message['role'] == 'system' %}"
             "{{ '<<SYS>>\\n' + content.strip() + '\\n<</SYS>>\\n\\n' }}"
@@ -272,7 +308,8 @@ class Llama2Template(BaseTemplate):
             "{% endfor %}"
         )
         template = template.replace("USE_DEFAULT_PROMPT", "true")
-        default_message = self.system_prompt.replace("\n", "\\n").replace("'", "\\'")
+        default_message = self.system_prompt.replace(
+            "\n", "\\n").replace("'", "\\'")
         return template.replace("DEFAULT_SYSTEM_MESSAGE", default_message)
 
 
@@ -421,7 +458,8 @@ class Chatglm3Template(BaseTemplate):
                 if content is not None:
                     for response in content.split("<|assistant|>"):
                         if "\n" in response:
-                            metadata, sub_content = response.split("\n", maxsplit=1)
+                            metadata, sub_content = response.split(
+                                "\n", maxsplit=1)
                         else:
                             metadata, sub_content = "", response
                         messages.append(
@@ -1201,23 +1239,23 @@ class HuatuoTemplate(BaseTemplate):
 
 
 class OrionStarTemplate(BaseTemplate):
-    """ https://huggingface.co/OrionStarAI/OrionStar-Yi-34B-Chat/blob/fc0420da8cd5ea5b8f36760c1b14e0a718447e1f/generation_utils.py#L5 """
+    """ https://huggingface.co/OrionStarAI/Orion-14B-Chat/blob/4de9f928abf60f8f3a3f4d7f972f4807aa57c573/generation_utils.py#L12 """
 
     name = "orionstar"
-    allow_models = ["orionstar"]
+    allow_models = ["orion"]
     stop = {
-        "strings": ["<|endoftext|>"],
+        "strings": ["</s>"],
     }
 
     @property
     def template(self) -> str:
         return (
-            "{{ '<|startoftext|>' }}"
+            "{{ '<s>' }}"
             "{% for message in messages %}"
             "{% if message['role'] == 'user' %}"
-            "{{ 'Human: ' + message['content'] + '\\n\\nAssistant: <|endoftext|>' }}"
+            "{{ 'Human: ' + message['content'] + '\\n\\nAssistant: </s>' }}"
             "{% elif message['role'] == 'assistant' %}"
-            "{{ message['content'] + '<|endoftext|>' }}"
+            "{{ message['content'] + '</s>>' }}"
             "{% endif %}"
             "{% endfor %}"
         )
@@ -1230,7 +1268,8 @@ class YiAITemplate(BaseTemplate):
     allow_models = ["yi"]
     stop = {
         "strings": ["<|endoftext|>", "<|im_end|>"],
-        "token_ids": [2, 6, 7, 8],  # "<|endoftext|>", "<|im_start|>", "<|im_end|>", "<|im_sep|>"
+        # "<|endoftext|>", "<|im_start|>", "<|im_end|>", "<|im_sep|>"
+        "token_ids": [2, 6, 7, 8],
     }
 
     @property
@@ -1273,11 +1312,11 @@ class SusChatTemplate(BaseTemplate):
         )
 
 
-class MixtralTemplate(BaseTemplate):
+class MistralTemplate(BaseTemplate):
     """ https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.2/blob/main/tokenizer_config.json """
 
-    name = "mixtral"
-    allow_models = ["mixtral"]
+    name = "mistral"
+    allow_models = ["mistral"]
     stop = {
         "strings": ["[INST]", "[/INST]"],
     }
@@ -1285,7 +1324,7 @@ class MixtralTemplate(BaseTemplate):
     @property
     def template(self) -> str:
         return (
-            "{{ bos_token }}"
+            "{{ '<s>' }}"
             "{% for message in messages %}"
             "{% if (message['role'] == 'user') != (loop.index0 % 2 == 0) %}"
             "{{ raise_exception('Conversation roles must alternate user/assistant/user/assistant/...') }}"
@@ -1303,37 +1342,55 @@ class MixtralTemplate(BaseTemplate):
 
 register_prompt_adapter(AlpacaTemplate)
 register_prompt_adapter(AquilaChatTemplate)
+
 register_prompt_adapter(BaiChuanTemplate)
 register_prompt_adapter(BaiChuan2Template)
 register_prompt_adapter(BelleTemplate)
 register_prompt_adapter(BlueLMTemplate)
+
 register_prompt_adapter(ChatglmTemplate)
 register_prompt_adapter(Chatglm2Template)
 register_prompt_adapter(Chatglm3Template)
 register_prompt_adapter(ChineseAlpaca2Template)
+
 register_prompt_adapter(DeepseekTemplate)
 register_prompt_adapter(DeepseekCoderTemplate)
+
 register_prompt_adapter(FireflyTemplate)
 register_prompt_adapter(FireflyForQwenTemplate)
+
 register_prompt_adapter(HuatuoTemplate)
+
 register_prompt_adapter(InternLMTemplate)
 register_prompt_adapter(InternLM2Template)
+
 register_prompt_adapter(Llama2Template)
-register_prompt_adapter(MixtralTemplate)
+
+register_prompt_adapter(MistralTemplate)
 register_prompt_adapter(MossTemplate)
+
 register_prompt_adapter(OctopackTemplate)
 register_prompt_adapter(OpenBuddyTemplate)
 register_prompt_adapter(OrionStarTemplate)
+
 register_prompt_adapter(PhindTemplate)
 register_prompt_adapter(PhoenixTemplate)
+
 register_prompt_adapter(QwenTemplate)
+register_prompt_adapter(Qwen2Template)
+
 register_prompt_adapter(StarChatTemplate)
 register_prompt_adapter(SusChatTemplate)
+
 register_prompt_adapter(VicunaTemplate)
+
 register_prompt_adapter(XuanYuanTemplate)
 register_prompt_adapter(XverseTemplate)
+
 register_prompt_adapter(YiAITemplate)
+
 register_prompt_adapter(ZephyrTemplate)
+
 register_prompt_adapter(BaseTemplate)
 
 
@@ -1343,6 +1400,6 @@ if __name__ == '__main__':
         {"role": "assistant", "content": "I'm doing great. How can I help you today?"},
         {"role": "user", "content": "I'd like to show off how chat templating works!"},
     ]
-    template = get_prompt_adapter(prompt_name="internlm2")
+    template = get_prompt_adapter(prompt_name="mistral")
     messages = template.postprocess_messages(chat)
     print(template.apply_chat_template(messages))

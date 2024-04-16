@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from transformers import PreTrainedModel, PreTrainedTokenizer
 
 
-def _load_model_and_tokenizer(
+def load_model_and_tokenizer(
     model_name_or_path: str,
     use_fast_tokenizer: Optional[bool] = False,
     dtype: Optional[str] = None,
@@ -70,44 +70,5 @@ def _load_model_and_tokenizer(
 
     patch_model(model)
     model.eval()
-
-    return model, tokenizer
-
-
-def load_model_and_tokenizer(
-    model_name: str,
-    model_name_or_path: str,
-    use_fast_tokenizer: Optional[bool] = False,
-    dtype: Optional[str] = None,
-    device_map: Optional[Any] = None,
-    load_in_8bit: Optional[bool] = False,
-    load_in_4bit: Optional[bool] = False,
-    rope_scaling: Optional[str] = None,
-    flash_attn: Optional[bool] = False,
-    **kwargs,
-) -> Tuple["PreTrainedModel", "PreTrainedTokenizer"]:
-    try:
-        model, tokenizer = _load_model_and_tokenizer(
-            model_name_or_path,
-            use_fast_tokenizer,
-            dtype,
-            device_map,
-            load_in_8bit,
-            load_in_4bit,
-            rope_scaling,
-            flash_attn,
-        )
-    except:
-        from .model import load_model_and_tokenizer_old
-
-        model, tokenizer = load_model_and_tokenizer_old(
-            model_name,
-            model_name_or_path,
-            dtype=dtype,
-            load_in_8bit=load_in_8bit,
-            load_in_4bit=load_in_4bit,
-            device_map=device_map,
-            **kwargs,
-        )
 
     return model, tokenizer

@@ -1,4 +1,4 @@
-from api.models import GENERATE_ENGINE
+from api.models import LLM_ENGINE
 from api.utils.request import llama_outer_lock, llama_inner_lock
 
 
@@ -13,7 +13,7 @@ def get_llama_cpp_engine():
         try:
             llama_outer_lock.release()
             release_outer_lock = False
-            yield GENERATE_ENGINE
+            yield LLM_ENGINE
         finally:
             llama_inner_lock.release()
     finally:

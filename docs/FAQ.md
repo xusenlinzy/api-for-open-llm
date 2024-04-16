@@ -78,6 +78,9 @@ pip uninstall transformer-engine
 + `/v1/embeddings`: 句子嵌入
 
 
++ `/v1/rerank`: 句子相似性重排序
+
+
 具体使用方式兼容 [openai](https://github.com/openai/openai-python)
 
 ### 接入其他 `web` 项目

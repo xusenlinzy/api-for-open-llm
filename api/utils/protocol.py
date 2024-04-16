@@ -1,5 +1,13 @@
 from enum import Enum
-from typing import Optional, Dict, List, Union, Literal, Any
+from typing import (
+    Optional,
+    Dict,
+    List,
+    Union,
+    Literal,
+    Any,
+    TypedDict,
+)
 
 from openai.types.chat import (
     ChatCompletionMessageParam,
@@ -226,6 +234,8 @@ class ChatCompletionCreateParams(BaseModel):
 
     guided_choice: Optional[List[str]] = None
 
+    guided_grammar: Optional[str] = None
+
 
 class CompletionCreateParams(BaseModel):
     model: str
@@ -416,6 +426,8 @@ class CompletionCreateParams(BaseModel):
 
     guided_choice: Optional[List[str]] = None
 
+    guided_grammar: Optional[str] = None
+
 
 class EmbeddingCreateParams(BaseModel):
     input: Union[str, List[str], List[int], List[List[int]]]
@@ -479,3 +491,33 @@ class CreateEmbeddingResponse(BaseModel):
 
     usage: Usage
     """The usage information for the request."""
+
+
+class RerankRequest(BaseModel):
+    model: str
+    """The name of the model used to rerank."""
+
+    query: str
+    """The query for rerank."""
+
+    documents: List[str]
+    """The documents for rerank."""
+
+    top_n: Optional[int] = None
+
+    return_documents: Optional[bool] = False
+
+
+class Document(TypedDict):
+    text: str
+
+
+class DocumentObj(TypedDict):
+    index: int
+    relevance_score: float
+    document: Optional[Document]
+
+
+class RerankResponse(TypedDict):
+    id: Optional[str]
+    results: List[DocumentObj]

@@ -2,14 +2,20 @@ from functools import partial
 from typing import Iterator
 
 import anyio
-from fastapi import APIRouter, Depends, Request, HTTPException
+from fastapi import (
+    APIRouter,
+    Depends,
+    Request,
+    HTTPException,
+    status,
+)
 from loguru import logger
 from sse_starlette import EventSourceResponse
 from starlette.concurrency import run_in_threadpool
 
 from api.core.llama_cpp_engine import LlamaCppEngine
 from api.llama_cpp_routes.utils import get_llama_cpp_engine
-from api.utils.compat import model_dump
+from api.utils.compat import dictify
 from api.utils.protocol import Role, ChatCompletionCreateParams
 from api.utils.request import (
     handle_request,
@@ -20,7 +26,11 @@ from api.utils.request import (
 chat_router = APIRouter(prefix="/chat")
 
 
-@chat_router.post("/completions", dependencies=[Depends(check_api_key)])
+@chat_router.post(
+    "/completions",
+    dependencies=[Depends(check_api_key)],
+    status_code=status.HTTP_200_OK,
+)
 async def create_chat_completion(
     request: ChatCompletionCreateParams,
     raw_request: Request,
@@ -44,7 +54,7 @@ async def create_chat_completion(
         "presence_penalty",
         "frequency_penalty",
     }
-    kwargs = model_dump(request, include=include)
+    kwargs = dictify(request, include=include)
     logger.debug(f"==== request ====\n{kwargs}")
 
     iterator_or_completion = await run_in_threadpool(

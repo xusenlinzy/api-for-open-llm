@@ -29,19 +29,10 @@ pip install -r requirements.txt
 + `MODEL_PATH`: 开源大模型的文件所在路径
 
 
-+ `DEVICE`: 是否使用 `GPU`，可选值为 `cuda` 和 `cpu`，默认值为 `cuda`
-
-
-+ `ADAPTER_MODEL_PATH`（可选项）: `lora` 或 `ptuing_v2` 模型文件所在路径
-
-
 + `EMBEDDING_NAME`（可选项）: 嵌入模型的文件所在路径，推荐使用 `moka-ai/m3e-base` 或者 `BAAI/bge-large-zh`
 
 
 + `CONTEXT_LEN`（可选项）: 上下文长度，默认为 `2048`
-
-
-+ `QUANTIZE`（可选项）: `chatglm`、`baichuan-13b` 模型的量化等级，可选项为 16、8、4
 
 
 + `LOAD_IN_8BIT`（可选项）: 使用模型 `8bit` 量化
@@ -50,19 +41,10 @@ pip install -r requirements.txt
 + `LOAD_IN_4BIT`（可选项）: 使用模型 `4bit` 量化
 
 
-+ `USING_PTUNING_V2`（可选项）: 使用 `ptuning_v2` 加载模型
-
-
 + `STREAM_INTERVERL`（可选项）: 流式输出的 `token` 数量
 
 
 + `PROMPT_NAME`（可选项）: 使用的对话模板名称，如果不指定，则将根据模型名找到对应的模板
-
-
-+ `PATCH_TYPE`（可选项）: 用来扩展 `llama` 模型上下文长度，支持 `attention` 和 `ntk`
-
-
-+ `ALPHA`（可选项）: 用来扩展 `llama` 模型上下文长度，默认为 `auto`
 
 
 

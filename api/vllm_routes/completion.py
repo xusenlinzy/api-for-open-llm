@@ -13,13 +13,12 @@ from openai.types.completion import Completion
 from openai.types.completion_choice import CompletionChoice, Logprobs
 from openai.types.completion_usage import CompletionUsage
 from sse_starlette import EventSourceResponse
-from vllm.model_executor.guided_decoding import get_guided_decoding_logits_processor
 from vllm.outputs import RequestOutput
 from vllm.sampling_params import SamplingParams
 
 from api.core.vllm_engine import VllmEngine
-from api.models import GENERATE_ENGINE
-from api.utils.compat import model_dump
+from api.models import LLM_ENGINE
+from api.utils.compat import dictify
 from api.utils.protocol import CompletionCreateParams
 from api.utils.request import (
     handle_request,
@@ -31,7 +30,7 @@ completion_router = APIRouter()
 
 
 def get_engine():
-    yield GENERATE_ENGINE
+    yield LLM_ENGINE
 
 
 def parse_prompt_format(prompt) -> Tuple[bool, list]:
@@ -110,7 +109,7 @@ async def create_completion(
     if isinstance(request.prompt, list):
         request.prompt = request.prompt[0]
 
-    params = model_dump(request, exclude={"prompt"})
+    params = dictify(request, exclude={"prompt"})
     params.update(dict(prompt_or_messages=request.prompt))
     logger.debug(f"==== request ====\n{params}")
 
@@ -133,7 +132,7 @@ async def create_completion(
             "skip_special_tokens",
             "spaces_between_special_tokens",
         }
-        kwargs = model_dump(request, include=include)
+        kwargs = dictify(request, include=include)
         sampling_params = SamplingParams(
             stop=request.stop or [],
             stop_token_ids=request.stop_token_ids or [],
@@ -141,15 +140,20 @@ async def create_completion(
             **kwargs,
         )
         lora_request = engine._maybe_get_lora(request.model)
-        guided_decode_logits_processor = (
-            await get_guided_decoding_logits_processor(
-                request,
-                engine.tokenizer,
+
+        try:
+            from vllm.model_executor.guided_decoding import get_guided_decoding_logits_processor
+            guided_decode_logits_processor = (
+                await get_guided_decoding_logits_processor(
+                    request,
+                    engine.tokenizer,
+                )
             )
-        )
-        if guided_decode_logits_processor:
-            sampling_params.logits_processors = sampling_params.logits_processors or []
-            sampling_params.logits_processors.append(guided_decode_logits_processor)
+            if guided_decode_logits_processor:
+                sampling_params.logits_processors = sampling_params.logits_processors or []
+                sampling_params.logits_processors.append(guided_decode_logits_processor)
+        except ImportError:
+            pass
 
         prompt_is_tokens, prompts = parse_prompt_format(request.prompt)
         num_prompts = len(prompts)
@@ -213,7 +217,7 @@ async def create_completion(
                     output_text = prompt_text
                 elif request.echo and request.max_tokens > 0:
                     token_ids = prompt_token_ids + output.token_ids
-                    top_logprobs = prompt_logprobs + output.logprobs
+                    top_logprobs = (prompt_logprobs + output.logprobs if request.logprobs else None)
                     output_text = prompt_text + output.text
                 else:
                     token_ids = output.token_ids
@@ -283,7 +287,7 @@ async def create_completion_stream(
                     # echo the prompt and first token
                     delta_text = res.prompt + output.text
                     delta_token_ids = res.prompt_token_ids + output.token_ids
-                    top_logprobs = res.prompt_logprobs + output.logprobs or []
+                    top_logprobs = res.prompt_logprobs + (output.logprobs or [])
                     has_echoed[i] = True
                 else:
                     # return just the delta

@@ -107,8 +107,7 @@ class BaseTemplate(ABC):
     def postprocess_messages(
         self,
         messages: List[ChatCompletionMessageParam],
-        functions: Optional[Union[Dict[str, Any],
-                                  List[Dict[str, Any]]]] = None,
+        functions: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
         tools: Optional[List[Dict[str, Any]]] = None,
     ) -> List[Dict[str, Any]]:
         return messages
@@ -116,8 +115,7 @@ class BaseTemplate(ABC):
     def parse_assistant_response(
         self,
         output: str,
-        functions: Optional[Union[Dict[str, Any],
-                                  List[Dict[str, Any]]]] = None,
+        functions: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
         tools: Optional[List[Dict[str, Any]]] = None,
     ) -> Tuple[str, Optional[Union[str, Dict[str, Any]]]]:
         return output, None
@@ -175,8 +173,7 @@ class QwenTemplate(BaseTemplate):
     def parse_assistant_response(
         self,
         output: str,
-        functions: Optional[Union[Dict[str, Any],
-                                  List[Dict[str, Any]]]] = None,
+        functions: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
         tools: Optional[List[Dict[str, Any]]] = None,
     ) -> Tuple[str, Optional[Union[str, Dict[str, Any]]]]:
         func_name, func_args = "", ""
@@ -433,8 +430,7 @@ class Chatglm3Template(BaseTemplate):
     def postprocess_messages(
         self,
         messages: List[ChatCompletionMessageParam],
-        functions: Optional[Union[Dict[str, Any],
-                                  List[Dict[str, Any]]]] = None,
+        functions: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
         tools: Optional[List[Dict[str, Any]]] = None,
     ) -> List[Dict[str, Any]]:
         _messages = messages
@@ -485,8 +481,7 @@ class Chatglm3Template(BaseTemplate):
     def parse_assistant_response(
         self,
         output: str,
-        functions: Optional[Union[Dict[str, Any],
-                                  List[Dict[str, Any]]]] = None,
+        functions: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
         tools: Optional[List[Dict[str, Any]]] = None,
     ) -> Tuple[str, Optional[Union[str, Dict[str, Any]]]]:
         content = ""
@@ -1317,11 +1312,11 @@ class SusChatTemplate(BaseTemplate):
         )
 
 
-class MixtralTemplate(BaseTemplate):
+class MistralTemplate(BaseTemplate):
     """ https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.2/blob/main/tokenizer_config.json """
 
-    name = "mixtral"
-    allow_models = ["mixtral"]
+    name = "mistral"
+    allow_models = ["mistral"]
     stop = {
         "strings": ["[INST]", "[/INST]"],
     }
@@ -1329,7 +1324,7 @@ class MixtralTemplate(BaseTemplate):
     @property
     def template(self) -> str:
         return (
-            "{{ bos_token }}"
+            "{{ '<s>' }}"
             "{% for message in messages %}"
             "{% if (message['role'] == 'user') != (loop.index0 % 2 == 0) %}"
             "{{ raise_exception('Conversation roles must alternate user/assistant/user/assistant/...') }}"
@@ -1371,7 +1366,7 @@ register_prompt_adapter(InternLM2Template)
 
 register_prompt_adapter(Llama2Template)
 
-register_prompt_adapter(MixtralTemplate)
+register_prompt_adapter(MistralTemplate)
 register_prompt_adapter(MossTemplate)
 
 register_prompt_adapter(OctopackTemplate)
@@ -1405,6 +1400,6 @@ if __name__ == '__main__':
         {"role": "assistant", "content": "I'm doing great. How can I help you today?"},
         {"role": "user", "content": "I'd like to show off how chat templating works!"},
     ]
-    template = get_prompt_adapter(prompt_name="qwen2")
+    template = get_prompt_adapter(prompt_name="mistral")
     messages = template.postprocess_messages(chat)
     print(template.apply_chat_template(messages))

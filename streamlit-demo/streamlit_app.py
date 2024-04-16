@@ -7,7 +7,14 @@ from streamlit_gallery.utils.page import page_group
 
 def main():
     from streamlit_gallery.apps import gallery
-    from streamlit_gallery.components import chat, doc_chat, sql_chat, search_chat, tool_chat, code_interpreter
+    from streamlit_gallery.components import (
+        chat,
+        doc_chat,
+        sql_chat,
+        search_chat,
+        tool_chat,
+        code_interpreter,
+    )
 
     page = page_group("p")
 
@@ -38,9 +45,10 @@ def main():
         with st.expander("🐧 PARAMTERS", False):
             max_tokens = st.slider("MaxTokens", 20, 4096, 1024)
             temperature = st.slider("Temperature", 0.0, 1.0, 0.9)
-            chunk_size = st.slider("ChunkSize", 100, 512, 300)
-            chunk_overlap = st.slider("CHUNK_OVERLAP", 0, 100, 10)
-            top_k = st.slider("Top_K", 0, 10, 3)
+            chunk_size = st.slider("ChunkSize", 100, 512, 250)
+            chunk_overlap = st.slider("CHUNK_OVERLAP", 0, 100, 50)
+            top_k = st.slider("Top_K", 0, 10, 4)
+            rerank = st.checkbox("Apply Rerank")
 
             st.session_state.update(
                 dict(
@@ -49,6 +57,7 @@ def main():
                     chunk_size=chunk_size,
                     chunk_overlap=chunk_overlap,
                     top_k=top_k,
+                    rerank=rerank,
                 )
             )
 

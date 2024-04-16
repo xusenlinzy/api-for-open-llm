@@ -1,102 +1,141 @@
-import importlib
 import os
+import uuid
+from pathlib import Path
 from typing import List
 
-from langchain.vectorstores import FAISS
+import lancedb
+import pyarrow as pa
+import requests
+from lancedb.rerankers import CohereReranker
 from loguru import logger
-from sentence_transformers import SentenceTransformer
+from openai import OpenAI
 
-LOADER_DICT = {
-    "UnstructuredFileLoader": [
-        '.eml', '.html', '.json', '.md', '.msg', '.rst',
-        '.rtf', '.txt', '.xml', '.doc', '.docx', '.epub',
-        '.odt', '.pdf', '.ppt', '.pptx', '.tsv'
-    ],
-    "CSVLoader": [".csv"],
-    "PyPDFLoader": [".pdf"],
-}
-SUPPORTED_EXTS = set([ext for sublist in LOADER_DICT.values() for ext in sublist])
+EMBEDDING_API_BASE = os.getenv("EMBEDDING_API_BASE")
+CO_API_URL = os.getenv("CO_API_URL")
+
+if not CO_API_URL:
+    os.environ["CO_API_URL"] = EMBEDDING_API_BASE
 
 
-def get_loader_class(file_extension):
-    for c, exts in LOADER_DICT.items():
-        if file_extension in exts:
-            return c
-
-
-def load_document(filepath, chunk_size: int = 300, chunk_overlap: int = 10):
-    """ 加载文档 """
-    ext = os.path.splitext(filepath)[-1].lower()
-    document_loader_name = get_loader_class(ext)
-    try:
-        document_loaders_module = importlib.import_module('langchain.document_loaders')
-        DocumentLoader = getattr(document_loaders_module, document_loader_name)
-    except Exception as e:
-        logger.warning(e)
-        document_loaders_module = importlib.import_module('langchain.document_loaders')
-        DocumentLoader = getattr(document_loaders_module, "UnstructuredFileLoader")
-
-    if document_loader_name == "UnstructuredFileLoader":
-        loader = DocumentLoader(filepath, autodetect_encoding=True)
-    else:
-        loader = DocumentLoader(filepath)
-
-    try:
-        text_splitter_module = importlib.import_module('langchain.text_splitter')
-        TextSplitter = getattr(text_splitter_module, "SpacyTextSplitter")
-        text_splitter = TextSplitter(
-            pipeline="zh_core_web_sm",
-            chunk_size=chunk_size,
-            chunk_overlap=chunk_overlap,
+class RefinedCohereReranker(CohereReranker):
+    def _rerank(self, result_set: pa.Table, query: str):
+        docs = result_set[self.column].to_pylist()
+        results = self._client.rerank(
+            query=query,
+            documents=docs,
+            top_n=self.top_n,
+            model=self.model_name,
+        )  # returns list (text, idx, relevance) attributes sorted descending by score
+        indices, scores = list(
+            zip(*[(result.index, result.relevance_score) for result in results.results])
+        )  # tuples
+        result_set = result_set.take(list(indices))
+        # add the scores
+        result_set = result_set.append_column(
+            "_relevance_score", pa.array(scores, type=pa.float32())
         )
-    except Exception as e:
-        logger.warning(e)
-        text_splitter_module = importlib.import_module('langchain.text_splitter')
-        TextSplitter = getattr(text_splitter_module, "RecursiveCharacterTextSplitter")
-        text_splitter = TextSplitter(
-            chunk_size=chunk_size,
-            chunk_overlap=chunk_overlap,
-        )
-    docs = loader.load_and_split(text_splitter)
-    return docs
+
+        return result_set
 
 
-class Embeddings:
-    def __init__(self, model_path: str):
-        self.model = SentenceTransformer(model_path)
-
-    def embed_documents(self, texts: List[str]) -> List[List[float]]:
-        embeddings = self.model.encode(texts, normalize_embeddings=True)
-        encod_list = embeddings.tolist()
-        return encod_list
-
-    def embed_query(self, text: str) -> List[float]:
-        return self.embed_documents([text])[0]
-
-
-class FaissDocServer:
-    def __init__(self, embedding):
-        self.embedding = embedding
+class DocServer:
+    def __init__(self, embeddings):
+        self.embeddings = embeddings
         self.vector_store = None
         self.vs_path = None
+        self.client = OpenAI(
+            base_url=os.getenv("EMBEDDING_API_BASE"),
+            api_key=os.getenv("API_KEY", ""),
+        )
+        self.db = lancedb.connect(
+            os.path.join(Path(__file__).parents[3], "lancedb.db"),
+        )
 
-    def doc_upload(self, file_path: str, chunk_size: int, chunk_overlap: int, vs_path: str):
-        if not os.path.exists(vs_path):
-            documents = load_document(file_path, chunk_size=chunk_size, chunk_overlap=chunk_overlap)
-            self.vector_store = FAISS.from_documents(documents, self.embedding)
-            self.vs_path = vs_path
-            self.vector_store.save_local(vs_path)
+    def upload(
+        self,
+        filepath: str,
+        chunk_size: int = 250,
+        chunk_overlap: int = 50,
+        table_name: str = None,
+    ):
+        upf = self.client.files.create(file=open(filepath, "rb"), purpose="assistants")
+        file_id, filename = upf.id, upf.filename
+        res = requests.post(
+            url=os.getenv("EMBEDDING_API_BASE") + "/files/split",
+            json={
+                "file_id": file_id,
+                "chunk_size": chunk_size,
+                "chunk_overlap": chunk_overlap,
+            }
+        ).json()
+
+        table_name = table_name or file_id
+        embeddings = self.embeddings.embed_documents(
+            [doc["page_content"] for doc in res["docs"]]
+        )
+        data = []
+        for i, doc in enumerate(res["docs"]):
+            metadata = {"source": doc["metadata"]["source"]["filename"]}
+            append_data = {
+                "id": str(uuid.uuid4()),
+                "vector": embeddings[i],
+                "text": doc["page_content"],
+                "metadata": metadata,
+            }
+            data.append(append_data)
+
+        if table_name in self.db.table_names():
+            tbl = self.db.open_table(table_name)
+            tbl.add(data)
+        else:
+            self.db.create_table(table_name, data)
+
         logger.info("Successfully inserted documents!")
 
-    def doc_search(self, query: str, top_k: int, vs_path: str) -> List:
-        if vs_path != self.vs_path and os.path.exists(vs_path):
-            self.vector_store = FAISS.load_local(vs_path, self.embedding)
-        related_docs_with_score = self.vector_store.similarity_search_with_score(query, k=top_k)
-        return related_docs_with_score
+        return file_id
+
+    def search(
+        self,
+        query: str,
+        top_k: int,
+        table_name: str,
+        rerank: bool = False,
+    ) -> List:
+        table = self.db.open_table(table_name)
+        embedding = self.embeddings.embed_query(query)
+        top_n = 2 * top_k if rerank else top_k
+
+        docs = table.search(
+            embedding,
+            vector_column_name="vector",
+        ).metric("cosine").limit(top_n)
+
+        if rerank:
+            docs = docs.rerank(
+                reranker=RefinedCohereReranker(api_key="xxx"),
+                query_string=query,
+            ).limit(top_k)
+
+        docs = docs.to_pandas()
+        del docs["vector"]
+        del docs["id"]
+        return docs
+
+    def delete(self, file_id):
+        if file_id:
+            self.db.drop_table(file_id)
+            try:
+                self.client.files.delete(file_id=file_id)
+            except:
+                pass
+        return file_id
 
 
-DOCQA_PROMPT = """<指令>根据已知信息，简洁和专业的来回答问题。如果无法从中得到答案，请说 “根据已知信息无法回答该问题”，不允许在答案中添加编造成分，答案请使用中文。 </指令>
-
-<已知信息>{context}</已知信息>
-
-<问题>{query}</问题>"""
+DOCQA_PROMPT = """参考信息：
+{context}
+---
+我的问题或指令：
+{query}
+---
+请根据上述参考信息回答我的问题或回复我的指令。前面的参考信息可能有用，也可能没用，你需要从我给出的参考信息中选出与我的问题最相关的那些，来为你的回答提供依据。回答一定要忠于原文，简洁但不丢信息，不要胡乱编造。我的问题或指令是什么语种，你就用什么语种回复,
+你的回复："""

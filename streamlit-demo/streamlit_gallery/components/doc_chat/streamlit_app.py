@@ -1,21 +1,18 @@
 import os
-import shutil
 from pathlib import Path
 
+import pandas as pd
+import streamlit as st
+from langchain_openai import OpenAIEmbeddings
 from openai import OpenAI
 
-import streamlit as st
-from langchain.embeddings import OpenAIEmbeddings
-
-from .utils import FaissDocServer, Embeddings, DOCQA_PROMPT
+from .utils import DocServer, DOCQA_PROMPT
 
 
 def main():
     UPLOAD_FOLDER = os.path.join(Path(__file__).parents[3], "upload_files")
-    VECTOR_STORE_PATH = os.path.join(Path(__file__).parents[3], "vector_stores")
 
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-    os.makedirs(VECTOR_STORE_PATH, exist_ok=True)
 
     client = OpenAI(
         api_key=os.getenv("API_KEY"),
@@ -24,55 +21,48 @@ def main():
 
     @st.cache_resource
     def load_doc_server():
-        embedding_name = os.getenv("EMBEDDING_NAME", "")
-        if embedding_name:
-            embedding = Embeddings(embedding_name)
-        else:
-            embedding = OpenAIEmbeddings(
-                openai_api_base=os.getenv("EMBEDDING_API_BASE"),
-                openai_api_key=os.getenv("API_KEY", ""),
-            )
-        server = FaissDocServer(embedding)
+        embeddings = OpenAIEmbeddings(
+            openai_api_base=os.getenv("EMBEDDING_API_BASE"),
+            openai_api_key=os.getenv("API_KEY", ""),
+        )
+        server = DocServer(embeddings)
         return server
 
-    FAISS = load_doc_server()
+    server = load_doc_server()
 
     @st.cache_resource
     def create_index(file, chunk_size, chunk_overlap):
         filename = file.name
-        file_path = f"{UPLOAD_FOLDER}/{filename}"
-        with open(file_path, "wb") as f:
+        filepath = f"{UPLOAD_FOLDER}/{filename}"
+        with open(filepath, "wb") as f:
             f.write(file.read())
 
-        vs_path = f"{VECTOR_STORE_PATH}/{filename}"
-        FAISS.doc_upload(file_path, chunk_size, chunk_overlap, vs_path)
+        file_id = server.upload(filepath, chunk_size, chunk_overlap)
+        st.session_state.update(dict(file_id=file_id))
+
+        os.remove(filepath)
         return file.name
 
-    def delete_index(filename):
-        file_path = f"{UPLOAD_FOLDER}/{filename}"
-        os.remove(file_path)
-        vs_path = f"{VECTOR_STORE_PATH}/{filename}"
-        shutil.rmtree(vs_path)
-        return filename
+    def delete_index(file_id):
+        server.delete(file_id)
+        return file_id
 
     st.title("💬 Document Chatbot")
-
 
     with st.expander("📚‍ FILES", False):
         file = st.file_uploader("Upload file", accept_multiple_files=False)
         if file:
             file_name = create_index(
                 file,
-                chunk_size=st.session_state.get("chunk_size", 300),
-                chunk_overlap=st.session_state.get("chunk_overlap", 10),
+                chunk_size=st.session_state.get("chunk_size", 250),
+                chunk_overlap=st.session_state.get("chunk_overlap", 50),
+
             )
             st.session_state.update(dict(file_name=file_name))
 
-        vector_store_names = os.listdir(VECTOR_STORE_PATH)
+        vector_store_names = server.db.table_names()
         vector_store_name = st.selectbox("Select a vector store", vector_store_names)
-        st.session_state.update(
-            dict(vector_store_name=vector_store_name)
-        )
+        st.session_state.update(dict(vector_store_name=vector_store_name))
 
         if st.button("❌️ DELETE FILE"):
             _ = delete_index(vector_store_name)
@@ -83,28 +73,24 @@ def main():
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
-            if message["role"] == "assistant" and message["reference"] is not None:
-                st.markdown("### Reference Documents")
-                st.json(message["reference"], expanded=False)
+            if message["role"] == "assistant" and isinstance(message["reference"], pd.DataFrame):
+                with st.expander(label="### Reference Documents"):
+                    st.dataframe(message["reference"])
 
     if prompt := st.chat_input("What is up?"):
         vector_store_name = st.session_state.get("vector_store_name", None)
         doc_prompt, reference = None, None
         if vector_store_name is not None:
-            result = FAISS.doc_search(
+            result = server.search(
                 query=prompt,
                 top_k=st.session_state.get("top_k", 3),
-                vs_path=f"{VECTOR_STORE_PATH}/{vector_store_name}"
+                table_name=vector_store_name,
+                rerank=st.session_state.get("rerank", False),
             )
-            context = "\n".join([doc[0].page_content for doc in result])
+
+            context = "\n\n".join(doc for doc in result["text"].tolist())
             doc_prompt = DOCQA_PROMPT.format(query=prompt, context=context)
-            reference = [
-                {
-                    "content": doc[0].page_content,
-                    "score": float(doc[1])
-                }
-                for doc in result
-            ]
+            reference = result
 
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
@@ -114,7 +100,7 @@ def main():
             message_placeholder = st.empty()
             full_response = ""
             pyload = dict(
-                model="baichuan",
+                model="qwen2",
                 messages=[
                     {
                         "role": m["role"],
@@ -137,9 +123,9 @@ def main():
                 message_placeholder.markdown(full_response + "▌")
 
             message_placeholder.markdown(full_response)
-            if reference is not None:
-                st.markdown("### Reference Documents")
-                st.json(reference, expanded=False)
+            if isinstance(reference, pd.DataFrame):
+                with st.expander(label="### Reference Documents"):
+                    st.dataframe(reference)
 
         st.session_state.messages.append(
             {

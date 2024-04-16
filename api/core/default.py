@@ -47,7 +47,7 @@ from api.generation import (
     check_is_xverse,
 )
 from api.generation.utils import get_context_length
-from api.utils.compat import model_parse
+from api.utils.compat import model_validate
 from api.utils.constants import ErrorCode
 from api.utils.request import create_error_response
 
@@ -62,7 +62,6 @@ class DefaultEngine(ABC):
         self,
         model: PreTrainedModel,
         tokenizer: PreTrainedTokenizer,
-        device: Union[str, torch.device],
         model_name: str,
         context_len: Optional[int] = None,
         prompt_name: Optional[str] = None,
@@ -74,7 +73,6 @@ class DefaultEngine(ABC):
         Args:
             model (PreTrainedModel): The pre-trained model.
             tokenizer (PreTrainedTokenizer): The tokenizer for the model.
-            device (Union[str, torch.device]): The device to use for inference.
             model_name (str): The name of the model.
             context_len (Optional[int], optional): The length of the context. Defaults to None.
             prompt_name (Optional[str], optional): The name of the prompt. Defaults to None.
@@ -82,7 +80,7 @@ class DefaultEngine(ABC):
         """
         self.model = model
         self.tokenizer = tokenizer
-        self.device = model.device if hasattr(model, "device") else torch.device(device)
+        self.device = model.device
 
         self.model_name = model_name.lower()
         self.prompt_name = prompt_name.lower() if prompt_name is not None else None
@@ -211,7 +209,15 @@ class DefaultEngine(ABC):
                 logger.debug(f"==== Messages with tools ====\n{messages}")
 
         if self.construct_prompt:
-            prompt = self.prompt_adapter.apply_chat_template(messages)
+            if getattr(self.tokenizer, "chat_template", None) and not self.prompt_name:
+                prompt = self.tokenizer.apply_chat_template(
+                    conversation=messages,
+                    tokenize=False,
+                    add_generation_prompt=True,
+                )
+            else:
+                prompt = self.prompt_adapter.apply_chat_template(messages)
+
             if check_is_qwen(self.model):
                 inputs = self.tokenizer(prompt, allowed_special="all", disallowed_special=()).input_ids
             elif check_is_chatglm(self.model):
@@ -312,7 +318,7 @@ class DefaultEngine(ABC):
 
             logprobs = None
             if params.get("logprobs") and output["logprobs"]:
-                logprobs = model_parse(Logprobs, output["logprobs"])
+                logprobs = model_validate(Logprobs, output["logprobs"])
 
             choice = CompletionChoice(
                 index=0,
@@ -347,7 +353,7 @@ class DefaultEngine(ABC):
 
         logprobs = None
         if params.get("logprobs") and last_output["logprobs"]:
-            logprobs = model_parse(Logprobs, last_output["logprobs"])
+            logprobs = model_validate(Logprobs, last_output["logprobs"])
 
         choice = CompletionChoice(
             index=0,
@@ -355,7 +361,7 @@ class DefaultEngine(ABC):
             finish_reason="stop",
             logprobs=logprobs,
         )
-        usage = model_parse(CompletionUsage, last_output["usage"])
+        usage = model_validate(CompletionUsage, last_output["usage"])
         return Completion(
             id=last_output["id"],
             choices=[choice],
@@ -423,7 +429,7 @@ class DefaultEngine(ABC):
                 has_function_call = True
                 finish_reason = "tool_calls"
                 function_call["index"] = 0
-                tool_calls = [model_parse(ChoiceDeltaToolCall, function_call)]
+                tool_calls = [model_validate(ChoiceDeltaToolCall, function_call)]
                 delta = ChoiceDelta(
                     content=output["delta"],
                     tool_calls=tool_calls,
@@ -498,7 +504,7 @@ class DefaultEngine(ABC):
             )
         elif isinstance(function_call, dict) and "function" in function_call:
             finish_reason = "tool_calls"
-            tool_calls = [model_parse(ChatCompletionMessageToolCall, function_call)]
+            tool_calls = [model_validate(ChatCompletionMessageToolCall, function_call)]
             message = ChatCompletionMessage(
                 role="assistant",
                 content=last_output["text"],
@@ -516,7 +522,7 @@ class DefaultEngine(ABC):
             finish_reason=finish_reason,
             logprobs=None,
         )
-        usage = model_parse(CompletionUsage, last_output["usage"])
+        usage = model_validate(CompletionUsage, last_output["usage"])
         return ChatCompletion(
             id=f"chat{last_output['id']}",
             choices=[choice],

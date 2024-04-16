@@ -8,7 +8,7 @@ from typing import (
 )
 
 import anyio
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, status
 from fastapi import Request
 from loguru import logger
 from openai.types.completion import Completion
@@ -18,8 +18,8 @@ from sse_starlette import EventSourceResponse
 from text_generation.types import Response, StreamResponse
 
 from api.core.tgi import TGIEngine
-from api.models import GENERATE_ENGINE
-from api.utils.compat import model_dump
+from api.models import LLM_ENGINE
+from api.utils.compat import dictify
 from api.utils.protocol import CompletionCreateParams
 from api.utils.request import (
     handle_request,
@@ -31,10 +31,14 @@ completion_router = APIRouter()
 
 
 def get_engine():
-    yield GENERATE_ENGINE
+    yield LLM_ENGINE
 
 
-@completion_router.post("/completions", dependencies=[Depends(check_api_key)])
+@completion_router.post(
+    "/completions",
+    dependencies=[Depends(check_api_key)],
+    status_code=status.HTTP_200_OK,
+)
 async def create_completion(
     request: CompletionCreateParams,
     raw_request: Request,
@@ -56,7 +60,7 @@ async def create_completion(
         "typical_p",
         "watermark",
     }
-    params = model_dump(request, include=include)
+    params = dictify(request, include=include)
     params.update(
         dict(
             prompt=request.prompt,

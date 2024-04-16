@@ -123,20 +123,35 @@ class VllmEngine:
     ):
         """Create OpenAI-style logprobs."""
         logprobs = Logprobs()
+        logprobs.tokens = []
+        logprobs.token_logprobs = []
+        logprobs.text_offset = []
+
         last_token_len = 0
         if num_output_top_logprobs:
             logprobs.top_logprobs = []
 
         for i, token_id in enumerate(token_ids):
             step_top_logprobs = top_logprobs[i]
-            if step_top_logprobs is not None:
-                token_logprob = step_top_logprobs[token_id].logprob
+            if step_top_logprobs is None:
+                token = self.tokenizer.decode(token_id)
+                logprobs.tokens.append(token)
+                logprobs.token_logprobs.append(None)
+                logprobs.top_logprobs.append(None)
             else:
-                token_logprob = None
+                token_logprob = step_top_logprobs[token_id].logprob
+                token = step_top_logprobs[token_id].decoded_token
+                logprobs.tokens.append(token)
+                logprobs.token_logprobs.append(token_logprob)
 
-            token = step_top_logprobs[token_id].decoded_token
-            logprobs.tokens.append(token)
-            logprobs.token_logprobs.append(token_logprob)
+                if num_output_top_logprobs:
+                    logprobs.top_logprobs.append(
+                        {
+                            p.decoded_token: p.logprob
+                            for i, p in step_top_logprobs.items()
+                        }
+                        if step_top_logprobs else None
+                    )
 
             if len(logprobs.text_offset) == 0:
                 logprobs.text_offset.append(initial_text_offset)
@@ -144,14 +159,6 @@ class VllmEngine:
                 logprobs.text_offset.append(logprobs.text_offset[-1] + last_token_len)
             last_token_len = len(token)
 
-            if num_output_top_logprobs:
-                logprobs.top_logprobs.append(
-                    {
-                        p.decoded_token: p.logprob
-                        for i, p in step_top_logprobs.items()
-                    }
-                    if step_top_logprobs else None
-                )
         return logprobs
 
     def _maybe_get_lora(self, model_name):
@@ -198,7 +205,16 @@ class VllmEngine:
                 tools=tools,
             )
         else:
-            return self.prompt_adapter.apply_chat_template(messages)
+            if getattr(self.tokenizer, "chat_template", None) and not self.prompt_name:
+                logger.debug("Using tokenizer's chat template")
+                prompt = self.tokenizer.apply_chat_template(
+                    conversation=messages,
+                    tokenize=False,
+                    add_generation_prompt=True,
+                )
+            else:
+                prompt = self.prompt_adapter.apply_chat_template(messages)
+            return prompt
 
     def convert_to_inputs(
         self,

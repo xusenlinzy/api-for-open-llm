@@ -1,6 +1,5 @@
 openai>=1.6.1
 bitsandbytes
-pydantic==1.10.13
 fastapi>=0.104.1
 python-dotenv==1.0.0
 uvicorn
@@ -17,4 +16,10 @@ cpm_kernels
 einops
 sse-starlette>=1.6.1
 starlette-context>=0.3.6,<0.4
+langchain>=0.1.16
 
+# for rag
+nltk
+rapidocr_onnxruntime
+unstructured==0.11.0
+openparse

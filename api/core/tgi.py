@@ -14,7 +14,7 @@ from text_generation.types import Request, Parameters
 from text_generation.types import Response, StreamResponse
 
 from api.adapter import get_prompt_adapter
-from api.utils.compat import model_dump
+from api.utils.compat import dictify
 
 
 class TGIEngine:
@@ -137,7 +137,7 @@ class TGIEngine:
         async with ClientSession(
             headers=self.model.headers, cookies=self.model.cookies, timeout=self.model.timeout
         ) as session:
-            async with session.post(f"{self.model.base_url}/generate", json=model_dump(request)) as resp:
+            async with session.post(f"{self.model.base_url}/generate", json=dictify(request)) as resp:
                 payload = await resp.json()
 
                 if resp.status != 200:
@@ -226,7 +226,7 @@ class TGIEngine:
         async with ClientSession(
             headers=self.model.headers, cookies=self.model.cookies, timeout=self.model.timeout
         ) as session:
-            async with session.post(f"{self.model.base_url}/generate_stream", json=model_dump(request)) as resp:
+            async with session.post(f"{self.model.base_url}/generate_stream", json=dictify(request)) as resp:
                 if resp.status != 200:
                     raise parse_error(resp.status, await resp.json())
 

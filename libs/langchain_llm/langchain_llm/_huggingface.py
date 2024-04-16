@@ -488,7 +488,10 @@ class ChatHuggingFace(BaseChatModel):
 
         values["chat_template"] = values["chat_template"].lower() if values["chat_template"] is not None else None
         if not values["prompt_adapter"]:
-            values["prompt_adapter"] = get_prompt_adapter(model_name, values["chat_template"])
+            try:
+                values["prompt_adapter"] = get_prompt_adapter(model_name, values["chat_template"])
+            except KeyError:
+                values["chat_template"] = None
 
         values["construct_prompt"] = values["chat_template"] is not None
 
@@ -631,7 +634,15 @@ class ChatHuggingFace(BaseChatModel):
                 logger.debug(f"==== Messages with tools ====\n{messages}")
 
         if self.construct_prompt:
-            prompt = self.prompt_adapter.apply_chat_template(messages)
+            if getattr(self.llm.tokenizer, "chat_template", None) and not self.chat_template:
+                prompt = self.llm.tokenizer.apply_chat_template(
+                    conversation=messages,
+                    tokenize=False,
+                    add_generation_prompt=True,
+                )
+            else:
+                prompt = self.prompt_adapter.apply_chat_template(messages)
+
             if check_is_qwen(self.llm.model):
                 inputs = self.llm.tokenizer(prompt, allowed_special="all", disallowed_special=()).input_ids
             elif check_is_chatglm(self.llm.model):

@@ -129,7 +129,10 @@ class ChatVLLM(BaseChatModel):
         model_name = values["llm"].model_name
         values["chat_template"] = values["chat_template"].lower() if values["chat_template"] is not None else None
         if not values["prompt_adapter"]:
-            values["prompt_adapter"] = get_prompt_adapter(model_name, values["chat_template"])
+            try:
+                values["prompt_adapter"] = get_prompt_adapter(model_name, values["chat_template"])
+            except KeyError:
+                values["chat_template"] = None
 
         values["tokenizer"] = values["llm"].client.get_tokenizer()
 
@@ -249,7 +252,15 @@ class ChatVLLM(BaseChatModel):
                 tools,
             )
         else:
-            return self.prompt_adapter.apply_chat_template(messages)
+            if getattr(self.tokenizer, "chat_template", None) and not self.chat_template:
+                prompt = self.tokenizer.apply_chat_template(
+                    conversation=messages,
+                    tokenize=False,
+                    add_generation_prompt=True,
+                )
+            else:
+                prompt = self.prompt_adapter.apply_chat_template(messages)
+            return prompt
 
     def _to_chatml_format(self, message: BaseMessage) -> dict:
         """Convert LangChain message to ChatML format."""

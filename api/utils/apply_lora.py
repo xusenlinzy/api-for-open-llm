@@ -16,7 +16,6 @@ def apply_lora(base_model_path, target_model_path, lora_path):
     base = AutoModelForCausalLM.from_pretrained(
         base_model_path,
         torch_dtype=torch.float16,
-        low_cpu_mem_usage=True,
         trust_remote_code=True,
     )
     base_tokenizer = AutoTokenizer.from_pretrained(base_model_path, use_fast=False, trust_remote_code=True)
@@ -29,7 +28,7 @@ def apply_lora(base_model_path, target_model_path, lora_path):
     model = lora_model.merge_and_unload()
 
     print(f"Saving the target model to {target_model_path}")
-    model.save_pretrained(target_model_path)
+    model.save_pretrained(target_model_path, max_shard_size="10GB")
     base_tokenizer.save_pretrained(target_model_path)
 
 

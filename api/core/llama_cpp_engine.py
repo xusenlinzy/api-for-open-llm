@@ -20,7 +20,7 @@ from openai.types.chat.chat_completion_chunk import ChoiceDelta
 from openai.types.completion_usage import CompletionUsage
 
 from api.adapter import get_prompt_adapter
-from api.utils.compat import model_parse
+from api.utils.compat import model_validate
 
 
 class LlamaCppEngine:
@@ -99,7 +99,7 @@ class LlamaCppEngine:
             finish_reason="stop",
             logprobs=None,
         )
-        usage = model_parse(CompletionUsage, completion["usage"])
+        usage = model_validate(CompletionUsage, completion["usage"])
         return ChatCompletion(
             id="chat" + completion["id"],
             choices=[choice],
