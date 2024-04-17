@@ -31,17 +31,23 @@ def main():
     server = load_doc_server()
 
     @st.cache_resource
-    def create_index(file, chunk_size, chunk_overlap):
+    def create_file_index(file, chunk_size, chunk_overlap):
         filename = file.name
         filepath = f"{UPLOAD_FOLDER}/{filename}"
         with open(filepath, "wb") as f:
             f.write(file.read())
 
-        file_id = server.upload(filepath, chunk_size, chunk_overlap)
+        file_id = server.upload(filepath, chunk_size=chunk_size, chunk_overlap=chunk_overlap)
         st.session_state.update(dict(file_id=file_id))
 
         os.remove(filepath)
         return file.name
+
+    @st.cache_resource
+    def create_url_index(url, chunk_size, chunk_overlap):
+        file_id = server.upload(url=url, chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+        st.session_state.update(dict(file_id=file_id))
+        return file_id
 
     def delete_index(file_id):
         server.delete(file_id)
@@ -49,11 +55,29 @@ def main():
 
     st.title("💬 Document Chatbot")
 
-    with st.expander("📚‍ FILES", False):
+    with st.expander(label="Note"):
+        st.code("""文档问答是指从文本或文档中检索和理解相关信息，然后回答用户提出的问题。
+这种技术通常用于信息检索、知识图谱问答、智能客服等领域。本项目支持
+1. 文档问答
+2. URL问答""")
+
+    with st.expander("📚‍ SETTINGS", False):
+        mode = st.selectbox("Chat mode", options=["File Chat", "URL Chat"])
+        url = st.text_input("Doc url")
         file = st.file_uploader("Upload file", accept_multiple_files=False)
-        if file:
-            file_name = create_index(
+
+        if file and mode == "File Chat":
+            file_name = create_file_index(
                 file,
+                chunk_size=st.session_state.get("chunk_size", 250),
+                chunk_overlap=st.session_state.get("chunk_overlap", 50),
+
+            )
+            st.session_state.update(dict(file_name=file_name))
+
+        if url and mode == "URL Chat":
+            file_name = create_url_index(
+                url,
                 chunk_size=st.session_state.get("chunk_size", 250),
                 chunk_overlap=st.session_state.get("chunk_overlap", 50),
 
@@ -73,9 +97,9 @@ def main():
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
-            if message["role"] == "assistant" and isinstance(message["reference"], pd.DataFrame):
-                with st.expander(label="### Reference Documents"):
-                    st.dataframe(message["reference"])
+        if message["role"] == "assistant" and isinstance(message["reference"], pd.DataFrame):
+            with st.expander(label="### Reference Documents"):
+                st.dataframe(message["reference"])
 
     if prompt := st.chat_input("What is up?"):
         vector_store_name = st.session_state.get("vector_store_name", None)

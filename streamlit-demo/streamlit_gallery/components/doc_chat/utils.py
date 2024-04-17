@@ -1,7 +1,8 @@
 import os
+import secrets
 import uuid
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 import lancedb
 import pyarrow as pa
@@ -53,20 +54,30 @@ class DocServer:
 
     def upload(
         self,
-        filepath: str,
+        filepath: Optional[str] = None,
+        url: Optional[str] = None,
         chunk_size: int = 250,
         chunk_overlap: int = 50,
         table_name: str = None,
     ):
-        upf = self.client.files.create(file=open(filepath, "rb"), purpose="assistants")
-        file_id, filename = upf.id, upf.filename
-        res = requests.post(
-            url=os.getenv("EMBEDDING_API_BASE") + "/files/split",
-            json={
+        if url is not None:
+            data = {
+                "url": url,
+                "chunk_size": chunk_size,
+                "chunk_overlap": chunk_overlap,
+            }
+            file_id = str(secrets.token_hex(12))
+        else:
+            upf = self.client.files.create(file=open(filepath, "rb"), purpose="assistants")
+            file_id, filename = upf.id, upf.filename
+            data = {
                 "file_id": file_id,
                 "chunk_size": chunk_size,
                 "chunk_overlap": chunk_overlap,
             }
+
+        res = requests.post(
+            url=os.getenv("EMBEDDING_API_BASE") + "/files/split", json=data,
         ).json()
 
         table_name = table_name or file_id
@@ -75,12 +86,11 @@ class DocServer:
         )
         data = []
         for i, doc in enumerate(res["docs"]):
-            metadata = {"source": doc["metadata"]["source"]["filename"]}
             append_data = {
                 "id": str(uuid.uuid4()),
                 "vector": embeddings[i],
                 "text": doc["page_content"],
-                "metadata": metadata,
+                "metadata": doc["metadata"],
             }
             data.append(append_data)
 

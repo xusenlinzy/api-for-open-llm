@@ -10,3 +10,4 @@ lancedb
 pymysql
 streamlit
 google-search-results
+jupyter_client
