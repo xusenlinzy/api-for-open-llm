@@ -136,6 +136,11 @@ class LLMSettings(BaseModel):
         description="Support for transformers.TextIteratorStreamer."
     )
 
+    interrupt_requests: Optional[bool] = Field(
+        default=get_bool_env("INTERRUPT_REQUESTS", "true"),
+        description="Whether to interrupt requests when a new request is received.",
+    )
+
 
 class RAGSettings(BaseModel):
     # embedding related
@@ -231,11 +236,6 @@ class VLLMSetting(BaseModel):
 
 
 class LlamaCppSetting(BaseModel):
-    interrupt_requests: Optional[bool] = Field(
-        default=get_bool_env("INTERRUPT_REQUESTS", "true"),
-        description="Whether to interrupt requests when a new request is received.",
-    )
-    # support for llama.cpp
     n_gpu_layers: Optional[int] = Field(
         default=int(get_env("N_GPU_LAYERS", 0)),
         ge=-1,
