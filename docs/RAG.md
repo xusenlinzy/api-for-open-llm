@@ -17,7 +17,7 @@ RERANK_NAME=maidalun1020/bce-reranker-base_v1
 # vllm related
 ENGINE=vllm
 TOKENIZE_MODE=auto
-gpu_memory_utilization=0.8
+GPU_MEMORY_UTILIZATION=0.8
 TENSOR_PARALLEL_SIZE=1
 DTYPE=auto
 

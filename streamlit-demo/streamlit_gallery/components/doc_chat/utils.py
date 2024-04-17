@@ -59,7 +59,7 @@ class DocServer:
         chunk_size: int = 250,
         chunk_overlap: int = 50,
         table_name: str = None,
-    ):
+    ) -> str:
         if url is not None:
             data = {
                 "url": url,
@@ -90,7 +90,7 @@ class DocServer:
                 "id": str(uuid.uuid4()),
                 "vector": embeddings[i],
                 "text": doc["page_content"],
-                "metadata": doc["metadata"],
+                "metadata": doc["metadata"]["source"],
             }
             data.append(append_data)
 
@@ -102,7 +102,7 @@ class DocServer:
 
         logger.info("Successfully inserted documents!")
 
-        return file_id
+        return table_name
 
     def search(
         self,
@@ -131,14 +131,14 @@ class DocServer:
         del docs["id"]
         return docs
 
-    def delete(self, file_id):
-        if file_id:
-            self.db.drop_table(file_id)
+    def delete(self, table_name):
+        if table_name:
+            self.db.drop_table(table_name)
             try:
-                self.client.files.delete(file_id=file_id)
+                self.client.files.delete(file_id=table_name)
             except:
                 pass
-        return file_id
+        return table_name
 
 
 DOCQA_PROMPT = """参考信息：

@@ -39,13 +39,15 @@ def main():
                 from streamlit_gallery.components import code_interpreter
                 page.item("Code Interpreter", code_interpreter)
 
-        with st.expander("🐧 PARAMTERS", False):
-            max_tokens = st.slider("MaxTokens", 20, 4096, 1024)
-            temperature = st.slider("Temperature", 0.0, 1.0, 0.9)
-            chunk_size = st.slider("ChunkSize", 100, 512, 250)
-            chunk_overlap = st.slider("CHUNK_OVERLAP", 0, 100, 50)
-            top_k = st.slider("Top_K", 0, 10, 4)
-            rerank = st.checkbox("Apply Rerank")
+        if st.button("🗑️ 清空消息"):
+            st.session_state.messages = []
+
+        with st.expander("🐧 参数配置", False):
+            max_tokens = st.slider("回复最大token数量", 20, 4096, 1024)
+            temperature = st.slider("温度", 0.0, 1.0, 0.9)
+            chunk_size = st.slider("文档分块大小", 100, 512, 250)
+            chunk_overlap = st.slider("文档分块重复大小", 0, 100, 50)
+            top_k = st.slider("文档分块检索数量", 0, 10, 4)
 
             st.session_state.update(
                 dict(
@@ -54,12 +56,8 @@ def main():
                     chunk_size=chunk_size,
                     chunk_overlap=chunk_overlap,
                     top_k=top_k,
-                    rerank=rerank,
                 )
             )
-
-        if st.button("🗑️ CLEAR MESSAGES"):
-            st.session_state.messages = []
 
     page.show()
 

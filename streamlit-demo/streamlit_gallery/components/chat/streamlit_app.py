@@ -7,10 +7,6 @@ from openai import OpenAI
 def main():
     st.title("💬 Chatbot")
 
-    with st.expander(label="Note"):
-        st.code("""普通问答是指使用大型语言模型进行的常见问题解答过程。
-这种类型的问答通常涉及用户提出一个或多个问题，而模型基于其训练数据来提供最可能的答案或解释。""")
-
     client = OpenAI(
         api_key=os.getenv("API_KEY"),
         base_url=os.getenv("CHAT_API_BASE"),
