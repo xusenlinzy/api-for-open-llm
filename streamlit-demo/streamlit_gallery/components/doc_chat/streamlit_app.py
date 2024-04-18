@@ -74,6 +74,7 @@ def main():
 
 + 本项目支持**文档问答**和**URL问答**""")
             mode = st.selectbox("请选择上传文件类型", options=["文件", "网址"])
+            rerank = st.checkbox("🚀 重排序")
 
     with col2:
         with st.expander("📖 知识库列表", False):
@@ -90,8 +91,7 @@ def main():
                 placeholder=vector_store_names[0] if vector_store_names else "test"
             )
 
-            col5, col6 = st.columns([4, 6])
-            rerank = st.checkbox("🚀 重排序")
+            col5, col6 = st.columns([5, 5])
             with col5:
                 create = st.button("✅ 导入知识库")
             with col6:
@@ -123,7 +123,7 @@ def main():
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
         if message["role"] == "assistant" and isinstance(message["reference"], pd.DataFrame):
-            with st.expander(label="相关片段"):
+            with st.expander(label="展示搜索结果"):
                 st.dataframe(message["reference"], use_container_width=True)
 
     if prompt := st.chat_input("What is up?"):
@@ -173,7 +173,7 @@ def main():
 
             message_placeholder.markdown(full_response)
             if isinstance(reference, pd.DataFrame):
-                with st.expander(label="相关片段"):
+                with st.expander(label="展示搜索结果"):
                     st.dataframe(reference, use_container_width=True)
 
         st.session_state.messages.append(

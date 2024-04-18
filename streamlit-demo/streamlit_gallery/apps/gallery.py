@@ -14,12 +14,12 @@ python-dotenv==1.0.0
 loguru
 sqlalchemy~=1.4.46
 spacy
-func_timeout
 lancedb
 pymysql
 streamlit
 google-search-results
 jupyter_client
+
 ```
 
 ## 环境变量解释

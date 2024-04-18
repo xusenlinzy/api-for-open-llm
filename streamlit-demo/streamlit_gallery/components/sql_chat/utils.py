@@ -1,72 +1,68 @@
-import pandas as pd
-from func_timeout import func_timeout
-from sqlalchemy import create_engine
+from typing import List, Optional
+
+from langchain.chains.sql_database.query import create_sql_query_chain
+from langchain_community.utilities.sql_database import SQLDatabase
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import PromptTemplate
+from langchain_openai import ChatOpenAI
+
+answer_prompt = PromptTemplate.from_template(
+    """给出以下用户问题、相应的 SQL 查询和 SQL 结果，请回答用户问题。
+
+Question: {question}
+SQL Query: {query}
+SQL Result: {result}
+Answer: """
+)
 
 
-def query_table_names(db_name: str, db_creds: dict, timeout: float = 10.0) -> list:
-    """ 获取数据库表名 """
-    engine = None
-    try:
-        db_url = f"mysql+pymysql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{db_name}"
-        engine = create_engine(db_url)
-        tables = func_timeout(timeout, pd.read_sql_query, args=("show tables;", engine))
-        engine.dispose()  # close connection
-        return [t[0] for t in tables.values]
-    except Exception as e:
-        if engine:
-            engine.dispose()  # close connection if query fails/timeouts
-        raise e
-
-
-def query_table_schema(
-    table_name: str, db_name: str, db_creds: dict, timeout: float = 10.0
+def create_sql_query(
+    query: str,
+    base_url: str,
+    database_uri: str,
+    include_tables: Optional[List[str]] = None,
+    sample_rows_in_table_info: Optional[int] = 1,
 ):
-    """ 获取数据库表结构 """
-    engine = None
-    try:
-        db_url = f"mysql+pymysql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{db_name}"
-        engine = create_engine(db_url)
-        schema = func_timeout(
-            timeout, pd.read_sql_query, args=(f"show create table {table_name};", engine)
-        )["Create Table"][0]
-        engine.dispose()  # close connection
-        return schema
-    except Exception as e:
-        if engine:
-            engine.dispose()  # close connection if query fails/timeouts
-        raise e
+    question = {"question": query}
+
+    db = SQLDatabase.from_uri(
+        database_uri,
+        include_tables=include_tables,
+        sample_rows_in_table_info=sample_rows_in_table_info,
+    )
+
+    llm = ChatOpenAI(
+        model="codeqwen",
+        temperature=0,
+        openai_api_base=base_url,
+        openai_api_key="xxx"
+    )
+
+    write = create_sql_query_chain(llm, db)
+
+    sql_query = write.invoke(question)
+    sql_result = db.run(sql_query, fetch="cursor")
+
+    return sql_query, sql_result
 
 
-def query_mysql_db(
-    query: str, db_name: str, db_creds: dict, timeout: float = 10.0
-):
-    """ 获取数据库查询结果 """
-    engine = None
-    try:
-        db_url = f"mysql+pymysql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{db_name}"
-        engine = create_engine(db_url)
-        results_df = func_timeout(timeout, pd.read_sql_query, args=(query, engine))
-        engine.dispose()  # close connection
-        return results_df
-    except Exception as e:
-        if engine:
-            engine.dispose()  # close connection if query fails/timeouts
-        raise e
+def create_llm_chain(base_url: str):
+    llm = ChatOpenAI(
+        model="codeqwen",
+        temperature=0,
+        openai_api_base=base_url,
+        openai_api_key="xxx"
+    )
+    return answer_prompt | llm | StrOutputParser()
 
 
-SQL_PROMPT = """### Instructions:
-Your task is to convert a question into a SQL query, given a database schema.
-Adhere to these rules:
-- **Deliberately go through the question and database schema word by word** to appropriately answer the question
-- **Use Table Aliases** to prevent ambiguity. For example, `SELECT table1.col1, table2.col1 FROM table1 JOIN table2 ON table1.id = table2.id`.
-- When creating a ratio, always cast the numerator as float
+if __name__ == "__main__":
+    import pandas as pd
 
-### Input:
-Generate a SQL query that answers the question `{query}`.
-This query will run on a database whose schema is represented in this string:
-{table_info}
-
-### Response:
-Based on your instructions, here is the SQL query I have generated to answer the question `{query}`:
-```sql
-"""
+    sql_query, sql_result = create_sql_query(
+        "2024年各个信息来源分别发布了多少资讯,按照数量排序",
+        base_url="http://192.168.20.44:7861/v1",
+        include_tables=["document", "source"],
+        database_uri="mysql+pymysql://root:Dnect_123@192.168.0.52:3306/information_services",
+    )
+    print(pd.DataFrame(sql_result))
