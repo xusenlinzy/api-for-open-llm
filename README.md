@@ -20,6 +20,9 @@
 
 ## 📢 新闻
 
++ 【2024.04.18】 支持 `Code Qwen` 模型，[sql问答demo](https://github.com/xusenlinzy/api-for-open-llm/tree/master/streamlit-demo/streamlit_gallery/components/sql_chat)
+
+
 + 【2024.04.16】 支持 `Rerank` 重排序模型，[使用方式](./docs/RAG.md)
 
 
