@@ -307,6 +307,10 @@ class Llama2Template(BaseTemplate):
             "{% endif %}"
             "{% endfor %}"
         )
+        template = template.replace("USE_DEFAULT_PROMPT", "true")
+        default_message = self.system_prompt.replace(
+            "\n", "\\n").replace("'", "\\'")
+        return template.replace("DEFAULT_SYSTEM_MESSAGE", default_message)
 
 
 class Llama3Template(BaseTemplate):
