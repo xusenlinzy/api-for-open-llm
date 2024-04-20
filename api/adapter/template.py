@@ -307,10 +307,35 @@ class Llama2Template(BaseTemplate):
             "{% endif %}"
             "{% endfor %}"
         )
-        template = template.replace("USE_DEFAULT_PROMPT", "true")
-        default_message = self.system_prompt.replace(
-            "\n", "\\n").replace("'", "\\'")
-        return template.replace("DEFAULT_SYSTEM_MESSAGE", default_message)
+
+
+class Llama3Template(BaseTemplate):
+
+    name = "llama3"
+    allow_models = ["llama3"]
+    stop = {
+        "strings": ["<|end_of_text|>", "<|eot_id|>"],
+    }
+
+    @property
+    def template(self) -> str:
+        return (
+            "{% if not add_generation_prompt is defined %}"
+            "{% endif %}"
+            "{% set loop_messages = messages %}"
+            "{% for message in loop_messages %}"
+            "{% set content = '<|start_header_id|>' + message['role'] + '<|end_header_id|>\n\n' + message['content'] | trim + '<|eot_id|>' %}"
+            "{% if loop.index0 == 0 %}"
+            "{% set content = '<|begin_of_text|>' + content %}"
+            "{% endif %}"
+            "{{ content }}"
+            "{% endfor %}"
+            "{% if add_generation_prompt %}"
+            "{{ '<|start_header_id|>assistant<|end_header_id|>\n\n' }}"
+            "{% else %}"
+            "{{ '<|end_of_text|>' }}"
+            "{% endif %}"
+        )
 
 
 class ChineseAlpaca2Template(Llama2Template):
@@ -1365,6 +1390,7 @@ register_prompt_adapter(InternLMTemplate)
 register_prompt_adapter(InternLM2Template)
 
 register_prompt_adapter(Llama2Template)
+register_prompt_adapter(Llama3Template)
 
 register_prompt_adapter(MistralTemplate)
 register_prompt_adapter(MossTemplate)
@@ -1394,12 +1420,12 @@ register_prompt_adapter(ZephyrTemplate)
 register_prompt_adapter(BaseTemplate)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     chat = [
         {"role": "user", "content": "Hello, how are you?"},
         {"role": "assistant", "content": "I'm doing great. How can I help you today?"},
         {"role": "user", "content": "I'd like to show off how chat templating works!"},
     ]
-    template = get_prompt_adapter(prompt_name="mistral")
+    template = get_prompt_adapter(prompt_name="llama3")
     messages = template.postprocess_messages(chat)
     print(template.apply_chat_template(messages))
