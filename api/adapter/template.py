@@ -319,7 +319,7 @@ class Llama3Template(BaseTemplate):
     allow_models = ["llama3"]
     stop = {
         "strings": ["<|end_of_text|>", "<|eot_id|>"],
-        "token_ids" [128001, 128009],
+        "token_ids": [128001, 128009]
     }
 
     @property
