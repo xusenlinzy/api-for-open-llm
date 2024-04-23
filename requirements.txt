@@ -10,7 +10,7 @@ loguru
 transformers>=4.37.0
 peft>=0.4.0
 accelerate>=0.20.3
-sentence-transformers
+sentence-transformers>=2.7.0
 transformers_stream_generator
 cpm_kernels
 einops
