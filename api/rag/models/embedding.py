@@ -11,6 +11,7 @@ from typing import (
 import numpy as np
 from openai.types.create_embedding_response import Usage
 from sentence_transformers import SentenceTransformer
+from sentence_transformers.util import normalize_embeddings
 
 from api.utils.protocol import CreateEmbeddingResponse, Embedding
 
@@ -42,21 +43,28 @@ class RAGEmbedding(BaseEmbedding):
         texts: List[str],
         model: Optional[str] = "bce",
         encoding_format: Literal["float", "base64"] = "float",
-        embedding_size: Optional[int] = -1,
+        dimensions: Optional[int] = -1,
     ) -> CreateEmbeddingResponse:
+        dim = self.client.get_sentence_embedding_dimension()
+        use_matryoshka = bool(0 < dimensions < dim)
+
         data, total_tokens = [], 0
         batches = [texts[i: i + 1024] for i in range(0, len(texts), 1024)]
         for num_batch, batch in enumerate(batches):
             vecs = self.client.encode(
                 batch,
                 batch_size=int(os.getenv("batch_size", 32)),
-                normalize_embeddings=True,
+                normalize_embeddings=False if use_matryoshka else True,
+                convert_to_tensor=True if use_matryoshka else False,
             )
 
-            bs, dim = vecs.shape
-            if embedding_size > dim:
-                zeros = np.zeros((bs, embedding_size - dim))
+            bs = vecs.shape[0]
+            if dimensions > dim:
+                zeros = np.zeros((bs, dimensions - dim))
                 vecs = np.c_[vecs, zeros]
+            elif 0 < dimensions < dim:
+                vecs = vecs[..., :dimensions]  # Shrink the embedding dimensions
+                vecs = normalize_embeddings(vecs).numpy()
 
             if encoding_format == "base64":
                 vecs = [base64.b64encode(v.tobytes()).decode("utf-8") for v in vecs]

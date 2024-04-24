@@ -9,6 +9,7 @@ client = OpenAI(
 # compute the embedding of the text
 embedding = client.embeddings.create(
     input="你好",
-    model="bce"
+    model="aspire/acge_text_embedding",
+    dimensions=384,
 )
-print(embedding)
+print(len(embedding.data[0].embedding))

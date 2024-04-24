@@ -42,9 +42,11 @@ async def create_embeddings(
             decoding = tiktoken.model.encoding_for_model(request.model)
             request.input = [decoding.decode(text) for text in request.input]
 
+    request.dimensions = request.dimensions or getattr(SETTINGS, "embedding_size", -1)
+
     return client.embed(
         texts=request.input,
         model=request.model,
         encoding_format=request.encoding_format,
-        embedding_size=getattr(SETTINGS, "embedding_size", -1),
+        dimensions=request.dimensions,
     )
