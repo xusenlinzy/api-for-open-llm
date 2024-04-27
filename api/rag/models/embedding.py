@@ -64,7 +64,7 @@ class RAGEmbedding(BaseEmbedding):
                 vecs = np.c_[vecs, zeros]
             elif 0 < dimensions < dim:
                 vecs = vecs[..., :dimensions]  # Shrink the embedding dimensions
-                vecs = normalize_embeddings(vecs).numpy()
+                vecs = normalize_embeddings(vecs).cpu().numpy()
 
             if encoding_format == "base64":
                 vecs = [base64.b64encode(v.tobytes()).decode("utf-8") for v in vecs]
