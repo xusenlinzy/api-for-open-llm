@@ -277,7 +277,7 @@ async def create_chat_completion_stream(
                 
                 choice = ChunkChoice(
                     index=i,
-                    delta=delta or ChoiceDelta(),
+                    delta=delta or ChoiceDelta(content=delta_text),
                     finish_reason=finish_reason,
                     logprobs=None,
                 )
