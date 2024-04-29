@@ -21,6 +21,6 @@ langchain>=0.1.16
 # for rag
 nltk
 rapidocr_onnxruntime
-unstructured==0.11.0
+unstructured[all-docs]
 openparse
 python-multipart
