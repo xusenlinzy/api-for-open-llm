@@ -116,11 +116,10 @@ def create_vllm_engine():
     engine_args = AsyncEngineArgs(
         model=SETTINGS.model_path,
         max_num_batched_tokens=SETTINGS.max_num_batched_tokens if SETTINGS.max_num_batched_tokens > 0 else None,
-        max_seq_len_to_capture=SETTINGS.context_length if SETTINGS.context_length > 0 else None,
+        max_model_len=SETTINGS.context_length if SETTINGS.context_length > 0 else None,
         quantization=SETTINGS.quantization_method,
         max_cpu_loras=SETTINGS.max_cpu_loras if SETTINGS.max_cpu_loras > 0 else None,
         disable_log_stats=SETTINGS.vllm_disable_log_stats,
-        max_context_len_to_capture=None,
         **kwargs,
     )
     engine = AsyncLLMEngine.from_engine_args(engine_args)
