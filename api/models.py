@@ -107,7 +107,7 @@ def create_vllm_engine():
         "gpu_memory_utilization",
         "max_num_seqs",
         "enforce_eager",
-        "max_context_len_to_capture",
+        "max_seq_len_to_capture",
         "max_loras",
         "max_lora_rank",
         "lora_extra_vocab_size",
