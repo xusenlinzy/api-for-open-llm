@@ -203,8 +203,8 @@ class VLLMSetting(BaseModel):
         default=get_bool_env("ENFORCE_EAGER"),
         description="Always use eager-mode PyTorch. If False, will use eager mode and CUDA graph in hybrid for maximal performance and flexibility."
     )
-    max_context_len_to_capture: Optional[int] = Field(
-        default=int(get_env("MAX_CONTEXT_LEN_TO_CAPTURE", 8192)),
+    max_seq_len_to_capture: Optional[int] = Field(
+        default=int(get_env("MAX_SEQ_LEN_TO_CAPTURE", 8192)),
         description="aximum context length covered by CUDA graphs. When a sequence has context length larger than this, we fall back to eager mode."
     )
     max_loras: Optional[int] = Field(
