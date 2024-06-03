@@ -430,6 +430,8 @@ class CompletionCreateParams(BaseModel):
 
     guided_grammar: Optional[str] = None
 
+    guided_decoding_backend: Optional[str] = "lm-format-enforcer"
+
 
 class EmbeddingCreateParams(BaseModel):
     input: Union[str, List[str], List[int], List[List[int]]]
