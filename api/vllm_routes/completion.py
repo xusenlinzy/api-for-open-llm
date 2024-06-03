@@ -145,6 +145,7 @@ async def create_completion(
             from vllm.model_executor.guided_decoding import get_guided_decoding_logits_processor
             guided_decode_logits_processor = (
                 await get_guided_decoding_logits_processor(
+                    request.guided_decoding_backend,
                     request,
                     engine.tokenizer,
                 )
