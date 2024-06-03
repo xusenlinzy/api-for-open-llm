@@ -205,7 +205,7 @@ class VLLMSetting(BaseModel):
     )
     max_seq_len_to_capture: Optional[int] = Field(
         default=int(get_env("MAX_SEQ_LEN_TO_CAPTURE", 8192)),
-        description="aximum context length covered by CUDA graphs. When a sequence has context length larger than this, we fall back to eager mode."
+        description="Maximum context length covered by CUDA graphs. When a sequence has context length larger than this, we fall back to eager mode."
     )
     max_loras: Optional[int] = Field(
         default=int(get_env("MAX_LORAS", 1)),
