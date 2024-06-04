@@ -104,26 +104,47 @@ async def create_chat_completion(
 
         try:
             from vllm.model_executor.guided_decoding import get_guided_decoding_logits_processor
-            guided_decode_logits_processor = (
-                await get_guided_decoding_logits_processor(
-                    request.guided_decoding_backend,
-                    request,
-                    engine.tokenizer,
+
+            try:
+                guided_decode_logits_processor = (
+                    await get_guided_decoding_logits_processor(
+                        request.guided_decoding_backend,
+                        request,
+                        engine.tokenizer,
+                    )
                 )
-            )
+            except TypeError:
+                guided_decode_logits_processor = (
+                    await get_guided_decoding_logits_processor(
+                        request,
+                        engine.tokenizer,
+                    )
+                )
             if guided_decode_logits_processor:
                 sampling_params.logits_processors = sampling_params.logits_processors or []
                 sampling_params.logits_processors.append(guided_decode_logits_processor)
         except ImportError:
             pass
 
-        result_generator = engine.model.generate(
-            prompt if isinstance(prompt, str) else None,
-            sampling_params,
-            request_id,
-            token_ids,
-            lora_request,
-        )
+        try:
+            result_generator = engine.model.generate(
+                {
+                    "prompt": prompt if isinstance(prompt, str) else None,
+                    "prompt_token_ids": token_ids,
+                },
+                sampling_params,
+                request_id,
+                lora_request,
+            )
+        except TypeError:
+            result_generator = engine.model.generate(
+                prompt if isinstance(prompt, str) else None,
+                sampling_params,
+                request_id,
+                token_ids,
+                lora_request,
+            )
+
     except ValueError as e:
         traceback.print_exc()
 

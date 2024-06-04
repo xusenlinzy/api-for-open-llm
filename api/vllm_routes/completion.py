@@ -143,13 +143,22 @@ async def create_completion(
 
         try:
             from vllm.model_executor.guided_decoding import get_guided_decoding_logits_processor
-            guided_decode_logits_processor = (
-                await get_guided_decoding_logits_processor(
-                    request.guided_decoding_backend,
-                    request,
-                    engine.tokenizer,
+
+            try:
+                guided_decode_logits_processor = (
+                    await get_guided_decoding_logits_processor(
+                        request.guided_decoding_backend,
+                        request,
+                        engine.tokenizer,
+                    )
                 )
-            )
+            except TypeError:
+                guided_decode_logits_processor = (
+                    await get_guided_decoding_logits_processor(
+                        request,
+                        engine.tokenizer,
+                    )
+                )
             if guided_decode_logits_processor:
                 sampling_params.logits_processors = sampling_params.logits_processors or []
                 sampling_params.logits_processors.append(guided_decode_logits_processor)
@@ -165,15 +174,26 @@ async def create_completion(
             else:
                 input_ids = engine.convert_to_inputs(prompt=prompt, max_tokens=request.max_tokens)
 
-            generators.append(
-                engine.model.generate(
+            try:
+                generator = engine.model.generate(
+                    {
+                        "prompt": prompt,
+                        "prompt_token_ids": input_ids,
+                    },
+                    sampling_params,
+                    request_id,
+                    lora_request,
+                )
+            except TypeError:
+                generator = engine.model.generate(
                     prompt,
                     sampling_params,
                     f"{request_id}-{i}",
                     prompt_token_ids=input_ids,
                     lora_request=lora_request
                 )
-            )
+
+            generators.append(generator)
     except ValueError as e:
         traceback.print_exc()
 
