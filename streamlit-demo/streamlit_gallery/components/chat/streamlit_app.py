@@ -1,5 +1,3 @@
-import os
-
 import streamlit as st
 from openai import OpenAI
 
@@ -8,8 +6,8 @@ def main():
     st.title("💬 Chatbot")
 
     client = OpenAI(
-        api_key=os.getenv("API_KEY"),
-        base_url=os.getenv("CHAT_API_BASE"),
+        api_key=st.session_state.get("api_key", "xxx"),
+        base_url=st.session_state.get("base_url", "xxx"),
     )
 
     if "messages" not in st.session_state:
@@ -28,7 +26,7 @@ def main():
             message_placeholder = st.empty()
             full_response = ""
             for response in client.chat.completions.create(
-                model="baichuan",
+                model=st.session_state.get("model_name", "xxx"),
                 messages=[
                     {
                         "role": m["role"],

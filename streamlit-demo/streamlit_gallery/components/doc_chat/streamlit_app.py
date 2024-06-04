@@ -14,11 +14,6 @@ def main():
 
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-    client = OpenAI(
-        api_key=os.getenv("API_KEY"),
-        base_url=os.getenv("CHAT_API_BASE"),
-    )
-
     @st.cache_resource
     def load_doc_server():
         embeddings = OpenAIEmbeddings(
@@ -63,6 +58,11 @@ def main():
         return table_name
 
     st.title("💬 Document Chatbot")
+
+    client = OpenAI(
+        api_key=st.session_state.get("api_key", "xxx"),
+        base_url=st.session_state.get("base_url", "xxx"),
+    )
 
     col1, col2, col3 = st.columns([3, 3, 4])
 
@@ -149,7 +149,7 @@ def main():
             message_placeholder = st.empty()
             full_response = ""
             pyload = dict(
-                model="qwen2",
+                model=st.session_state.get("model_name", "xxx"),
                 messages=[
                     {
                         "role": m["role"],

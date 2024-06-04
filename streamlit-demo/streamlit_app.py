@@ -42,6 +42,19 @@ def main():
         if st.button("🗑️ 清空消息"):
             st.session_state.messages = []
 
+        with st.expander("✨ 模型配置", False):
+            model_name = st.text_input(label="模型名称")
+            base_url = st.text_input(label="模型接口地址", value=os.getenv("CHAT_API_BASE"))
+            api_key = st.text_input(label="API KEY", value=os.getenv("API_KEY", "xxx"))
+
+            st.session_state.update(
+                dict(
+                    model_name=model_name,
+                    base_url=base_url,
+                    api_key=api_key,
+                )
+            )
+
         with st.expander("🐧 参数配置", False):
             max_tokens = st.slider("回复最大token数量", 20, 4096, 1024)
             temperature = st.slider("温度", 0.0, 1.0, 0.9)
