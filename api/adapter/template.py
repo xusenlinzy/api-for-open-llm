@@ -554,6 +554,106 @@ class Chatglm3Template(BaseTemplate):
         return output, content
 
 
+class Chatglm4Template(BaseTemplate):
+
+    name = "chatglm4"
+    allow_models = ["chatglm4"]
+    stop = {
+        "strings": ["<|endoftext|>", "<user>", "<|observation|>"],
+        "token_ids": [151329, 151336, 151338],
+    }
+    function_call_available = True
+
+    def match(self, name) -> bool:
+        return name == "chatglm4"
+
+    def postprocess_messages(
+        self,
+        messages: List[ChatCompletionMessageParam],
+        functions: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
+        tools: Optional[List[Dict[str, Any]]] = None,
+    ) -> List[Dict[str, Any]]:
+        _messages = messages
+        messages = []
+        msg_has_sys = False
+
+        if functions or tools:
+            messages.append(
+                {
+                    "role": Role.SYSTEM,
+                    "content": None,
+                    "tools": functions or [t["function"] for t in tools]
+                }
+            )
+
+        for m in _messages:
+            role, content, func_call = m["role"], m["content"], m.get("function_call")
+            if role == Role.FUNCTION:
+                messages.append(
+                    {
+                        "role": "observation",
+                        "content": content
+                    }
+                )
+            elif role == "assistant" and func_call is not None:
+                for response in content.split(""):
+                    metadata, sub_content = response.split("\n", maxsplit=1)
+                    messages.append(
+                        {
+                            "role": role,
+                            "metadata": metadata,
+                            "content": sub_content.strip()
+                        }
+                    )
+            else:
+                if role == "system" and msg_has_sys:
+                    msg_has_sys = False
+                    continue
+                messages.append({"role": role, "content": content})
+
+        return messages
+
+    def parse_assistant_response(
+        self,
+        output: str,
+        functions: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
+        tools: Optional[List[Dict[str, Any]]] = None,
+    ) -> Tuple[str, Optional[Union[str, Dict[str, Any]]]]:
+        content = ""
+        for response in output.split(""):
+            if "\n" in response:
+                metadata, content = response.split("\n", maxsplit=1)
+            else:
+                metadata, content = "", response
+
+            if not metadata.strip():
+                content = content.strip()
+            else:
+                if functions or tools:
+                    content = "\n".join(content.split("\n")[1:-1])
+                    parameters = eval(content)
+                    if functions:
+                        content = {
+                            "name": metadata.strip(),
+                            "arguments": json.dumps(parameters, ensure_ascii=False)
+                        }
+                    else:
+                        content = {
+                            "function": {
+                                "name": metadata.strip(),
+                                "arguments": json.dumps(parameters, ensure_ascii=False)
+                            },
+                            "id": metadata.strip(),
+                            "type": "function",
+                        }
+                else:
+                    content = {
+                        "name": metadata.strip(),
+                        "content": content
+                    }
+        return output, content
+
+
 class MossTemplate(BaseTemplate):
 
     name = "moss"
@@ -1381,6 +1481,7 @@ register_prompt_adapter(BlueLMTemplate)
 register_prompt_adapter(ChatglmTemplate)
 register_prompt_adapter(Chatglm2Template)
 register_prompt_adapter(Chatglm3Template)
+register_prompt_adapter(Chatglm4Template)
 register_prompt_adapter(ChineseAlpaca2Template)
 
 register_prompt_adapter(DeepseekTemplate)
@@ -1431,6 +1532,6 @@ if __name__ == "__main__":
         {"role": "assistant", "content": "I'm doing great. How can I help you today?"},
         {"role": "user", "content": "I'd like to show off how chat templating works!"},
     ]
-    template = get_prompt_adapter(prompt_name="llama3")
+    template = get_prompt_adapter(prompt_name="chatglm4")
     messages = template.postprocess_messages(chat)
     print(template.apply_chat_template(messages))

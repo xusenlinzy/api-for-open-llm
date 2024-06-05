@@ -197,6 +197,12 @@ class VllmEngine:
             return self.tokenizer.build_chat_input(
                 query, history=messages[:-1], role=role
             )["input_ids"][0].tolist()
+        elif "chatglm4" in self.model_name:
+            return self.tokenizer.apply_chat_template(
+                messages,
+                add_generation_prompt=True,
+                tokenize=False,
+            )
         elif self.model_name.startswith("qwen") and ("qwen1.5" not in self.model_name) and ("qwen2" not in self.model_name):
             return build_qwen_chat_input(
                 self.tokenizer,

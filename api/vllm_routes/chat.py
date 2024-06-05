@@ -105,10 +105,12 @@ async def create_chat_completion(
         try:
             from vllm.model_executor.guided_decoding import get_guided_decoding_logits_processor
 
+            decoding_config = await engine.model.get_decoding_config()
+
             try:
                 guided_decode_logits_processor = (
                     await get_guided_decoding_logits_processor(
-                        request.guided_decoding_backend,
+                        request.guided_decoding_backend or decoding_config.guided_decoding_backend,
                         request,
                         engine.tokenizer,
                     )
