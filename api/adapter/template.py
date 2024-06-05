@@ -582,13 +582,13 @@ class Chatglm4Template(BaseTemplate):
                 {
                     "role": Role.SYSTEM,
                     "content": None,
-                    "tools": functions or [t["function"] for t in tools]
+                    "tools": tools or [{"type": "function", "function": f} for f in functions]
                 }
             )
 
         for m in _messages:
             role, content, func_call = m["role"], m["content"], m.get("function_call")
-            if role == Role.FUNCTION:
+            if role in [Role.FUNCTION, Role.TOOL]:
                 messages.append(
                     {
                         "role": "observation",
@@ -596,8 +596,11 @@ class Chatglm4Template(BaseTemplate):
                     }
                 )
             elif role == "assistant" and func_call is not None:
-                for response in content.split(""):
-                    metadata, sub_content = response.split("\n", maxsplit=1)
+                for response in content.split("<|assistant|>"):
+                    if "\n" in response:
+                        metadata, sub_content = response.split("\n", maxsplit=1)
+                    else:
+                        metadata, sub_content = "", response
                     messages.append(
                         {
                             "role": role,
@@ -620,7 +623,7 @@ class Chatglm4Template(BaseTemplate):
         tools: Optional[List[Dict[str, Any]]] = None,
     ) -> Tuple[str, Optional[Union[str, Dict[str, Any]]]]:
         content = ""
-        for response in output.split(""):
+        for response in output.split("<|assistant|>"):
             if "\n" in response:
                 metadata, content = response.split("\n", maxsplit=1)
             else:
@@ -630,8 +633,7 @@ class Chatglm4Template(BaseTemplate):
                 content = content.strip()
             else:
                 if functions or tools:
-                    content = "\n".join(content.split("\n")[1:-1])
-                    parameters = eval(content)
+                    parameters = eval(content.strip())
                     if functions:
                         content = {
                             "name": metadata.strip(),
