@@ -86,7 +86,6 @@ def create_hf_llm():
         model_name=SETTINGS.model_name,
         context_len=SETTINGS.context_length if SETTINGS.context_length > 0 else None,
         prompt_name=SETTINGS.chat_template,
-        use_streamer_v2=SETTINGS.use_streamer_v2,
     )
 
 

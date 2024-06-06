@@ -42,7 +42,7 @@ from api.generation import (
     generate_stream_chatglm_v3,
     build_qwen_chat_input,
     check_is_qwen,
-    generate_stream,
+    generate_stream_v2,
     build_xverse_chat_input,
     check_is_xverse,
 )
@@ -65,7 +65,6 @@ class DefaultEngine(ABC):
         model_name: str,
         context_len: Optional[int] = None,
         prompt_name: Optional[str] = None,
-        use_streamer_v2: Optional[bool] = False,
     ) -> None:
         """
         Initialize the Default class.
@@ -76,7 +75,6 @@ class DefaultEngine(ABC):
             model_name (str): The name of the model.
             context_len (Optional[int], optional): The length of the context. Defaults to None.
             prompt_name (Optional[str], optional): The name of the prompt. Defaults to None.
-            use_streamer_v2 (Optional[bool], optional): Whether to use Streamer V2. Defaults to False.
         """
         self.model = model
         self.tokenizer = tokenizer
@@ -85,7 +83,6 @@ class DefaultEngine(ABC):
         self.model_name = model_name.lower()
         self.prompt_name = prompt_name.lower() if prompt_name is not None else None
         self.context_len = context_len
-        self.use_streamer_v2 = use_streamer_v2
 
         self.prompt_adapter = get_prompt_adapter(self.model_name, prompt_name=self.prompt_name)
 
@@ -101,10 +98,11 @@ class DefaultEngine(ABC):
         3. Checks and constructs the prompt.
         4. Sets the context length if it is not already set.
         """
-        self.generate_stream_func = generate_stream
+        self.generate_stream_func = generate_stream_v2
         if "chatglm3" in self.model_name:
             self.generate_stream_func = generate_stream_chatglm_v3
-            self.use_streamer_v2 = False
+        elif "chatglm4" in self.model_name:
+            self.generate_stream_func = generate_stream_v2
         elif check_is_chatglm(self.model):
             self.generate_stream_func = generate_stream_chatglm
         elif check_is_qwen(self.model):
@@ -118,7 +116,10 @@ class DefaultEngine(ABC):
     def _check_construct_prompt(self) -> None:
         """ Check whether to need to construct prompts or inputs. """
         self.construct_prompt = self.prompt_name is not None
-        if "chatglm3" in self.model_name:
+        if "chatglm4" in self.model_name:
+            self.construct_prompt = False
+            logger.info("Using ChatGLM4 Model for Chat!")
+        elif "chatglm3" in self.model_name:
             logger.info("Using ChatGLM3 Model for Chat!")
         elif check_is_baichuan(self.model):
             logger.info("Using Baichuan Model for Chat!")
@@ -246,6 +247,12 @@ class DefaultEngine(ABC):
         if "chatglm3" in self.model_name:
             query, role = messages[-1]["content"], messages[-1]["role"]
             inputs = self.tokenizer.build_chat_input(query, history=messages[:-1], role=role)
+        elif "chatglm4" in self.model_name:
+            inputs = self.tokenizer.apply_chat_template(
+                messages,
+                add_generation_prompt=True,
+                tokenize=True,
+            )[0]
         elif check_is_baichuan(self.model):
             inputs = build_baichuan_chat_input(
                 self.tokenizer, messages, self.context_len, max_new_tokens
