@@ -96,7 +96,7 @@ def create_vllm_engine():
         from vllm.engine.async_llm_engine import AsyncLLMEngine
         from api.core.vllm_engine import VllmEngine, LoRA
     except ImportError:
-        return None
+        raise ValueError("VLLM engine not available")
 
     include = {
         "tokenizer_mode",
@@ -146,7 +146,7 @@ def create_llama_cpp_engine():
         from llama_cpp import Llama
         from api.core.llama_cpp_engine import LlamaCppEngine
     except ImportError:
-        return None
+        raise ValueError("Llama cpp engine not available")
 
     include = {
         "n_gpu_layers",
@@ -172,12 +172,12 @@ def create_llama_cpp_engine():
 
 
 def create_tgi_engine():
-    """ get llama.cpp generate engine for chat or completion. """
+    """ get tgi generate engine for chat or completion. """
     try:
         from text_generation import AsyncClient
         from api.core.tgi import TGIEngine
     except ImportError:
-        return None
+        raise ValueError("TGI engine not available")
 
     client = AsyncClient(SETTINGS.tgi_endpoint)
     logger.info("Using TGI engine")
