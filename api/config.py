@@ -224,6 +224,9 @@ class VLLMSetting(BaseModel):
     lora_modules: Optional[str] = Field(
         default=get_env("LORA_MODULES", ""),
     )
+    disable_custom_all_reduce: Optional[bool] = Field(
+        default=get_bool_env("DISABLE_CUSTOM_ALL_REDUCE"),
+    )
     vllm_disable_log_stats: Optional[bool] = Field(
         default=get_bool_env("VLLM_DISABLE_LOG_STATS", "true"),
     )

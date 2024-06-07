@@ -112,6 +112,7 @@ def create_vllm_engine():
         "max_loras",
         "max_lora_rank",
         "lora_extra_vocab_size",
+        "disable_custom_all_reduce",
     }
 
     if vllm_version >= "0.4.3":
