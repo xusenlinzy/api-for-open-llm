@@ -15,10 +15,9 @@ docker build -f docker/Dockerfile.vllm -t llm-api:vllm .
 安装依赖，确保安装顺序严格按照下面的命令：
 
 ```shell
-pip install torch==2.1.0
-pip install vllm==0.4.2
+pip install vllm==0.4.3
 pip install -r requirements.txt 
-pip uninstall transformer-engine -y
+# pip uninstall transformer-engine -y
 ```
 
 ## 启动模型
