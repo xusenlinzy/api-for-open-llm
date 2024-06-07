@@ -5,6 +5,7 @@ from functools import partial
 from typing import AsyncIterator
 
 import anyio
+import vllm
 from fastapi import APIRouter, Depends, status
 from fastapi import HTTPException, Request
 from loguru import logger
@@ -38,6 +39,7 @@ from api.utils.request import (
 )
 
 chat_router = APIRouter(prefix="/chat")
+vllm_version = vllm.__version__
 
 
 def get_engine():
@@ -105,9 +107,8 @@ async def create_chat_completion(
         try:
             from vllm.model_executor.guided_decoding import get_guided_decoding_logits_processor
 
-            decoding_config = await engine.model.get_decoding_config()
-
-            try:
+            if vllm_version >= "0.4.3":
+                decoding_config = await engine.model.get_decoding_config()
                 guided_decode_logits_processor = (
                     await get_guided_decoding_logits_processor(
                         request.guided_decoding_backend or decoding_config.guided_decoding_backend,
@@ -115,7 +116,7 @@ async def create_chat_completion(
                         engine.tokenizer,
                     )
                 )
-            except TypeError:
+            else:
                 guided_decode_logits_processor = (
                     await get_guided_decoding_logits_processor(
                         request,
@@ -128,7 +129,7 @@ async def create_chat_completion(
         except ImportError:
             pass
 
-        try:
+        if vllm_version >= "0.4.3":
             result_generator = engine.model.generate(
                 {
                     "prompt": prompt if isinstance(prompt, str) else None,
@@ -138,7 +139,7 @@ async def create_chat_completion(
                 request_id,
                 lora_request,
             )
-        except TypeError:
+        else:
             result_generator = engine.model.generate(
                 prompt if isinstance(prompt, str) else None,
                 sampling_params,

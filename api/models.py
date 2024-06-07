@@ -92,11 +92,14 @@ def create_hf_llm():
 def create_vllm_engine():
     """ get vllm generate engine for chat or completion. """
     try:
+        import vllm
         from vllm.engine.arg_utils import AsyncEngineArgs
         from vllm.engine.async_llm_engine import AsyncLLMEngine
         from api.core.vllm_engine import VllmEngine, LoRA
     except ImportError:
         raise ValueError("VLLM engine not available")
+
+    vllm_version = vllm.__version__
 
     include = {
         "tokenizer_mode",
@@ -106,11 +109,14 @@ def create_vllm_engine():
         "gpu_memory_utilization",
         "max_num_seqs",
         "enforce_eager",
-        "max_seq_len_to_capture",
         "max_loras",
         "max_lora_rank",
         "lora_extra_vocab_size",
     }
+
+    if vllm_version >= "0.4.3":
+        include.add("max_seq_len_to_capture")
+
     kwargs = dictify(SETTINGS, include=include)
     engine_args = AsyncEngineArgs(
         model=SETTINGS.model_path,

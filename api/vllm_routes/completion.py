@@ -6,6 +6,7 @@ from functools import partial
 from typing import AsyncIterator, Tuple
 
 import anyio
+import vllm
 from fastapi import APIRouter, Depends
 from fastapi import Request
 from loguru import logger
@@ -27,6 +28,7 @@ from api.utils.request import (
 )
 
 completion_router = APIRouter()
+vllm_version = vllm.__version__
 
 
 def get_engine():
@@ -144,9 +146,8 @@ async def create_completion(
         try:
             from vllm.model_executor.guided_decoding import get_guided_decoding_logits_processor
 
-            decoding_config = await engine.model.get_decoding_config()
-
-            try:
+            if vllm_version >= "0.4.3":
+                decoding_config = await engine.model.get_decoding_config()
                 guided_decode_logits_processor = (
                     await get_guided_decoding_logits_processor(
                         request.guided_decoding_backend or decoding_config.guided_decoding_backend,
@@ -154,7 +155,7 @@ async def create_completion(
                         engine.tokenizer,
                     )
                 )
-            except TypeError:
+            else:
                 guided_decode_logits_processor = (
                     await get_guided_decoding_logits_processor(
                         request,
@@ -176,7 +177,7 @@ async def create_completion(
             else:
                 input_ids = engine.convert_to_inputs(prompt=prompt, max_tokens=request.max_tokens)
 
-            try:
+            if vllm_version >= "0.4.3":
                 generator = engine.model.generate(
                     {
                         "prompt": prompt,
@@ -186,7 +187,7 @@ async def create_completion(
                     request_id,
                     lora_request,
                 )
-            except TypeError:
+            else:
                 generator = engine.model.generate(
                     prompt,
                     sampling_params,
