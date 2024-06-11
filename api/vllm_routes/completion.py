@@ -146,7 +146,7 @@ async def create_completion(
         try:
             from vllm.model_executor.guided_decoding import get_guided_decoding_logits_processor
 
-            if vllm_version >= "0.4.3":
+            if vllm_version >= "0.4.2":
                 decoding_config = await engine.model.get_decoding_config()
                 guided_decode_logits_processor = (
                     await get_guided_decoding_logits_processor(
