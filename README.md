@@ -27,9 +27,6 @@
 + 【2024.06.08】 已支持 `QWEN2` 模型，修改环境变量 `MODEL_NAME=qwen2`  `PROMPT_NAME=qwen2`
 
 
-+ 【2024.06.08】 已支持 `QWEN2` 模型，修改环境变量 `MODEL_NAME=qwen2`  `PROMPT_NAME=qwen2`
-
-
 + 【2024.06.05】 支持 `GLM4` 模型，修改环境变量 `MODEL_NAME=chatglm4`  `PROMPT_NAME=chatglm4`
 
 
