@@ -1,9 +1,10 @@
 from typing import List, Optional
 
-from langchain.chains.sql_database.query import create_sql_query_chain
+from langchain.chains.sql_database.prompt import SQL_PROMPTS
 from langchain_community.utilities.sql_database import SQLDatabase
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import PromptTemplate
+from langchain_core.runnables import RunnablePassthrough
 from langchain_openai import ChatOpenAI
 
 answer_prompt = PromptTemplate.from_template(
@@ -38,9 +39,37 @@ def create_sql_query(
         openai_api_key="xxx"
     )
 
-    write = create_sql_query_chain(llm, db)
+    prompt_to_use = SQL_PROMPTS[db.dialect]
+    if {"input", "top_k", "table_info"}.difference(prompt_to_use.input_variables):
+        raise ValueError(
+            f"Prompt must have input variables: 'input', 'top_k', "
+            f"'table_info'. Received prompt with input variables: "
+            f"{prompt_to_use.input_variables}. Full prompt:\n\n{prompt_to_use}"
+        )
+    if "dialect" in prompt_to_use.input_variables:
+        prompt_to_use = prompt_to_use.partial(dialect=db.dialect)
 
-    sql_query = write.invoke(question)
+    inputs = {
+        "input": lambda x: x["question"] + "\nSQLQuery: ",
+        "table_info": lambda x: db.get_table_info(
+            table_names=x.get("table_names_to_use")
+        ),
+    }
+    write = (
+        RunnablePassthrough.assign(**inputs)  # type: ignore
+        | (
+            lambda x: {
+                k: v
+                for k, v in x.items()
+                if k not in ("question", "table_names_to_use")
+            }
+        )
+        | prompt_to_use.partial(top_k=str(5))
+        | llm.bind(stop=["\nSQLResult:", "SQLResult"])
+        | StrOutputParser()
+    )
+
+    sql_query = write.invoke(question).strip()
     sql_result = db.run(sql_query, fetch="cursor")
 
     return sql_query, sql_result
