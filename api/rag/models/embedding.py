@@ -13,7 +13,7 @@ from openai.types.create_embedding_response import Usage
 from sentence_transformers import SentenceTransformer
 from sentence_transformers.util import normalize_embeddings
 
-from api.utils.protocol import CreateEmbeddingResponse, Embedding
+from api.protocol import CreateEmbeddingResponse, Embedding
 
 
 class BaseEmbedding(ABC):

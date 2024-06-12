@@ -10,7 +10,7 @@ import torch
 from loguru import logger
 from sentence_transformers import CrossEncoder
 
-from api.utils.protocol import (
+from api.protocol import (
     DocumentObj,
     Document,
     RerankResponse,

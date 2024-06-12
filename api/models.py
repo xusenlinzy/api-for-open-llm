@@ -4,8 +4,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 
+from api.common import dictify
 from api.config import SETTINGS
-from api.utils.compat import dictify
 
 
 def create_app() -> FastAPI:
@@ -61,7 +61,7 @@ def create_rag_models():
 
 def create_hf_llm():
     """ get generate model for chat or completion. """
-    from api.core.default import DefaultEngine
+    from api.engine.hf import HuggingFaceEngine
     from api.adapter.loader import load_model_and_tokenizer
 
     include = {
@@ -78,14 +78,14 @@ def create_hf_llm():
         model_name_or_path=SETTINGS.model_path, **kwargs,
     )
 
-    logger.info("Using default engine")
+    logger.info("Using HuggingFace Engine")
 
-    return DefaultEngine(
+    return HuggingFaceEngine(
         model,
         tokenizer,
         model_name=SETTINGS.model_name,
-        context_len=SETTINGS.context_length if SETTINGS.context_length > 0 else None,
-        prompt_name=SETTINGS.chat_template,
+        max_model_length=SETTINGS.context_length if SETTINGS.context_length > 0 else None,
+        template_name=SETTINGS.chat_template,
     )
 
 
@@ -95,7 +95,7 @@ def create_vllm_engine():
         import vllm
         from vllm.engine.arg_utils import AsyncEngineArgs
         from vllm.engine.async_llm_engine import AsyncLLMEngine
-        from api.core.vllm_engine import VllmEngine, LoRA
+        from api.engine.vllm_engine import VllmEngine
     except ImportError:
         raise ValueError("VLLM engine not available")
 
@@ -109,8 +109,6 @@ def create_vllm_engine():
         "gpu_memory_utilization",
         "max_num_seqs",
         "enforce_eager",
-        "max_loras",
-        "max_lora_rank",
         "lora_extra_vocab_size",
         "disable_custom_all_reduce",
     }
@@ -133,63 +131,11 @@ def create_vllm_engine():
 
     logger.info("Using vllm engine")
 
-    lora_modules = []
-    for item in SETTINGS.lora_modules.strip().split("+"):
-        if "=" in item:
-            name, path = item.split("=")
-            lora_modules.append(LoRA(name, path))
-
     return VllmEngine(
         engine,
         SETTINGS.model_name,
         SETTINGS.chat_template,
-        lora_modules=lora_modules,
     )
-
-
-def create_llama_cpp_engine():
-    """ get llama.cpp generate engine for chat or completion. """
-    try:
-        from llama_cpp import Llama
-        from api.core.llama_cpp_engine import LlamaCppEngine
-    except ImportError:
-        raise ValueError("Llama cpp engine not available")
-
-    include = {
-        "n_gpu_layers",
-        "main_gpu",
-        "tensor_split",
-        "n_batch",
-        "n_threads",
-        "n_threads_batch",
-        "rope_scaling_type",
-        "rope_freq_base",
-        "rope_freq_scale",
-    }
-    kwargs = dictify(SETTINGS, include=include)
-    engine = Llama(
-        model_path=SETTINGS.model_path,
-        n_ctx=SETTINGS.context_length if SETTINGS.context_length > 0 else 2048,
-        **kwargs,
-    )
-
-    logger.info("Using llama.cpp engine")
-
-    return LlamaCppEngine(engine, SETTINGS.model_name, SETTINGS.chat_template)
-
-
-def create_tgi_engine():
-    """ get tgi generate engine for chat or completion. """
-    try:
-        from text_generation import AsyncClient
-        from api.core.tgi import TGIEngine
-    except ImportError:
-        raise ValueError("TGI engine not available")
-
-    client = AsyncClient(SETTINGS.tgi_endpoint)
-    logger.info("Using TGI engine")
-
-    return TGIEngine(client, SETTINGS.model_name, SETTINGS.chat_template)
 
 
 # fastapi app
@@ -204,12 +150,5 @@ if "llm" in SETTINGS.tasks and SETTINGS.activate_inference:
         LLM_ENGINE = create_hf_llm()
     elif SETTINGS.engine == "vllm":
         LLM_ENGINE = create_vllm_engine()
-    elif SETTINGS.engine == "llama.cpp":
-        LLM_ENGINE = create_llama_cpp_engine()
-    elif SETTINGS.engine == "tgi":
-        LLM_ENGINE = create_tgi_engine()
 else:
     LLM_ENGINE = None
-
-# model names for special processing
-EXCLUDE_MODELS = ["baichuan-13b", "baichuan2-13b", "qwen", "chatglm3"]

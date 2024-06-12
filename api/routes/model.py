@@ -6,8 +6,7 @@ from openai.types.model import Model
 from pydantic import BaseModel
 
 from api.config import SETTINGS
-from api.models import LLM_ENGINE
-from api.utils.request import check_api_key
+from api.utils import check_api_key
 
 model_router = APIRouter()
 
@@ -36,14 +35,7 @@ available_models = ModelList(
     status_code=status.HTTP_200_OK,
 )
 async def show_available_models():
-    res = available_models
-    exists = [m.id for m in res.data]
-    if SETTINGS.engine == "vllm":
-        models = await LLM_ENGINE.show_available_models()
-        for m in models.data:
-            if m.id not in exists:
-                res.data.append(m)
-    return res
+    return available_models
 
 
 @model_router.get(

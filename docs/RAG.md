@@ -24,6 +24,10 @@ DTYPE=auto
 TASKS=llm,rag
 ```
 
+`TASK` 参数解释：
+
+`llm` 表示启动对话大模型，`rag` 表示启动文档文档相关接口，比如`embedding`、`rerank`
+
 ### 相关接口说明文档
 
 待完善

@@ -1,4 +1,4 @@
-from enum import Enum
+import enum
 from typing import (
     Optional,
     Dict,
@@ -17,13 +17,44 @@ from openai.types.chat.completion_create_params import FunctionCall, ResponseFor
 from openai.types.create_embedding_response import Usage
 from pydantic import BaseModel
 
+CONTROLLER_HEART_BEAT_EXPIRATION = 90
+WORKER_HEART_BEAT_INTERVAL = 30
+WORKER_API_TIMEOUT = 20
 
-class Role(str, Enum):
+
+class Role(str, enum.Enum):
     USER = "user"
     ASSISTANT = "assistant"
     SYSTEM = "system"
     FUNCTION = "function"
     TOOL = "tool"
+
+
+class ErrorCode(enum.IntEnum):
+    """
+    https://platform.openai.com/docs/guides/error-codes/api-errors
+    """
+
+    VALIDATION_TYPE_ERROR = 40001
+
+    INVALID_AUTH_KEY = 40101
+    INCORRECT_AUTH_KEY = 40102
+    NO_PERMISSION = 40103
+
+    INVALID_MODEL = 40301
+    PARAM_OUT_OF_RANGE = 40302
+    CONTEXT_OVERFLOW = 40303
+
+    RATE_LIMIT = 42901
+    QUOTA_EXCEEDED = 42902
+    ENGINE_OVERLOADED = 42903
+
+    INTERNAL_ERROR = 50001
+    CUDA_OUT_OF_MEMORY = 50002
+    GRADIO_REQUEST_ERROR = 50003
+    GRADIO_STREAM_UNKNOWN_ERROR = 50004
+    CONTROLLER_NO_WORKER = 50005
+    CONTROLLER_WORKER_TIMEOUT = 50006
 
 
 class ErrorResponse(BaseModel):
@@ -363,6 +394,26 @@ class CompletionCreateParams(BaseModel):
     0.2 will make it more focused and deterministic.
 
     We generally recommend altering this or `top_p` but not both.
+    """
+
+    tool_choice: Optional[ChatCompletionToolChoiceOptionParam] = None
+    """
+    Controls which (if any) function is called by the model. `none` means the model
+    will not call a function and instead generates a message. `auto` means the model
+    can pick between generating a message or calling a function. Specifying a
+    particular function via
+    `{"type: "function", "function": {"name": "my_function"}}` forces the model to
+    call that function.
+
+    `none` is the default when no functions are present. `auto` is the default if
+    functions are present.
+    """
+
+    tools: Optional[List] = None
+    """A list of tools the model may call.
+
+    Currently, only functions are supported as a tool. Use this to provide a list of
+    functions the model may generate JSON inputs for.
     """
 
     top_p: Optional[float] = 1.

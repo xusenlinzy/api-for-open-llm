@@ -1,4 +1,3 @@
-import asyncio
 import time
 import traceback
 import uuid
@@ -16,13 +15,14 @@ from openai.types.completion_usage import CompletionUsage
 from sse_starlette import EventSourceResponse
 from vllm.outputs import RequestOutput
 from vllm.sampling_params import SamplingParams
+from vllm.utils import merge_async_iterators
 
-from api.core.vllm_engine import VllmEngine
+from api.common import dictify
+from api.engine.vllm_engine import VllmEngine
 from api.models import LLM_ENGINE
-from api.utils.compat import dictify
-from api.utils.protocol import CompletionCreateParams
-from api.utils.request import (
-    handle_request,
+from api.protocol import CompletionCreateParams
+from api.utils import (
+    check_completion_requests,
     get_event_publisher,
     check_api_key,
 )
@@ -59,41 +59,6 @@ def parse_prompt_format(prompt) -> Tuple[bool, list]:
     return prompt_is_tokens, prompts
 
 
-def merge_async_iterators(*iterators):
-    """Merge multiple asynchronous iterators into a single iterator.
-
-    This method handle the case where some iterators finish before others.
-    When it yields, it yields a tuple (i, item) where i is the index of the
-    iterator that yields the item.
-    """
-    queue = asyncio.Queue()
-
-    finished = [False] * len(iterators)
-
-    async def producer(i, iterator):
-        try:
-            async for item in iterator:
-                await queue.put((i, item))
-        except Exception as e:
-            await queue.put(e)
-        finished[i] = True
-
-    _tasks = [
-        asyncio.create_task(producer(i, iterator))
-        for i, iterator in enumerate(iterators)
-    ]
-
-    async def consumer():
-        while not all(finished) or not queue.empty():
-            item = await queue.get()
-            if isinstance(item, Exception):
-                raise item
-            yield item
-        await asyncio.gather(*_tasks)
-
-    return consumer()
-
-
 @completion_router.post("/completions", dependencies=[Depends(check_api_key)])
 async def create_completion(
     request: CompletionCreateParams,
@@ -106,7 +71,12 @@ async def create_completion(
     for the API specification. This API mimics the OpenAI Completion API.
     """
     request.max_tokens = request.max_tokens or 128
-    request = await handle_request(request, engine.prompt_adapter.stop, chat=False)
+    request = await check_completion_requests(
+        request,
+        engine.template.stop,
+        engine.template.stop_token_ids,
+        chat=False,
+    )
 
     if isinstance(request.prompt, list):
         request.prompt = request.prompt[0]
@@ -141,7 +111,7 @@ async def create_completion(
             max_tokens=request.max_tokens,
             **kwargs,
         )
-        lora_request = engine._maybe_get_lora(request.model)
+        lora_request = None
 
         try:
             from vllm.model_executor.guided_decoding import get_guided_decoding_logits_processor
@@ -173,14 +143,14 @@ async def create_completion(
 
         for i, prompt in enumerate(prompts):
             if prompt_is_tokens:
-                input_ids = engine.convert_to_inputs(token_ids=prompt, max_tokens=request.max_tokens)
+                input_ids = prompt
             else:
-                input_ids = engine.convert_to_inputs(prompt=prompt, max_tokens=request.max_tokens)
+                input_ids = engine.tokenizer(prompt).input_ids
 
             if vllm_version >= "0.4.3":
                 generator = engine.model.generate(
                     {
-                        "prompt": prompt,
+                        "prompt": prompt if isinstance(prompt, str) else None,
                         "prompt_token_ids": input_ids,
                     },
                     sampling_params,
@@ -249,7 +219,7 @@ async def create_completion(
                     output_text = output.text
 
                 if request.logprobs is not None:
-                    logprobs = engine.create_logprobs(
+                    logprobs = engine.create_completion_logprobs(
                         token_ids=token_ids,
                         top_logprobs=top_logprobs,
                         num_output_top_logprobs=request.logprobs,
@@ -323,7 +293,7 @@ async def create_completion_stream(
                     assert top_logprobs is not None, (
                         "top_logprobs must be provided when logprobs "
                         "is requested")
-                    logprobs = engine.create_logprobs(
+                    logprobs = engine.create_completion_logprobs(
                         token_ids=delta_token_ids,
                         top_logprobs=top_logprobs,
                         num_output_top_logprobs=request.logprobs,

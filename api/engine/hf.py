@@ -2,12 +2,11 @@ import traceback
 from abc import ABC
 from typing import (
     Optional,
-    List,
     Union,
-    Tuple,
     Dict,
     Iterator,
     Any,
+    TYPE_CHECKING,
 )
 
 import torch
@@ -18,7 +17,6 @@ from openai.types.chat import (
     ChatCompletion,
     ChatCompletionChunk,
 )
-from openai.types.chat import ChatCompletionMessageParam
 from openai.types.chat.chat_completion import Choice
 from openai.types.chat.chat_completion_chunk import Choice as ChunkChoice
 from openai.types.chat.chat_completion_chunk import (
@@ -33,241 +31,53 @@ from openai.types.completion_choice import CompletionChoice, Logprobs
 from openai.types.completion_usage import CompletionUsage
 from transformers import PreTrainedModel, PreTrainedTokenizer
 
-from api.adapter import get_prompt_adapter
-from api.generation import (
-    build_baichuan_chat_input,
-    check_is_baichuan,
-    generate_stream_chatglm,
-    check_is_chatglm,
-    generate_stream_chatglm_v3,
-    build_qwen_chat_input,
-    check_is_qwen,
-    generate_stream_v2,
-    build_xverse_chat_input,
-    check_is_xverse,
-)
-from api.generation.utils import get_context_length
-from api.utils.compat import model_validate
-from api.utils.constants import ErrorCode
-from api.utils.request import create_error_response
+from api.common import model_validate
+from api.protocol import ErrorCode
+from api.templates import get_template
+from api.templates.glm import generate_stream_chatglm, generate_stream_chatglm_v3
+from api.templates.stream import generate_stream
+from api.templates.utils import get_context_length
+from api.utils import create_error_response
+
+if TYPE_CHECKING:
+    from transformers import PreTrainedTokenizer, PreTrainedModel
 
 server_error_msg = (
     "**NETWORK ERROR DUE TO HIGH TRAFFIC. PLEASE REGENERATE OR REFRESH THIS PAGE.**"
 )
 
 
-class DefaultEngine(ABC):
+class HuggingFaceEngine(ABC):
     """ 基于原生 transformers 实现的模型引擎 """
     def __init__(
         self,
-        model: PreTrainedModel,
-        tokenizer: PreTrainedTokenizer,
+        model: "PreTrainedModel",
+        tokenizer: "PreTrainedTokenizer",
         model_name: str,
-        context_len: Optional[int] = None,
-        prompt_name: Optional[str] = None,
+        template_name: Optional[str] = None,
+        max_model_length: Optional[int] = None,
     ) -> None:
-        """
-        Initialize the Default class.
-
-        Args:
-            model (PreTrainedModel): The pre-trained model.
-            tokenizer (PreTrainedTokenizer): The tokenizer for the model.
-            model_name (str): The name of the model.
-            context_len (Optional[int], optional): The length of the context. Defaults to None.
-            prompt_name (Optional[str], optional): The name of the prompt. Defaults to None.
-        """
         self.model = model
         self.tokenizer = tokenizer
         self.device = model.device
 
         self.model_name = model_name.lower()
-        self.prompt_name = prompt_name.lower() if prompt_name is not None else None
-        self.context_len = context_len
+        self.template_name = template_name.lower() if template_name else self.model_name
+        self.max_model_length = max_model_length
 
-        self.prompt_adapter = get_prompt_adapter(self.model_name, prompt_name=self.prompt_name)
+        if self.max_model_length is None:
+            self.max_model_length = get_context_length(self.model.config)
 
-        self._prepare_for_generate()
-        self._patch_tokenizer()
+        self.template = get_template(self.template_name, self.tokenizer, self.max_model_length)
 
-    def _prepare_for_generate(self) -> None:
-        """
-        Prepare the object for text generation.
-
-        1. Sets the appropriate generate stream function based on the model name and type.
-        2. Updates the context length if necessary.
-        3. Checks and constructs the prompt.
-        4. Sets the context length if it is not already set.
-        """
-        self.generate_stream_func = generate_stream_v2
-        if "chatglm3" in self.model_name:
+        self.generate_stream_func = generate_stream
+        if "chatglm3" == self.template_name:
             self.generate_stream_func = generate_stream_chatglm_v3
-        elif "chatglm4" in self.model_name:
-            self.generate_stream_func = generate_stream_v2
-        elif check_is_chatglm(self.model):
+        elif "chatglm" == self.template_name:
             self.generate_stream_func = generate_stream_chatglm
-        elif check_is_qwen(self.model):
-            self.context_len = 8192 if self.context_len is None else self.context_len
 
-        self._check_construct_prompt()
-
-        if self.context_len is None:
-            self.context_len = get_context_length(self.model.config)
-
-    def _check_construct_prompt(self) -> None:
-        """ Check whether to need to construct prompts or inputs. """
-        self.construct_prompt = self.prompt_name is not None
-        if "chatglm4" in self.model_name:
-            self.construct_prompt = False
-            logger.info("Using ChatGLM4 Model for Chat!")
-        elif "chatglm3" in self.model_name:
-            logger.info("Using ChatGLM3 Model for Chat!")
-        elif check_is_baichuan(self.model):
-            logger.info("Using Baichuan Model for Chat!")
-        elif check_is_qwen(self.model):
-            logger.info("Using Qwen Model for Chat!")
-        elif check_is_xverse(self.model):
-            logger.info("Using Xverse Model for Chat!")
-        else:
-            self.construct_prompt = True
-
-    def _patch_tokenizer(self) -> None:
-        """ 
-        Fix the tokenizer by adding the end-of-sequence (eos) token 
-        and the padding (pad) token if they are missing.
-        """
-        from api.adapter.patcher import patch_tokenizer
-
-        patch_tokenizer(self.tokenizer)
-
-    def convert_to_inputs(
-        self,
-        prompt_or_messages: Union[List[ChatCompletionMessageParam], str],
-        infilling: Optional[bool] = False,
-        suffix_first: Optional[bool] = False,
-        **kwargs,
-    ) -> Tuple[Union[List[int], Dict[str, Any]], Union[List[ChatCompletionMessageParam], str]]:
-        """
-        Convert the prompt or messages into input format for the model.
-
-        Args:
-            prompt_or_messages: The prompt or messages to be converted.
-            infilling: Whether to perform infilling.
-            suffix_first: Whether to append the suffix first.
-            **kwargs: Additional keyword arguments.
-
-        Returns:
-            Tuple containing the converted inputs and the prompt or messages.
-        """
-        # for completion
-        if isinstance(prompt_or_messages, str):
-            if infilling:
-                inputs = self.tokenizer(
-                    prompt_or_messages, suffix_first=suffix_first,
-                ).input_ids
-            elif check_is_qwen(self.model):
-                inputs = self.tokenizer(
-                    prompt_or_messages, allowed_special="all", disallowed_special=()
-                ).input_ids
-            elif check_is_chatglm(self.model):
-                inputs = self.tokenizer([prompt_or_messages], return_tensors="pt")
-            else:
-                inputs = self.tokenizer(prompt_or_messages).input_ids
-
-            if isinstance(inputs, list):
-                max_src_len = self.context_len - kwargs.get("max_tokens", 256) - 1
-                inputs = inputs[-max_src_len:]
-
-        else:
-            inputs, prompt_or_messages = self.apply_chat_template(prompt_or_messages, **kwargs)
-        return inputs, prompt_or_messages
-
-    def apply_chat_template(
-        self,
-        messages: List[ChatCompletionMessageParam],
-        max_new_tokens: Optional[int] = 256,
-        functions: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
-        tools: Optional[List[Dict[str, Any]]] = None,
-        **kwargs,
-    ) -> Tuple[Union[List[int], Dict[str, Any]], Optional[str]]:
-        """
-        Apply chat template to generate model inputs and prompt.
-
-        Args:
-            messages (List[ChatCompletionMessageParam]): List of chat completion message parameters.
-            max_new_tokens (Optional[int], optional): Maximum number of new tokens to generate. Defaults to 256.
-            functions (Optional[Union[Dict[str, Any], List[Dict[str, Any]]]], optional): Functions to apply to the messages. Defaults to None.
-            tools (Optional[List[Dict[str, Any]]], optional): Tools to apply to the messages. Defaults to None.
-            **kwargs: Additional keyword arguments.
-
-        Returns:
-            Tuple[Union[List[int], Dict[str, Any]], Union[str, None]]: Tuple containing the generated inputs and prompt.
-        """
-        if self.prompt_adapter.function_call_available:
-            messages = self.prompt_adapter.postprocess_messages(
-                messages, functions, tools=tools,
-            )
-            if functions or tools:
-                logger.debug(f"==== Messages with tools ====\n{messages}")
-
-        if self.construct_prompt:
-            if getattr(self.tokenizer, "chat_template", None) and not self.prompt_name:
-                prompt = self.tokenizer.apply_chat_template(
-                    conversation=messages,
-                    tokenize=False,
-                    add_generation_prompt=True,
-                )
-            else:
-                prompt = self.prompt_adapter.apply_chat_template(messages)
-
-            if check_is_qwen(self.model):
-                inputs = self.tokenizer(prompt, allowed_special="all", disallowed_special=()).input_ids
-            elif check_is_chatglm(self.model):
-                inputs = self.tokenizer([prompt], return_tensors="pt")
-            else:
-                inputs = self.tokenizer(prompt).input_ids
-
-            if isinstance(inputs, list):
-                max_src_len = self.context_len - max_new_tokens - 1
-                inputs = inputs[-max_src_len:]
-            return inputs, prompt
-        else:
-            inputs = self.build_chat_inputs(
-                messages, max_new_tokens, functions, tools, **kwargs
-            )
-        return inputs, None
-
-    def build_chat_inputs(
-        self,
-        messages: List[ChatCompletionMessageParam],
-        max_new_tokens: Optional[int] = 256,
-        functions: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
-        tools: Optional[List[Dict[str, Any]]] = None,
-        **kwargs: Any,
-    ) -> List[int]:
-        if "chatglm3" in self.model_name:
-            query, role = messages[-1]["content"], messages[-1]["role"]
-            inputs = self.tokenizer.build_chat_input(query, history=messages[:-1], role=role)
-        elif "chatglm4" in self.model_name:
-            inputs = self.tokenizer.apply_chat_template(
-                messages,
-                add_generation_prompt=True,
-                tokenize=True,
-            )[0]
-        elif check_is_baichuan(self.model):
-            inputs = build_baichuan_chat_input(
-                self.tokenizer, messages, self.context_len, max_new_tokens
-            )
-        elif check_is_qwen(self.model):
-            inputs = build_qwen_chat_input(
-                self.tokenizer, messages, functions=functions, tools=tools,
-            )
-        elif check_is_xverse(self.model):
-            inputs = build_xverse_chat_input(
-                self.tokenizer, messages, self.context_len, max_new_tokens
-            )
-        else:
-            raise NotImplementedError
-        return inputs
+        logger.info(f"Using {self.model_name} Model for Chat!")
+        logger.info(f"Using {self.template} for Chat!")
 
     def _generate(self, params: Dict[str, Any]) -> Iterator[dict]:
         """
@@ -280,15 +90,15 @@ class DefaultEngine(ABC):
             Iterator: A dictionary containing the generated text and error code.
         """
         prompt_or_messages = params.get("prompt_or_messages")
-        inputs, prompt = self.convert_to_inputs(
-            prompt_or_messages,
-            infilling=params.get("infilling", False),
-            suffix_first=params.get("suffix_first", False),
-            max_new_tokens=params.get("max_tokens", 256),
-            functions=params.get("functions"),
-            tools=params.get("tools"),
-        )
-        params.update(dict(inputs=inputs, prompt=prompt))
+        if isinstance(prompt_or_messages, str):
+            input_ids = self.tokenizer(prompt_or_messages).input_ids
+        else:
+            input_ids = self.template.convert_messages_to_ids(
+                prompt_or_messages,
+                tools=params.get("tools"),
+                max_tokens=params.get("max_tokens", 256),
+            )
+        params.update(dict(input_ids=input_ids))
 
         try:
             for output in self.generate_stream_func(self.model, self.tokenizer, params):
@@ -418,8 +228,8 @@ class DefaultEngine(ABC):
             function_call = None
             if finish_reason == "function_call":
                 try:
-                    _, function_call = self.prompt_adapter.parse_assistant_response(
-                        output["text"], params.get("functions"), params.get("tools"),
+                    _, function_call = self.template.parse_assistant_response(
+                        output["text"], params.get("tools") or params.get("functions"),
                     )
                 except Exception as e:
                     traceback.print_exc()
@@ -493,8 +303,8 @@ class DefaultEngine(ABC):
         function_call, finish_reason = None, "stop"
         if params.get("functions") or params.get("tools"):
             try:
-                res, function_call = self.prompt_adapter.parse_assistant_response(
-                    last_output["text"], params.get("functions"), params.get("tools"),
+                res, function_call = self.template.parse_assistant_response(
+                    last_output["text"], params.get("tools") or params.get("functions"),
                 )
                 last_output["text"] = res
             except Exception as e:
@@ -564,13 +374,3 @@ class DefaultEngine(ABC):
             if params.get("stream", False)
             else self._create_chat_completion(params)
         )
-
-    @property
-    def stop(self):
-        """
-        Gets the stop property of the prompt adapter.
-
-        Returns:
-            The stop property of the prompt adapter, or None if it does not exist.
-        """
-        return self.prompt_adapter.stop if hasattr(self.prompt_adapter, "stop") else None

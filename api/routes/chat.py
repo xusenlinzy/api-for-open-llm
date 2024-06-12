@@ -13,12 +13,12 @@ from loguru import logger
 from sse_starlette import EventSourceResponse
 from starlette.concurrency import run_in_threadpool
 
-from api.core.default import DefaultEngine
+from api.common import dictify
+from api.engine.hf import HuggingFaceEngine
 from api.models import LLM_ENGINE
-from api.utils.compat import dictify
-from api.utils.protocol import ChatCompletionCreateParams, Role
-from api.utils.request import (
-    handle_request,
+from api.protocol import ChatCompletionCreateParams, Role
+from api.utils import (
+    check_completion_requests,
     check_api_key,
     get_event_publisher,
 )
@@ -38,13 +38,17 @@ def get_engine():
 async def create_chat_completion(
     request: ChatCompletionCreateParams,
     raw_request: Request,
-    engine: DefaultEngine = Depends(get_engine),
+    engine: HuggingFaceEngine = Depends(get_engine),
 ):
     """Creates a completion for the chat message"""
-    if (not request.messages) or request.messages[-1]["role"] == Role.ASSISTANT:
+    if (not request.messages) or request.messages[-1]["role"] == Role.ASSISTANT.value:
         raise HTTPException(status_code=400, detail="Invalid request")
 
-    request = await handle_request(request, engine.stop)
+    request = await check_completion_requests(
+        request,
+        engine.template.stop,
+        engine.template.stop_token_ids,
+    )
     request.max_tokens = request.max_tokens or 1024
 
     params = dictify(request, exclude={"messages"})

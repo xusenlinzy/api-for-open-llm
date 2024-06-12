@@ -3,9 +3,9 @@ from fastapi import APIRouter, Depends, status
 
 from api.config import SETTINGS
 from api.models import EMBEDDING_MODEL
+from api.protocol import EmbeddingCreateParams
 from api.rag import RAGEmbedding
-from api.utils.protocol import EmbeddingCreateParams
-from api.utils.request import check_api_key
+from api.utils import check_api_key
 
 embedding_router = APIRouter()
 

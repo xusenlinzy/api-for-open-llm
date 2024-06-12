@@ -1,4 +1,3 @@
-import multiprocessing
 import os
 from pathlib import Path
 from typing import Optional, Dict, List, Union
@@ -7,7 +6,7 @@ import dotenv
 from loguru import logger
 from pydantic import BaseModel, Field
 
-from api.utils.compat import jsonify, disable_warnings
+from api.common import jsonify, disable_warnings
 
 dotenv.load_dotenv()
 
@@ -50,7 +49,7 @@ class BaseSettings(BaseModel):
     )
     engine: Optional[str] = Field(
         default=ENGINE,
-        description="Choices are ['default', 'vllm', 'llama.cpp', 'tgi'].",
+        description="Choices are ['default', 'vllm'].",
     )
     tasks: Optional[List[str]] = Field(
         default=list(TASKS),
@@ -232,57 +231,6 @@ class VLLMSetting(BaseModel):
     )
 
 
-class LlamaCppSetting(BaseModel):
-    n_gpu_layers: Optional[int] = Field(
-        default=int(get_env("N_GPU_LAYERS", 0)),
-        ge=-1,
-        description="The number of layers to put on the GPU. The rest will be on the CPU. Set -1 to move all to GPU.",
-    )
-    main_gpu: Optional[int] = Field(
-        default=int(get_env("MAIN_GPU", 0)),
-        ge=0,
-        description="Main GPU to use.",
-    )
-    tensor_split: Optional[List[float]] = Field(
-        default=float(get_env("TENSOR_SPLIT", None)) if get_env("TENSOR_SPLIT", None) else None,
-        description="Split layers across multiple GPUs in proportion.",
-    )
-    n_batch: Optional[int] = Field(
-        default=int(get_env("N_BATCH", 512)),
-        ge=1,
-        description="The batch size to use per eval."
-    )
-    n_threads: Optional[int] = Field(
-        default=int(get_env("N_THREADS", max(multiprocessing.cpu_count() // 2, 1))),
-        ge=1,
-        description="The number of threads to use.",
-    )
-    n_threads_batch: Optional[int] = Field(
-        default=int(get_env("N_THREADS_BATCH", max(multiprocessing.cpu_count() // 2, 1))),
-        ge=0,
-        description="The number of threads to use when batch processing.",
-    )
-    rope_scaling_type: Optional[int] = Field(
-        default=int(get_env("ROPE_SCALING_TYPE", -1))
-    )
-    rope_freq_base: Optional[float] = Field(
-        default=float(get_env("ROPE_FREQ_BASE", 0.0)),
-        description="RoPE base frequency"
-    )
-    rope_freq_scale: Optional[float] = Field(
-        default=float(get_env("ROPE_FREQ_SCALE", 0.0)),
-        description="RoPE frequency scaling factor",
-    )
-
-
-class TGISetting(BaseSettings):
-    # support for tgi: https://github.com/huggingface/text-generation-inference
-    tgi_endpoint: Optional[str] = Field(
-        default=get_env("TGI_ENDPOINT", None),
-        description="Text Generation Inference Endpoint.",
-    )
-
-
 TEXT_SPLITTER_CONFIG = {
     "ChineseRecursiveTextSplitter": {
         "source": "huggingface",   # 选择tiktoken则使用openai的方法
@@ -315,10 +263,6 @@ if "llm" in TASKS:
         PARENT_CLASSES.append(LLMSettings)
     elif ENGINE == "vllm":
         PARENT_CLASSES.extend([LLMSettings, VLLMSetting])
-    elif ENGINE == "llama.cpp":
-        PARENT_CLASSES.extend([LLMSettings, LlamaCppSetting])
-    elif ENGINE == "tgi":
-        PARENT_CLASSES.extend([LLMSettings, TGISetting])
 
 if "rag" in TASKS:
     PARENT_CLASSES.append(RAGSettings)

@@ -9,9 +9,10 @@ services:
       memlock: -1
     environment:
       - PORT=8000
-      - MODEL_NAME=qwen
-      - MODEL_PATH=checkpoints/qwen-7b-chat
-      - EMBEDDING_NAME=checkpoints/m3e-base
+      - MODEL_NAME=qwen2
+      - PROMPT_NAME=qwen2
+      - MODEL_PATH=checkpoints/Qwen2-7B-Instruct
+#      - EMBEDDING_NAME=checkpoints/bce-embedding-base_v1
     volumes:
       - $PWD:/workspace
       # model path need to be specified if not in pwd

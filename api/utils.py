@@ -4,8 +4,7 @@ from typing import (
     Optional,
     Union,
     Iterator,
-    Dict,
-    Any,
+    List,
     AsyncIterator,
 )
 
@@ -18,13 +17,13 @@ from loguru import logger
 from pydantic import BaseModel
 from starlette.concurrency import iterate_in_threadpool
 
+from api.common import jsonify, dictify
 from api.config import SETTINGS
-from api.utils.compat import jsonify, dictify
-from api.utils.constants import ErrorCode
-from api.utils.protocol import (
+from api.protocol import (
     ChatCompletionCreateParams,
     CompletionCreateParams,
     ErrorResponse,
+    ErrorCode
 )
 
 llama_outer_lock = Lock()
@@ -53,23 +52,29 @@ async def check_api_key(
 
 
 def create_error_response(code: int, message: str) -> JSONResponse:
-    return JSONResponse(dictify(ErrorResponse(message=message, code=code)), status_code=500)
+    return JSONResponse(
+        dictify(
+            ErrorResponse(
+                message=message,
+                code=code
+            )
+        ),
+        status_code=500
+    )
 
 
-async def handle_request(
+async def check_completion_requests(
     request: Union[CompletionCreateParams, ChatCompletionCreateParams],
-    stop: Dict[str, Any] = None,
+    stop: Optional[List[str]] = None,
+    stop_token_ids: Optional[List[int]] = None,
     chat: bool = True,
 ) -> Union[CompletionCreateParams, ChatCompletionCreateParams, JSONResponse]:
-    error_check_ret = check_requests(request)
+    error_check_ret = _check_completion_requests(request)
     if error_check_ret is not None:
         return error_check_ret
 
-    # stop settings
-    _stop, _stop_token_ids = [], []
-    if stop is not None:
-        _stop_token_ids = stop.get("token_ids", [])
-        _stop = stop.get("strings", [])
+    _stop = stop or []
+    _stop_token_ids = stop_token_ids or []
 
     request.stop = request.stop or []
     if isinstance(request.stop, str):
@@ -92,7 +97,7 @@ async def handle_request(
     return request
 
 
-def check_requests(request: Union[CompletionCreateParams, ChatCompletionCreateParams]) -> Optional[JSONResponse]:
+def _check_completion_requests(request: Union[CompletionCreateParams, ChatCompletionCreateParams]) -> Optional[JSONResponse]:
     # Check all params
     if request.max_tokens is not None and request.max_tokens <= 0:
         return create_error_response(

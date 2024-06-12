@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import List, Tuple
 
 from openai.types.chat import ChatCompletionMessageParam
@@ -9,11 +11,11 @@ from transformers.generation.logits_process import (
     TopPLogitsWarper,
 )
 
-from api.utils.protocol import Role
+from api.protocol import Role
 
 
 def parse_messages(
-    messages: List[ChatCompletionMessageParam], split_role=Role.USER
+    messages: List[ChatCompletionMessageParam], split_role=Role.USER.value
 ) -> Tuple[str, List[List[ChatCompletionMessageParam]]]:
     """
     Parse a list of chat completion messages into system and rounds.
@@ -28,7 +30,7 @@ def parse_messages(
     system, rounds = "", []
     r = []
     for i, message in enumerate(messages):
-        if message["role"] == Role.SYSTEM:
+        if message["role"] == Role.SYSTEM.value:
             system = message["content"]
             continue
         if message["role"] == split_role and r:
@@ -81,9 +83,9 @@ def is_partial_stop(output: str, stop_str: str):
 # NOTE: The ordering here is important.  Some models have two of these, and we
 # have a preference for which value gets used.
 SEQUENCE_LENGTH_KEYS = [
+    "max_position_embeddings",
     "max_sequence_length",
     "seq_length",
-    "max_position_embeddings",
     "max_seq_len",
     "model_max_length",
 ]

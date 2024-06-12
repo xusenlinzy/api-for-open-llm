@@ -25,7 +25,10 @@ pip install -r requirements.txt
 ### 环境变量含义
 
 
-+ `MODEL_NAME`: 模型名称，如 `qwen`、`baichuan-13b-chat` 等
++ `MODEL_NAME`: 模型名称，如 `chatglm4`、`qwen2`、`llama3`等
+
+
++ `PROMPT_NAME`: 使用的对话模板名称，如果不指定，则将根据 `tokenizer` 找到对应的模板
 
 
 + `MODEL_PATH`: 开源大模型的文件所在路径
@@ -40,9 +43,6 @@ pip install -r requirements.txt
 + `TENSOR_PARALLEL_SIZE`（可选项）: `GPU` 数量，默认为 `1`
 
 
-+ `PROMPT_NAME`（可选项）: 使用的对话模板名称，如果不指定，则将根据模型名找到对应的模板
-
-
 + `EMBEDDING_NAME`（可选项）: 嵌入模型的文件所在路径，推荐使用 `moka-ai/m3e-base` 或者 `BAAI/bge-large-zh`
 
 
@@ -53,6 +53,9 @@ pip install -r requirements.txt
 
 
 + `MAX_NUM_SEQS`（可选项）: 批量大小
+
+
++ `TASKS`（可选项）: `llm` 表示启动对话大模型，`rag` 表示启动文档文档相关接口，比如`embedding`、`rerank`
 
 
 ### 启动方式
@@ -102,97 +105,52 @@ python server.py
 
 ## 环境变量修改参考
 
-**环境变量修改内容参考下面**
+### QWEN系列
 
-+ [internlm2](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/VLLM_SCRIPT.md#internlm2)    
-
-+ [code-llama](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/VLLM_SCRIPT.md#code-llama) 
-
-+ [sqlcoder](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/VLLM_SCRIPT.md#sqlcoder) 
-
-+ [qwen-7b-chat](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/VLLM_SCRIPT.md#qwen-7b-chat)
-
-+ [baichuan-13b-chat](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/VLLM_SCRIPT.md#baichuan-13b-chat)
-
-+ [internlm](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/VLLM_SCRIPT.md#internlm)      
+| 模型      | 环境变量示例                                                                                    |
+|---------|-------------------------------------------------------------------------------------------|
+| qwen    | `MODEL_NAME=qwen`、`MODEL_PATH=Qwen/Qwen-7B-Chat`、`PROMPT_NAME=qwen`、 `ENGINE=vllm`        |
+| qwen1.5 | `MODEL_NAME=qwen2`、`MODEL_PATH=Qwen/Qwen1.5-7B-Chat`、`PROMPT_NAME=qwen2`、 `ENGINE=vllm`   |
+| qwen2   | `MODEL_NAME=qwen2`、`MODEL_PATH=Qwen/Qwen2-7B-Instruct`、`PROMPT_NAME=qwen2`、 `ENGINE=vllm` |
 
 
-### Qwen-7b-chat
+### GLM系列
 
-Qwen/Qwen-7B-Chat:
+| 模型       | 环境变量示例                                                                                       |
+|----------|----------------------------------------------------------------------------------------------|
+| chatglm  | `MODEL_NAME=chatglm`、`MODEL_PATH=THUDM/chatglm-6b`、`PROMPT_NAME=chatglm`、 `ENGINE=vllm`      |
+| chatglm2 | `MODEL_NAME=chatglm2`、`MODEL_PATH=THUDM/chatglm2-6b`、`PROMPT_NAME=chatglm2`、 `ENGINE=vllm`   |
+| chatglm3 | `MODEL_NAME=chatglm3`、`MODEL_PATH=THUDM/chatglm3-6b`、`PROMPT_NAME=chatglm3`、 `ENGINE=vllm`   |
+| glm4     | `MODEL_NAME=chatglm4`、`MODEL_PATH=THUDM/glm-4-9b-chat`、`PROMPT_NAME=chatglm4`、 `ENGINE=vllm` |
 
 
-```shell
-MODEL_NAME=qwen
-MODEL_PATH=Qwen/Qwen-7B-Chat # 模型所在路径，若使用docker，则为在容器内的路径
-ENGINE=vllm
-```
+### BAICHUAN系列
 
-### InternLM
+| 模型        | 环境变量示例                                                                                                     |
+|-----------|------------------------------------------------------------------------------------------------------------|
+| baichuan  | `MODEL_NAME=baichuan`、`MODEL_PATH=baichuan-inc/Baichuan-13B-Chat`、`PROMPT_NAME=baichuan`、 `ENGINE=vllm`    |
+| baichuan2 | `MODEL_NAME=baichuan2`、`MODEL_PATH=baichuan-inc/Baichuan2-13B-Chat`、`PROMPT_NAME=baichuan2`、 `ENGINE=vllm` |
 
-internlm-chat-7b:
 
-```shell
-MODEL_NAME=internlm
-MODEL_PATH=internlm/internlm-chat-7b
-ENGINE=vllm
-```
+### INTERNLM系列
 
-### Baichuan-13b-chat
+| 模型        | 环境变量示例                                                                                                 |
+|-----------|--------------------------------------------------------------------------------------------------------|
+| internlm  | `MODEL_NAME=internlm`、`MODEL_PATH=internlm/internlm-chat-7b`、`PROMPT_NAME=internlm`、 `ENGINE=vllm`     |
+| internlm2 | `MODEL_NAME=internlm2`、`MODEL_PATH=internlm/internlm2-chat-20b`、`PROMPT_NAME=internlm2`、 `ENGINE=vllm` |
 
-baichuan-inc/Baichuan-13B-Chat:
 
-```shell
-MODEL_NAME=baichuan-13b-chat
-MODEL_PATH=baichuan-inc/Baichuan-13B-Chat
-TENSOR_PARALLEL_SIZE=2
-ENGINE=vllm
-```
+### Yi系列
 
-### SQLCODER
+| 模型    | 环境变量示例                                                                              |
+|-------|-------------------------------------------------------------------------------------|
+| yi    | `MODEL_NAME=yi`、`MODEL_PATH=01-ai/Yi-34B-Chat`、`PROMPT_NAME=yi`、 `ENGINE=vllm`      |
+| yi1.5 | `MODEL_NAME=yi1.5`、`MODEL_PATH=01-ai/Yi1.5-9B-Chat`、`PROMPT_NAME=yi`、 `ENGINE=vllm` |
 
-defog/sqlcoder:
 
-```shell
-MODEL_NAME=starcode
-MODEL_PATH=defog/sqlcoder
-TENSOR_PARALLEL_SIZE=2
-ENGINE=vllm
-```
+### DEEPSEEK系列
 
-### CODE-LLAMA
-
-```shell
-pip install git+https://github.com/huggingface/transformers.git
-pip install git+https://github.com/vllm-project/vllm.git
-```
-
-codellama/CodeLlama-7b-Instruct-hf
-
-```shell
-MODEL_NAME=code-llama
-MODEL_PATH=codellama/CodeLlama-7b-Instruct-hf
-ENGINE=vllm
-```
-
-### Xwin-LM
-
-Xwin-LM/Xwin-LM-7B-V0.1
-
-```shell
-MODEL_NAME=xwin-7b
-MODEL_PATH=Xwin-LM/Xwin-LM-7B-V0.1
-PROMPT_NAME=vicuna
-ENGINE=vllm
-```
-
-### InternLM2
-
-internlm2-chat-20b:
-
-```shell
-MODEL_NAME=internlm2
-MODEL_PATH=internlm/internlm2-chat-20b
-ENGINE=vllm
-TENSOR_PARALLEL_SIZE=2
-```
+| 模型             | 环境变量示例                                                                                                                       |
+|----------------|------------------------------------------------------------------------------------------------------------------------------|
+| deepseek-coder | `MODEL_NAME=deepseek-coder`、`MODEL_PATH=deepseek-ai/deepseek-coder-33b-instruct`、`PROMPT_NAME=deepseek-coder`、 `ENGINE=vllm` |
+| deepseek-chat  | `MODEL_NAME=deepseek`、`MODEL_PATH=deepseek-ai/deepseek-llm-67b-chat`、`PROMPT_NAME=deepseek`、 `ENGINE=vllm`                   |

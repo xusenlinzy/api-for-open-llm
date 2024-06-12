@@ -28,13 +28,13 @@ from sse_starlette import EventSourceResponse
 from vllm.outputs import RequestOutput
 from vllm.sampling_params import SamplingParams
 
-from api.core.vllm_engine import VllmEngine
+from api.common import dictify, model_validate
+from api.engine.vllm_engine import VllmEngine
 from api.models import LLM_ENGINE
-from api.utils.compat import dictify, model_validate
-from api.utils.protocol import Role, ChatCompletionCreateParams
-from api.utils.request import (
+from api.protocol import Role, ChatCompletionCreateParams
+from api.utils import (
     check_api_key,
-    handle_request,
+    check_completion_requests,
     get_event_publisher,
 )
 
@@ -56,10 +56,14 @@ async def create_chat_completion(
     raw_request: Request,
     engine: VllmEngine = Depends(get_engine),
 ):
-    if (not request.messages) or request.messages[-1]["role"] == Role.ASSISTANT:
+    if (not request.messages) or request.messages[-1]["role"] == Role.ASSISTANT.value:
         raise HTTPException(status_code=400, detail="Invalid request")
 
-    request = await handle_request(request, engine.prompt_adapter.stop)
+    request = await check_completion_requests(
+        request,
+        engine.template.stop,
+        engine.template.stop_token_ids,
+    )
     request.max_tokens = request.max_tokens or 512
 
     params = dictify(request, exclude={"messages"})
@@ -67,18 +71,12 @@ async def create_chat_completion(
     logger.debug(f"==== request ====\n{params}")
 
     request_id: str = f"chatcmpl-{str(uuid.uuid4())}"
-    prompt = engine.apply_chat_template(
-        request.messages,
-        functions=request.functions,
+    token_ids = engine.template.convert_messages_to_ids(
+        messages=request.messages,
         tools=request.tools,
+        max_tokens=request.max_tokens,
     )
 
-    if isinstance(prompt, list):
-        prompt, token_ids = None, prompt
-    else:
-        prompt, token_ids = prompt, None
-
-    token_ids = engine.convert_to_inputs(prompt, token_ids, max_tokens=request.max_tokens)
     result_generator = None
     try:
         include = {
@@ -102,8 +100,9 @@ async def create_chat_completion(
             max_tokens=request.max_tokens,
             **kwargs,
         )
-        lora_request = engine._maybe_get_lora(request.model)
 
+        # Todo: support for lora
+        lora_request = None
         try:
             from vllm.model_executor.guided_decoding import get_guided_decoding_logits_processor
 
@@ -132,7 +131,7 @@ async def create_chat_completion(
         if vllm_version >= "0.4.3":
             result_generator = engine.model.generate(
                 {
-                    "prompt": prompt if isinstance(prompt, str) else None,
+                    "prompt": None,
                     "prompt_token_ids": token_ids,
                 },
                 sampling_params,
@@ -141,7 +140,7 @@ async def create_chat_completion(
             )
         else:
             result_generator = engine.model.generate(
-                prompt if isinstance(prompt, str) else None,
+                None,
                 sampling_params,
                 request_id,
                 token_ids,
@@ -181,8 +180,8 @@ async def create_chat_completion(
             function_call = None
             if request.functions or request.tools:
                 try:
-                    res, function_call = engine.prompt_adapter.parse_assistant_response(
-                        output.text, request.functions, request.tools,
+                    res, function_call = engine.template.parse_assistant_response(
+                        output.text, request.tools or request.functions,
                     )
                     output.text = res
                 except Exception as e:
@@ -275,8 +274,8 @@ async def create_chat_completion_stream(
                 elif request.functions or request.tools:
                     call_info = None
                     try:
-                        res, call_info = engine.prompt_adapter.parse_assistant_response(
-                            output.text, request.functions, request.tools,
+                        res, call_info = engine.template.parse_assistant_response(
+                            output.text, request.tools or request.functions,
                         )
                     except Exception as e:
                         traceback.print_exc()

@@ -1,11 +1,9 @@
 from fastapi import APIRouter, Depends, status
 
 from api.models import RERANK_MODEL
+from api.protocol import RerankRequest
 from api.rag import RAGReranker
-from api.utils.protocol import (
-    RerankRequest,
-)
-from api.utils.request import check_api_key
+from api.utils import check_api_key
 
 rerank_router = APIRouter()
 
