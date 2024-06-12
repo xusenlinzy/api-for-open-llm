@@ -2,7 +2,7 @@ from openai import OpenAI
 
 client = OpenAI(
     api_key="EMPTY",
-    base_url="http://192.168.0.59:7891/v1/",
+    base_url="http://192.168.0.59:7891/v1",
 )
 
 stream = client.chat.completions.create(

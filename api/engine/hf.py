@@ -93,7 +93,6 @@ class HuggingFaceEngine(ABC):
         if isinstance(prompt_or_messages, str):
             inputs = self.tokenizer(prompt_or_messages).input_ids
         else:
-            print(prompt_or_messages)
             inputs = self.template.convert_messages_to_ids(
                 prompt_or_messages,
                 tools=params.get("tools"),
