@@ -15,7 +15,7 @@ docker build -f docker/Dockerfile.vllm -t llm-api:vllm .
 安装依赖，确保安装顺序严格按照下面的命令：
 
 ```shell
-pip install vllm==0.4.3
+pip install vllm>=0.4.3
 pip install -r requirements.txt 
 # pip uninstall transformer-engine -y
 ```

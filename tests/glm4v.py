@@ -18,7 +18,7 @@ stream = client.chat.completions.create(
                     "type": "image_url",
                     "image_url": {
                         # Either an url or a local path
-                        "url": "http://djclub.cdn.bcebos.com/uploads/images/pageimg/20230325/64-230325205T52.jpg"
+                        "url": "http://djclub.cdn.bcebos.com/uploads/images/pageimg/20230325/64-2303252115313.jpg"
                     }
                 }
             ]
