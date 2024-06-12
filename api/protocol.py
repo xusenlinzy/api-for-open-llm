@@ -64,7 +64,7 @@ class ErrorResponse(BaseModel):
 
 
 class ChatCompletionCreateParams(BaseModel):
-    messages: List[ChatCompletionMessageParam]
+    messages: List[Dict[str, Any]]
     """A list of messages comprising the conversation so far.
 
     [Example Python code](https://cookbook.openai.com/examples/how_to_format_inputs_to_chatgpt_models).

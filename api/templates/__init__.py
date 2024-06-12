@@ -6,6 +6,7 @@ from api.templates.glm import (
     ChatGLM2ChatTemplate,
     ChatGLM3ChatTemplate,
     ChatGLM4ChatTemplate,
+    GLM4VChatTemplate,
 )
 from api.templates.qwen import QwenChatTemplate, Qwen2ChatTemplate
 from api.templates.registry import register_template, get_template
@@ -17,6 +18,7 @@ __all__ = [
     "ChatGLM2ChatTemplate",
     "ChatGLM3ChatTemplate",
     "ChatGLM4ChatTemplate",
+    "GLM4VChatTemplate",
     "QwenChatTemplate",
     "Qwen2ChatTemplate",
     "Llama2ChatTemplate",

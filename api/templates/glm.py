@@ -26,7 +26,7 @@ from api.templates.registry import register_template
 from api.templates.utils import apply_stopping_strings
 
 if TYPE_CHECKING:
-    from transformers import PreTrainedTokenizer, PreTrainedModel
+    from transformers import PreTrainedTokenizer, PreTrainedModel, BatchEncoding
 
 
 class InvalidScoreLogitsProcessor(LogitsProcessor):
@@ -412,7 +412,7 @@ class ChatGLM3ChatTemplate(ChatTemplate):
         max_tokens: Optional[int] = 256,
         max_window_size: Optional[int] = 6144,
         **kwargs,
-    ) -> List[int]:
+    ) -> Union[List[int], BatchEncoding]:
         messages = process_chatglm_messages(messages, tools)
         query, role = messages[-1]["content"], messages[-1]["role"]
         return self.tokenizer.build_chat_input(
@@ -489,7 +489,7 @@ class ChatGLM4ChatTemplate(ChatTemplate):
         max_tokens: Optional[int] = 256,
         max_window_size: Optional[int] = 6144,
         **kwargs,
-    ) -> List[int]:
+    ) -> Union[List[int], BatchEncoding]:
         messages = process_chatglm_messages_v4(messages, tools)
         return self.tokenizer.apply_chat_template(
             messages,
@@ -534,3 +534,68 @@ class ChatGLM4ChatTemplate(ChatTemplate):
                         "content": content
                     }
         return output, content
+
+
+@register_template("glm-4v")
+class GLM4VChatTemplate(ChatTemplate):
+    stop = ["<|endoftext|>", "<user>", "<|observation|>"]
+    stop_token_ids = [151329, 151336, 151338]
+
+    def _convert_messages_to_ids(
+        self,
+        messages: List[ChatCompletionMessageParam],
+        system: Optional[str] = None,
+        tools: Optional[List[Dict[str, Any]]] = None,
+        max_tokens: Optional[int] = 256,
+        max_window_size: Optional[int] = 6144,
+        **kwargs,
+    ) -> Union[List[int], "BatchEncoding"]:
+        _messages = []
+        for message in messages:
+            if isinstance(message["content"], str):
+                _content, image = message["content"], None
+            else:
+                _content, image = None, None
+                for c in message["content"]:
+                    if isinstance(c, dict) and "type" in c:
+                        if c["type"] == "text":
+                            _content = c["text"]
+
+                        if c["type"] == "image_url":
+                            if (
+                                isinstance(c["image_url"], dict)
+                                and "url" in c["image_url"]
+                            ):
+                                image = self._load_image(image_url=c["image_url"]["url"])
+                            else:
+                                image = self._load_image(image_url=c["image_url"])
+
+            msg = {"role": message["role"], "content": _content}
+            if image is not None:
+                msg["image"] = image
+            _messages.append(msg)
+
+        return self.tokenizer.apply_chat_template(
+            _messages,
+            add_generation_prompt=True,
+            tokenize=True,
+            return_tensors="pt",
+            return_dict=True,
+        )
+
+    @staticmethod
+    def _load_image(image_url: str):
+        from PIL import Image
+        from io import BytesIO
+
+        if image_url.startswith("data:"):
+            import base64
+
+            image_bytes = base64.b64decode(image_url.split(",")[1])
+        else:
+            import urllib.request
+
+            with urllib.request.urlopen(image_url) as f:
+                image_bytes = f.read()
+
+        return Image.open(BytesIO(image_bytes)).convert("RGB")

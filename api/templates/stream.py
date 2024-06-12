@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import gc
 import time
 import uuid
 from threading import Thread
@@ -25,7 +26,7 @@ def generate_stream(
     tokenizer: "PreTrainedTokenizer",
     params: Dict[str, Any],
 ):
-    input_ids = params.get("input_ids")
+    inputs = params.get("inputs")
     functions = params.get("functions")
     model_name = params.get("model", "llm")
     temperature = float(params.get("temperature", 1.0))
@@ -39,10 +40,8 @@ def generate_stream(
         stop_token_ids.append(tokenizer.eos_token_id)
     stop_strings = params.get("stop", [])
 
-    input_echo_len = len(input_ids)
-    device = model.device
+    device = next(model.parameters()).device
     generation_kwargs = dict(
-        input_ids=torch.tensor([input_ids], device=device),
         do_sample=True,
         temperature=temperature,
         top_p=top_p,
@@ -54,6 +53,14 @@ def generate_stream(
     if temperature <= 1e-5:
         generation_kwargs["do_sample"] = False
         generation_kwargs.pop("top_k")
+
+    if isinstance(inputs, dict):
+        inputs = {k: v.to(device) for k, v in inputs.items() if isinstance(v, torch.Tensor)}
+        generation_kwargs.update(inputs)
+        input_echo_len = len(inputs["input_ids"][0])
+    else:
+        generation_kwargs["input_ids"] = torch.tensor([inputs], device=device)
+        input_echo_len = len(inputs)
 
     streamer = TextIteratorStreamer(
         tokenizer, timeout=60.0, skip_prompt=True, skip_special_tokens=True
@@ -114,3 +121,6 @@ def generate_stream(
             "total_tokens": input_echo_len + i,
         },
     }
+
+    gc.collect()
+    torch.cuda.empty_cache()

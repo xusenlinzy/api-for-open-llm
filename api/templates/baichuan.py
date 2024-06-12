@@ -6,6 +6,7 @@ from typing import (
     Optional,
     Dict,
     Any,
+    Union,
 )
 
 from openai.types.chat import ChatCompletionMessageParam
@@ -16,7 +17,7 @@ from api.templates.registry import register_template
 from api.templates.utils import parse_messages
 
 if TYPE_CHECKING:
-    from transformers import PreTrainedTokenizer
+    from transformers import PreTrainedTokenizer, BatchEncoding
 
 
 def build_baichuan_chat_input(
@@ -81,7 +82,7 @@ class BaiChuanChatTemplate(ChatTemplate):
         max_tokens: Optional[int] = 256,
         max_window_size: Optional[int] = 6144,
         **kwargs,
-    ) -> List[int]:
+    ) -> Union[List[int], "BatchEncoding"]:
         return build_baichuan_chat_input(
             self.tokenizer,
             messages,

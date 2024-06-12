@@ -24,7 +24,7 @@ from api.templates.base import ChatTemplate
 from api.templates.registry import register_template
 
 if TYPE_CHECKING:
-    from transformers import PreTrainedTokenizer
+    from transformers import PreTrainedTokenizer, BatchEncoding
 
 
 TOOL_DESC = """{name_for_model}: Call this tool to interact with the {name_for_human} API. What is the {name_for_human} API useful for? {description_for_model} Parameters: {parameters}"""
@@ -277,7 +277,7 @@ class QwenChatTemplate(ChatTemplate):
         max_tokens: Optional[int] = 256,
         max_window_size: Optional[int] = 6144,
         **kwargs,
-    ) -> List[int]:
+    ) -> Union[List[int], BatchEncoding]:
         return build_qwen_chat_input(
             self.tokenizer,
             messages,

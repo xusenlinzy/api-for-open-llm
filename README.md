@@ -20,7 +20,8 @@
 
 ## 📢 新闻
 
-+ 【2024.06.12】 重构项目代码
+
++ 【2024.06.12】 支持 `GLM-4V` 模型，修改环境变量 `MODEL_NAME=glm-4v`  `PROMPT_NAME=glm-4v`  `DTYPE=bfloat16`， 测试示例见 [glm4v](./tests/glm4v.py)
 
 
 + 【2024.06.08】 已支持 `QWEN2` 模型，修改环境变量 `MODEL_NAME=qwen2`  `PROMPT_NAME=qwen2`

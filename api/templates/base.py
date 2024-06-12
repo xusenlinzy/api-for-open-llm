@@ -15,7 +15,7 @@ from typing import (
 from openai.types.chat import ChatCompletionMessageParam
 
 if TYPE_CHECKING:
-    from transformers import PreTrainedTokenizer
+    from transformers import PreTrainedTokenizer, BatchEncoding
 
 
 class ChatTemplate(ABC):
@@ -42,7 +42,7 @@ class ChatTemplate(ABC):
         max_tokens: Optional[int] = 256,
         max_window_size: Optional[int] = 6144,
         **kwargs,
-    ) -> List[int]:
+    ) -> Union[List[int], "BatchEncoding"]:
         try:
             token_ids = self._convert_messages_to_ids(
                 messages,
@@ -77,7 +77,7 @@ class ChatTemplate(ABC):
         max_tokens: Optional[int] = 256,
         max_window_size: Optional[int] = 6144,
         **kwargs,
-    ) -> List[int]:
+    ) -> Union[List[int], "BatchEncoding"]:
         raise NotImplementedError
 
     def apply_chat_template(

@@ -91,14 +91,15 @@ class HuggingFaceEngine(ABC):
         """
         prompt_or_messages = params.get("prompt_or_messages")
         if isinstance(prompt_or_messages, str):
-            input_ids = self.tokenizer(prompt_or_messages).input_ids
+            inputs = self.tokenizer(prompt_or_messages).input_ids
         else:
-            input_ids = self.template.convert_messages_to_ids(
+            print(prompt_or_messages)
+            inputs = self.template.convert_messages_to_ids(
                 prompt_or_messages,
                 tools=params.get("tools"),
                 max_tokens=params.get("max_tokens", 256),
             )
-        params.update(dict(input_ids=input_ids))
+        params.update(dict(inputs=inputs))
 
         try:
             for output in self.generate_stream_func(self.model, self.tokenizer, params):

@@ -108,12 +108,13 @@ python server.py
 
 ### GLM系列
 
-| 模型       | 环境变量示例                                                                                             |
-|----------|----------------------------------------------------------------------------------------------------|
-| chatglm  | `MODEL_NAME=chatglm`、`MODEL_PATH=THUDM/chatglm-6b`、`PROMPT_NAME=chatglm`、 `DEVICE_MAP=cuda:0`      |
-| chatglm2 | `MODEL_NAME=chatglm2`、`MODEL_PATH=THUDM/chatglm2-6b`、`PROMPT_NAME=chatglm2`、 `DEVICE_MAP=cuda:0`   |
-| chatglm3 | `MODEL_NAME=chatglm3`、`MODEL_PATH=THUDM/chatglm3-6b`、`PROMPT_NAME=chatglm3`、 `DEVICE_MAP=cuda:0`   |
-| glm4     | `MODEL_NAME=chatglm4`、`MODEL_PATH=THUDM/glm-4-9b-chat`、`PROMPT_NAME=chatglm4`、 `DEVICE_MAP=cuda:0` |
+| 模型        | 环境变量示例                                                                                                     |
+|-----------|------------------------------------------------------------------------------------------------------------|
+| chatglm   | `MODEL_NAME=chatglm`、`MODEL_PATH=THUDM/chatglm-6b`、`PROMPT_NAME=chatglm`、 `DEVICE_MAP=cuda:0`              |
+| chatglm2  | `MODEL_NAME=chatglm2`、`MODEL_PATH=THUDM/chatglm2-6b`、`PROMPT_NAME=chatglm2`、 `DEVICE_MAP=cuda:0`           |
+| chatglm3  | `MODEL_NAME=chatglm3`、`MODEL_PATH=THUDM/chatglm3-6b`、`PROMPT_NAME=chatglm3`、 `DEVICE_MAP=cuda:0`           |
+| glm4-chat | `MODEL_NAME=chatglm4`、`MODEL_PATH=THUDM/glm-4-9b-chat`、`PROMPT_NAME=chatglm4`、 `DEVICE_MAP=cuda:0`         |
+| glm-4v    | `MODEL_NAME=glm-4v`、`MODEL_PATH=THUDM/glm-4v-9b`、`PROMPT_NAME=glm-4v`、 `DEVICE_MAP=auto`、 `DTYPE=bfloat16` |
 
 
 ### BAICHUAN系列
