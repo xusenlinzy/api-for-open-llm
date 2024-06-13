@@ -35,6 +35,7 @@ from api.common import model_validate
 from api.protocol import ErrorCode
 from api.templates import get_template
 from api.templates.glm import generate_stream_chatglm, generate_stream_chatglm_v3
+from api.templates.minicpm import generate_stream_minicpm_v
 from api.templates.stream import generate_stream
 from api.templates.utils import get_context_length
 from api.utils import create_error_response
@@ -75,6 +76,8 @@ class HuggingFaceEngine(ABC):
             self.generate_stream_func = generate_stream_chatglm_v3
         elif "chatglm" == self.template_name:
             self.generate_stream_func = generate_stream_chatglm
+        elif self.model.config.model_type == "minicpmv":
+            self.generate_stream_func = generate_stream_minicpm_v
 
         logger.info(f"Using {self.model_name} Model for Chat!")
         logger.info(f"Using {self.template} for Chat!")
@@ -93,11 +96,14 @@ class HuggingFaceEngine(ABC):
         if isinstance(prompt_or_messages, str):
             inputs = self.tokenizer(prompt_or_messages).input_ids
         else:
-            inputs = self.template.convert_messages_to_ids(
-                prompt_or_messages,
-                tools=params.get("tools"),
-                max_tokens=params.get("max_tokens", 256),
-            )
+            if self.model.config.model_type == "minicpmv":
+                inputs = prompt_or_messages
+            else:
+                inputs = self.template.convert_messages_to_ids(
+                    prompt_or_messages,
+                    tools=params.get("tools"),
+                    max_tokens=params.get("max_tokens", 256),
+                )
         params.update(dict(inputs=inputs))
 
         try:

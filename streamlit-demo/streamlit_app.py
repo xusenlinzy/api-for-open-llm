@@ -39,6 +39,9 @@ def main():
                 from streamlit_gallery.components import code_interpreter
                 page.item("Code Interpreter", code_interpreter)
 
+            from streamlit_gallery.components import multimodal_chat
+            page.item("Multimodal Chat", multimodal_chat)
+
         if st.button("🗑️ 清空消息"):
             st.session_state.messages = []
 

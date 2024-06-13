@@ -17,6 +17,8 @@
 
 ## 📢 新闻
 
++ 【2024.06.13】 支持 `MiniCPM-Llama3-V-2_5` 模型，修改环境变量 `MODEL_NAME=minicpm-v`  `PROMPT_NAME=minicpm-v`  `DTYPE=bfloat16`
+
 
 + 【2024.06.12】 支持 `GLM-4V` 模型，修改环境变量 `MODEL_NAME=glm-4v`  `PROMPT_NAME=glm-4v`  `DTYPE=bfloat16`， 测试示例见 [glm4v](./tests/glm4v.py)
 

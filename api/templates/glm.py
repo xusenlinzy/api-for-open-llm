@@ -83,7 +83,7 @@ def generate_stream_chatglm(
         A dictionary representing each generated text completion.
 
     """
-    input_ids = params["token_ids"]
+    input_ids = params["inputs"]
     model_name = params.get("model", "llm")
     temperature = float(params.get("temperature", 1.0))
     repetition_penalty = float(params.get("repetition_penalty", 1.0))
@@ -176,7 +176,7 @@ def generate_stream_chatglm_v3(
         A dictionary representing each generated text completion.
 
     """
-    input_ids = params["token_ids"]
+    input_ids = params["inputs"]
     model_name = params.get("model", "llm")
     temperature = float(params.get("temperature", 1.0))
     repetition_penalty = float(params.get("repetition_penalty", 1.0))
