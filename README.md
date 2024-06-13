@@ -14,9 +14,6 @@
 ![llm.png](assets/images/llm.png)
 <div align="center"> 图片来自于论文: [A Survey of Large Language Models](https://arxiv.org/pdf/2303.18223.pdf) </div>
 
-  
-## 🐧 QQ交流群：870207830
-
 
 ## 📢 新闻
 

@@ -1,6 +1,5 @@
 from typing import List, Optional
 
-from langchain.chains.sql_database.prompt import SQL_PROMPTS
 from langchain_community.utilities.sql_database import SQLDatabase
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import PromptTemplate
@@ -15,6 +14,34 @@ SQL Query: {query}
 SQL Result: {result}
 Answer: """
 )
+
+PROMPT_SUFFIX = """只能使用以下表格：
+{table_info}
+
+问题：
+{input}
+
+包含SQL查询的JSON返回结果为：
+"""
+
+query_prompt = """您是一个SQL专家。给定一个输入问题，请按照以下要求生成一个语法正确的SQL查询来运行。
+1. 除非用户在问题中指定了要获取的示例的具体数量，否则最多只能查询{top_k}个结果，并按照SQL的规定使用LIMIT子句。您可以对结果进行排序，以返回数据库中信息量最大的数据。
+2. 切勿查询表中的所有列。必须只查询回答问题所需的列。用反斜线 (`) 包住每一列的名称，将其表示为分隔标识符。
+3. 注意只使用在下表中可以看到的列名。注意不要查询不存在的列。此外，还要注意哪一列在哪个表中。
+4. 如果问题涉及 “今天”，请注意使用 CURDATE() 函数获取当前日期。
+5. 返回结果必须为JSON格式，其仅有一个属性`sql`，值为SQL查询语句，请不要返回多余的任何信息。
+
+"""
+
+
+def extract_json(json_: str):
+    from langchain.output_parsers.json import SimpleJsonOutputParser
+
+    parser = SimpleJsonOutputParser()
+    try:
+        return parser.parse(json_)
+    except:
+        return None
 
 
 def create_sql_query(
@@ -39,7 +66,10 @@ def create_sql_query(
         openai_api_key="xxx"
     )
 
-    prompt_to_use = SQL_PROMPTS[db.dialect]
+    prompt_to_use = PromptTemplate(
+        input_variables=["input", "table_info", "dialect", "top_k"],
+        template=query_prompt + PROMPT_SUFFIX,
+    )
     if {"input", "top_k", "table_info"}.difference(prompt_to_use.input_variables):
         raise ValueError(
             f"Prompt must have input variables: 'input', 'top_k', "
@@ -50,7 +80,7 @@ def create_sql_query(
         prompt_to_use = prompt_to_use.partial(dialect=db.dialect)
 
     inputs = {
-        "input": lambda x: x["question"] + "\nSQLQuery: ",
+        "input": lambda x: x["question"],
         "table_info": lambda x: db.get_table_info(
             table_names=x.get("table_names_to_use")
         ),
@@ -65,12 +95,16 @@ def create_sql_query(
             }
         )
         | prompt_to_use.partial(top_k=str(5))
-        | llm.bind(stop=["\nSQLResult:", "SQLResult"])
+        | llm
         | StrOutputParser()
     )
 
-    sql_query = write.invoke(question).strip()
-    sql_result = db.run(sql_query, fetch="cursor")
+    sql_query = extract_json(write.invoke(question).strip())
+    if sql_query is not None:
+        sql_query = sql_query["sql"]
+        sql_result = db.run(sql_query, fetch="cursor")
+    else:
+        sql_result = "SQLResult is not correctly queried!"
 
     return sql_query, sql_result
 
@@ -90,7 +124,7 @@ if __name__ == "__main__":
 
     sql_query, sql_result = create_sql_query(
         "2024年各个信息来源分别发布了多少资讯,按照数量排序",
-        base_url="http://192.168.20.44:7861/v1",
+        base_url="http://192.168.0.59:7891/v1",
         include_tables=["document", "source"],
         database_uri="mysql+pymysql://root:Dnect_123@192.168.0.52:3306/information_services",
     )

@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 
 class ChatTemplate(ABC):
-    """Base class for chat templat"""
+    """Base class for chat template"""
 
     system_prompt: Optional[str] = ""
     stop: Sequence[str] = []

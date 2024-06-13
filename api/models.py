@@ -115,6 +115,7 @@ def create_vllm_engine():
 
     if vllm_version >= "0.4.3":
         include.add("max_seq_len_to_capture")
+        include.add("distributed_executor_backend")
 
     kwargs = dictify(SETTINGS, include=include)
     engine_args = AsyncEngineArgs(

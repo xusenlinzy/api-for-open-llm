@@ -160,7 +160,6 @@ class RAGSettings(BaseModel):
 
 
 class VLLMSetting(BaseModel):
-    # vllm related
     trust_remote_code: Optional[bool] = Field(
         default=get_bool_env("TRUST_REMOTE_CODE"),
         description="Whether to use remote code."
@@ -228,6 +227,9 @@ class VLLMSetting(BaseModel):
     )
     vllm_disable_log_stats: Optional[bool] = Field(
         default=get_bool_env("VLLM_DISABLE_LOG_STATS", "true"),
+    )
+    distributed_executor_backend: Optional[str] = Field(
+        default=get_env("DISTRIBUTED_EXECUTOR_BACKEND", None),
     )
 
 
