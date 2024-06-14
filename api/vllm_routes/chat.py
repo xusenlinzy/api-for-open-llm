@@ -65,6 +65,8 @@ async def create_chat_completion(
         engine.template.stop_token_ids,
     )
     request.max_tokens = request.max_tokens or 512
+    if request.best_of < request.n:
+        request.best_of = request.n
 
     params = dictify(request, exclude={"messages"})
     params.update(dict(prompt_or_messages=request.messages, echo=False))
@@ -124,7 +126,8 @@ async def create_chat_completion(
                 )
             if guided_decode_logits_processor:
                 sampling_params.logits_processors = sampling_params.logits_processors or []
-                sampling_params.logits_processors.append(guided_decode_logits_processor)
+                sampling_params.logits_processors.append(
+                    guided_decode_logits_processor)
         except ImportError:
             pass
 
@@ -151,7 +154,8 @@ async def create_chat_completion(
         traceback.print_exc()
 
     if request.stream:
-        iterator = create_chat_completion_stream(result_generator, request, request_id, engine)
+        iterator = create_chat_completion_stream(
+            result_generator, request, request_id, engine)
         send_chan, recv_chan = anyio.create_memory_object_stream(10)
         return EventSourceResponse(
             recv_chan,
@@ -198,14 +202,16 @@ async def create_chat_completion(
                 finish_reason = "function_call"
             elif isinstance(function_call, dict) and "function" in function_call:
                 finish_reason = "tool_calls"
-                tool_calls = [model_validate(ChatCompletionMessageToolCall, function_call)]
+                tool_calls = [model_validate(
+                    ChatCompletionMessageToolCall, function_call)]
                 message = ChatCompletionMessage(
                     role="assistant",
                     content=output.text,
                     tool_calls=tool_calls,
                 )
             else:
-                message = ChatCompletionMessage(role="assistant", content=output.text.strip())
+                message = ChatCompletionMessage(
+                    role="assistant", content=output.text.strip())
 
             choices.append(
                 Choice(
@@ -216,7 +222,8 @@ async def create_chat_completion(
             )
 
         num_prompt_tokens = len(final_res.prompt_token_ids)
-        num_generated_tokens = sum(len(output.token_ids) for output in final_res.outputs)
+        num_generated_tokens = sum(len(output.token_ids)
+                                   for output in final_res.outputs)
         usage = CompletionUsage(
             prompt_tokens=num_prompt_tokens,
             completion_tokens=num_generated_tokens,
@@ -292,13 +299,14 @@ async def create_chat_completion_stream(
                     elif isinstance(call_info, dict) and "function" in call_info:
                         finish_reason = "tool_calls"
                         call_info["index"] = 0
-                        tool_calls = [model_validate(ChoiceDeltaToolCall, call_info)]
+                        tool_calls = [model_validate(
+                            ChoiceDeltaToolCall, call_info)]
                         delta = ChoiceDelta(
                             role="assistant",
                             content=delta_text,
                             tool_calls=tool_calls,
                         )
-                
+
                 choice = ChunkChoice(
                     index=i,
                     delta=delta or ChoiceDelta(content=delta_text),
