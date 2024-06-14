@@ -85,7 +85,7 @@ def random_number_generator(
 
 @register_tool
 def get_weather(
-        city_name: Annotated[str, 'The name of the city to be queried', True],
+        city_name: Annotated[str, "The name of the city to be queried", True],
 ) -> str:
     """
     Get the current weather for `city_name`
@@ -95,9 +95,16 @@ def get_weather(
         raise TypeError("City name must be a string")
 
     key_selection = {
-        "current_condition": ["temp_C", "FeelsLikeC", "humidity", "weatherDesc", "observation_time"],
+        "current_condition": [
+            "temp_C",
+            "FeelsLikeC",
+            "humidity",
+            "weatherDesc",
+            "observation_time",
+        ],
     }
     import requests
+
     try:
         resp = requests.get(f"https://wttr.in/{city_name}?format=j1")
         resp.raise_for_status()
@@ -105,7 +112,10 @@ def get_weather(
         ret = {k: {_v: resp[k][0][_v] for _v in v} for k, v in key_selection.items()}
     except:
         import traceback
-        ret = "Error encountered while fetching weather data!\n" + traceback.format_exc()
+
+        ret = (
+                "Error encountered while fetching weather data!\n" + traceback.format_exc()
+        )
 
     return str(ret)
 

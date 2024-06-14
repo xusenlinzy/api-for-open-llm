@@ -66,6 +66,9 @@ async def create_chat_completion(
     )
     request.max_tokens = request.max_tokens or 512
 
+    if request.best_of < request.n:
+        request.best_of = request.n
+
     params = dictify(request, exclude={"messages"})
     params.update(dict(prompt_or_messages=request.messages, echo=False))
     logger.debug(f"==== request ====\n{params}")

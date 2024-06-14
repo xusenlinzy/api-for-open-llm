@@ -258,7 +258,6 @@ def generate_stream_chatglm_v3(
 
 def process_chatglm_messages(
     messages: List[ChatCompletionMessageParam],
-    functions: Union[dict, List[dict]] = None,
     tools: Optional[List[Dict[str, Any]]] = None,
 ) -> List[dict]:
     """
@@ -267,12 +266,12 @@ def process_chatglm_messages(
     _messages = messages
     messages = []
 
-    if functions or tools:
+    if tools:
         messages.append(
             {
                 "role": Role.SYSTEM.value,
                 "content": "Answer the following questions as best as you can. You have access to the following tools:",
-                "tools": functions or [t["function"] for t in tools]
+                "tools": [t["function"] for t in tools]
             }
         )
 
@@ -311,19 +310,18 @@ def process_chatglm_messages(
 
 def process_chatglm_messages_v4(
     messages: List[ChatCompletionMessageParam],
-    functions: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
     tools: Optional[List[Dict[str, Any]]] = None,
 ) -> List[dict]:
     _messages = messages
     messages = []
     msg_has_sys = False
 
-    if functions or tools:
+    if tools:
         messages.append(
             {
                 "role": Role.SYSTEM.value,
                 "content": None,
-                "tools": tools or [{"type": "function", "function": f} for f in functions]
+                "tools": tools
             }
         )
 
@@ -502,37 +500,49 @@ class ChatGLM4ChatTemplate(ChatTemplate):
         output: str,
         tools: Optional[List[Dict[str, Any]]] = None,
     ) -> Tuple[str, Optional[Union[str, Dict[str, Any]]]]:
-        content = ""
-        for response in output.split("<|assistant|>"):
-            if "\n" in response:
-                metadata, content = response.split("\n", maxsplit=1)
+        lines = output.strip().split("\n")
+        special_tools = ["cogview", "simple_browser"]
+        tool_call_pattern = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
+
+        content, arguments_json = None, None
+        if len(lines) >= 2 and tool_call_pattern.match(lines[0]):
+            function_name = lines[0].strip()
+            arguments = "\n".join(lines[1:]).strip()
+
+            try:
+                arguments_json = json.loads(arguments)
+                is_tool_call = True
+            except json.JSONDecodeError:
+                is_tool_call = function_name in special_tools
+
+            if is_tool_call and tools:
+                content = {
+                    "function": {
+                        "name": function_name,
+                        "arguments": json.dumps(
+                            arguments_json if isinstance(arguments_json, dict) else arguments,
+                            ensure_ascii=False,
+                        )
+                    },
+                    "id": function_name,
+                    "type": "function",
+                }
+                if function_name == "simple_browser":
+                    search_pattern = re.compile(r'search\("(.+?)"\s*,\s*recency_days\s*=\s*(\d+)\)')
+                    match = search_pattern.match(arguments)
+                    if match:
+                        content["function"]["arguments"] = json.dumps(
+                            {
+                                "query": match.group(1),
+                                "recency_days": int(match.group(2))
+                            },
+                            ensure_ascii=False,
+                        )
+                elif function_name == "cogview":
+                    content["function"]["arguments"] = json.dumps({"prompt": arguments}, ensure_ascii=False)
             else:
-                metadata, content = "", response
+                content = None
 
-            if not metadata.strip():
-                content = content.strip()
-                content = content.replace("[[训练时间]]", "2023年")
-            else:
-                if tools:
-                    content = "\n".join(content.split("\n")[1:-1])
-
-                    def tool_call(**kwargs):
-                        return kwargs
-
-                    parameters = eval(content)
-                    content = {
-                        "function": {
-                            "name": metadata.strip(),
-                            "arguments": json.dumps(parameters, ensure_ascii=False)
-                        },
-                        "id": metadata.strip(),
-                        "type": "function",
-                    }
-                else:
-                    content = {
-                        "name": metadata.strip(),
-                        "content": content
-                    }
         return output, content
 
 
