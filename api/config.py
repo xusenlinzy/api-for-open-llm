@@ -129,6 +129,10 @@ class LLMSettings(BaseModel):
         description="Use flash attention."
     )
 
+    use_streamer_v2: Optional[bool] = Field(
+        default=get_bool_env("USE_STREAMER_V2", "true"),
+        description="Support for transformers.TextIteratorStreamer."
+    )
     interrupt_requests: Optional[bool] = Field(
         default=get_bool_env("INTERRUPT_REQUESTS", "true"),
         description="Whether to interrupt requests when a new request is received.",
