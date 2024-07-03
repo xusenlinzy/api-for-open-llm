@@ -89,7 +89,7 @@ class ChatTemplate(ABC):
         system_prompt = system or self.system_prompt
         return self.tokenizer.apply_chat_template(
             messages,
-            self.chat_template,
+            chat_template=self.chat_template,
             add_generation_prompt=True,
             system_prompt=system_prompt,
             **kwargs,
