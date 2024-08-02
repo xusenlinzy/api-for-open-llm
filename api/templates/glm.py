@@ -493,7 +493,7 @@ class ChatGLM4ChatTemplate(ChatTemplate):
             messages,
             add_generation_prompt=True,
             tokenize=True,
-        )[0]
+        )
 
     def parse_assistant_response(
         self,
