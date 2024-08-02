@@ -394,3 +394,22 @@ class MistralChatTemplate(ChatTemplate):
 @register_template("chatml")
 class ChatMLTemplate(ChatTemplate):
     stop = ["<|endoftext|>", "<|im_end|>"]
+
+
+@register_template("telechat")
+class TeleChatTemplate(ChatTemplate):
+    stop = ["<_end>"]
+
+    @property
+    def chat_template(self) -> str:
+        """https://github.com/Tele-AI/Telechat/blob/master/service/vllm_inf/template_telechat.jinja"""
+        return (
+            "{{ (messages|selectattr('role', 'equalto', 'system')|list|last).content|trim if (messages|selectattr('role', 'equalto', 'system')|list) else '' }}"
+            "{% for message in messages %}"
+            "{% if message['role'] == 'user' %}"
+            "{{ '<_user>' + message['content'] + '<_bot>' }}"
+            "{% elif message['role'] == 'assistant' %}"
+            "{{ message['content'] + '<_end>' }}"
+            "{% endif %}"
+            "{% endfor %}"
+        )
