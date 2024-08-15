@@ -45,6 +45,44 @@ vllm_version = vllm.__version__
 def get_engine():
     yield LLM_ENGINE
 
+def load_image(image_url: str):
+    from PIL import Image
+    from io import BytesIO
+ 
+    if image_url.startswith("data:"):
+        import base64
+ 
+        image_bytes = base64.b64decode(image_url.split(",")[1])
+    else:
+        import urllib.request
+ 
+        with urllib.request.urlopen(image_url) as f:
+            image_bytes = f.read()
+ 
+    return Image.open(BytesIO(image_bytes)).convert("RGB")
+ 
+def process_minicpmv_messages(messages):
+    _messages = []
+    for message in messages:
+        if isinstance(message["content"], str):
+            _content = [message["content"]]
+        else:
+            _content = []
+            for c in message["content"]:
+                if isinstance(c, dict) and "type" in c:
+                    if c["type"] == "text":
+                        _content.append(c["text"])
+                    elif c["type"] == "image_url":
+                        if (
+                            isinstance(c["image_url"], dict)
+                            and "url" in c["image_url"]
+                        ):
+                            image = load_image(image_url=c["image_url"]["url"])
+                        else:
+                            image = load_image(image_url=c["image_url"])
+                        _content.insert(0, image)
+        _messages.append({"role": message["role"], "content": _content})
+    return _messages
 
 @chat_router.post(
     "/completions",
@@ -74,6 +112,13 @@ async def create_chat_completion(
     logger.debug(f"==== request ====\n{params}")
 
     request_id: str = f"chatcmpl-{str(uuid.uuid4())}"
+
+    minicpmv_messages = process_minicpmv_messages(request.messages)
+    image = minicpmv_messages[0]['content'][0]
+    question = minicpmv_messages[0]['content'][1]
+    minicpmv_messages[0]['content'] = f'(<image>./</image>)\n{question}'
+    request.messages = minicpmv_messages
+
     token_ids = engine.template.convert_messages_to_ids(
         messages=request.messages,
         tools=request.tools,
@@ -136,6 +181,9 @@ async def create_chat_completion(
                 {
                     "prompt": None,
                     "prompt_token_ids": token_ids,
+                    "multi_modal_data": {
+                        "image": image
+                    }
                 },
                 sampling_params,
                 request_id,
