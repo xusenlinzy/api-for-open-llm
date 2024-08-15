@@ -80,8 +80,7 @@ curl -X POST "http://127.0.0.1:8080/v1/chat/completions" \
 }'
 ```
 ### 说明
-目前只支持minicpm-v模型
-下面是最大并发量测试结果：
+目前只支持minicpm-v模型，下面是最大并发量测试结果：  
 GPU_MEMORY_UTILIZATION=0.9 并发量10  
 GPU_MEMORY_UTILIZATION=0.8 并发量14  
 GPU_MEMORY_UTILIZATION=0.7 并发量20  
