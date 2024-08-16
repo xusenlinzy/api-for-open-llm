@@ -61,7 +61,7 @@ def load_image(image_url: str):
  
     return Image.open(BytesIO(image_bytes)).convert("RGB")
  
-def process_minicpmv_messages(messages):
+def process_messages(messages):
     _messages = []
     for message in messages:
         if isinstance(message["content"], str):
@@ -112,13 +112,22 @@ async def create_chat_completion(
     logger.debug(f"==== request ====\n{params}")
 
     request_id: str = f"chatcmpl-{str(uuid.uuid4())}"
-
-    minicpmv_messages = process_minicpmv_messages(request.messages)
+    
+    # 使用minicpm-v模型
+    minicpmv_messages = process_messages(request.messages)
     image = minicpmv_messages[0]['content'][0]
     question = minicpmv_messages[0]['content'][1]
     minicpmv_messages[0]['content'] = f'(<image>./</image>)\n{question}'
     request.messages = minicpmv_messages
-
+    
+    # 使用internvl模型需要解注释
+    # internvl_messages = process_messages(request.messages)
+    # image = internvl_messages[0]['content'][0]
+    # question = internvl_messages[0]['content'][1]
+    # internvl_messages[0]['content'] = f"<image>\n{question}\n"
+    # request.messages = internvl_messages
+    # stop_token_ids = [0, 92543, 92542, 0]
+    
     token_ids = engine.template.convert_messages_to_ids(
         messages=request.messages,
         tools=request.tools,
@@ -142,13 +151,21 @@ async def create_chat_completion(
             "spaces_between_special_tokens",
         }
         kwargs = dictify(request, include=include)
+        # 使用minicpm-v模型
         sampling_params = SamplingParams(
             stop=request.stop or [],
             stop_token_ids=request.stop_token_ids or [],
             max_tokens=request.max_tokens,
             **kwargs,
         )
-
+        # 使用internvl模型需要解注释
+        # sampling_params = SamplingParams(
+        #     stop=request.stop or [],
+        #     stop_token_ids=stop_token_ids or [],
+        #     max_tokens=request.max_tokens,
+        #     **kwargs,
+        # )
+        
         # Todo: support for lora
         lora_request = None
         try:
