@@ -36,6 +36,7 @@ from api.protocol import ErrorCode
 from api.templates import get_template
 from api.templates.glm import generate_stream_chatglm, generate_stream_chatglm_v3
 from api.templates.minicpm import generate_stream_minicpm_v
+from api.templates.minimonkey import generate_stream_minimonkey
 from api.templates.stream import generate_stream
 from api.templates.utils import get_context_length
 from api.utils import create_error_response
@@ -78,6 +79,8 @@ class HuggingFaceEngine(ABC):
             self.generate_stream_func = generate_stream_chatglm
         elif self.model.config.model_type == "minicpmv":
             self.generate_stream_func = generate_stream_minicpm_v
+        elif self.model.config.model_type == "internvl_chat":
+            self.generate_stream_func = generate_stream_minimonkey
 
         logger.info(f"Using {self.model_name} Model for Chat!")
         logger.info(f"Using {self.template} for Chat!")
@@ -97,6 +100,8 @@ class HuggingFaceEngine(ABC):
             inputs = self.tokenizer(prompt_or_messages).input_ids
         else:
             if self.model.config.model_type == "minicpmv":
+                inputs = prompt_or_messages
+            elif self.model.config.model_type == "internvl_chat":
                 inputs = prompt_or_messages
             else:
                 inputs = self.template.convert_messages_to_ids(
