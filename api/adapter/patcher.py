@@ -164,6 +164,9 @@ def patch_config(
 
 
 def patch_model(model: "PreTrainedModel") -> None:
+    if 'CogVLMForCausalLM' in model.config.architectures:
+        model.config.model_type = "cogvlm2"
+        return
     if model.config.model_type == "internvl_chat":
         return
     if model.config.model_type == "minicpmv":
