@@ -164,6 +164,8 @@ def patch_config(
 
 
 def patch_model(model: "PreTrainedModel") -> None:
+    if model.config.model_type == "internvl_chat":
+        return
     if model.config.model_type == "minicpmv":
         return
     if "GenerationMixin" not in str(model.generate.__func__):
