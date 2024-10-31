@@ -1,3 +1,6 @@
+import sys
+sys.path.insert(0, sys.path[0]+"/../")
+
 from api.config import SETTINGS
 from api.models import (
     app,
