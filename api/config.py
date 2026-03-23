@@ -159,6 +159,17 @@ class RAGSettings(BaseModel):
     )
 
 
+class MiniMaxSettings(BaseModel):
+    minimax_api_key: Optional[str] = Field(
+        default=get_env("MINIMAX_API_KEY", None),
+        description="API key for MiniMax Cloud API.",
+    )
+    minimax_api_base: Optional[str] = Field(
+        default=get_env("MINIMAX_API_BASE", "https://api.minimax.io/v1"),
+        description="Base URL for MiniMax Cloud API.",
+    )
+
+
 class VLLMSetting(BaseModel):
     trust_remote_code: Optional[bool] = Field(
         default=get_bool_env("TRUST_REMOTE_CODE"),
@@ -265,6 +276,8 @@ if "llm" in TASKS:
         PARENT_CLASSES.append(LLMSettings)
     elif ENGINE == "vllm":
         PARENT_CLASSES.extend([LLMSettings, VLLMSetting])
+    elif ENGINE == "minimax":
+        PARENT_CLASSES.extend([LLMSettings, MiniMaxSettings])
 
 if "rag" in TASKS:
     PARENT_CLASSES.append(RAGSettings)

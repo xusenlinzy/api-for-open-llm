@@ -10,16 +10,19 @@ from api.config import SETTINGS
 
 def create_app() -> FastAPI:
     import gc
-    import torch
 
     def torch_gc() -> None:
         r"""
         Collects GPU memory.
         """
         gc.collect()
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-            torch.cuda.ipc_collect()
+        try:
+            import torch
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+                torch.cuda.ipc_collect()
+        except ImportError:
+            pass
 
     @asynccontextmanager
     async def lifespan(app: "FastAPI"):  # collects GPU memory
@@ -89,6 +92,25 @@ def create_hf_llm():
     )
 
 
+def create_minimax_engine():
+    """ get MiniMax cloud engine for chat or completion. """
+    from api.engine.minimax import MiniMaxEngine
+
+    api_key = SETTINGS.minimax_api_key
+    if not api_key:
+        raise ValueError("MINIMAX_API_KEY is required when ENGINE=minimax")
+
+    model_name = SETTINGS.model_name or "MiniMax-M2.7"
+
+    logger.info("Using MiniMax Cloud Engine")
+
+    return MiniMaxEngine(
+        api_key=api_key,
+        model_name=model_name,
+        api_base=SETTINGS.minimax_api_base,
+    )
+
+
 def create_vllm_engine():
     """ get vllm generate engine for chat or completion. """
     try:
@@ -151,5 +173,7 @@ if "llm" in SETTINGS.tasks and SETTINGS.activate_inference:
         LLM_ENGINE = create_hf_llm()
     elif SETTINGS.engine == "vllm":
         LLM_ENGINE = create_vllm_engine()
+    elif SETTINGS.engine == "minimax":
+        LLM_ENGINE = create_minimax_engine()
 else:
     LLM_ENGINE = None

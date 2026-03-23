@@ -17,6 +17,8 @@
 
 ## 📢 新闻
 
++ 【2026.03.23】 支持 [MiniMax](https://www.minimaxi.com/) 云端大模型 API（MiniMax-M2.7/M2.5），设置 `ENGINE=minimax` 即可使用，无需本地 GPU
+
 + 【2024.06.13】 支持 `MiniCPM-Llama3-V-2_5` 模型，修改环境变量 `MODEL_NAME=minicpm-v`  `PROMPT_NAME=minicpm-v`  `DTYPE=bfloat16`
 
 
@@ -67,6 +69,9 @@
 + ⚡ 支持 [vLLM](https://github.com/vllm-project/vllm) 推理加速和处理并发请求
 
 
++ ☁️ 支持 [MiniMax](https://www.minimaxi.com/) 云端大模型 API，无需本地 GPU 即可提供服务
+
+
 ## 内容导引
 
 |                                               章节                                                |              描述               |
@@ -74,6 +79,7 @@
 |               [💁🏻‍♂支持模型](https://github.com/xusenlinzy/api-for-open-llm#-支持模型)                |       此项目支持的开源模型以及简要信息        |
 |       [🚄启动方式](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md)       |        启动模型的环境配置和启动命令         |
 |   [⚡vLLM启动方式](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/VLLM_SCRIPT.md)   |   使用 `vLLM` 启动模型的环境配置和启动命令    |
+|   [☁️MiniMax启动方式](https://github.com/xusenlinzy/api-for-open-llm#-minimax-云端模型)   |   使用 MiniMax 云端 API 的启动方式    |
 |                 [💻调用方式](https://github.com/xusenlinzy/api-for-open-llm#-使用方式)                  |          启动模型之后的调用方式          |
 |         [❓常见问题](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/FAQ.md)         |           一些常见问题的回复           |
 
@@ -95,6 +101,12 @@
 | [Qwen1.5](https://huggingface.co/Qwen)             | 0.5B/1.8B/4B/7B/14B/32B/72B/110B | 
 | [Qwen2](https://huggingface.co/Qwen)               | 0.5B/1.5B/7B/57B/72B             |
 | [Yi (1/1.5)](https://huggingface.co/01-ai)         | 6B/9B/34B                        |
+
+**云端模型（Cloud API）**
+
+| 模型                                                    | 说明                          |
+|-------------------------------------------------------|-----------------------------|
+| [MiniMax](https://www.minimaxi.com/)                  | M2.7/M2.7-highspeed/M2.5/M2.5-highspeed |
 
 启动方式详见 [vLLM启动方式](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/VLLM_SCRIPT.md)、[transformers启动方式](https://github.com/xusenlinzy/api-for-open-llm/blob/master/docs/SCRIPT.md)
 
@@ -241,6 +253,45 @@ DISABLE_PROVIDER_CONFIG_VALIDATION: 'true'
 ```
 
 ![dify](assets/images/dify.png)
+
+
+## ☁️ MiniMax 云端模型
+
+除了本地部署模型，本项目还支持通过 [MiniMax](https://www.minimaxi.com/) 云端 API 提供服务，无需本地 GPU。
+
+### 环境变量配置
+
+```shell
+ENGINE=minimax
+MODEL_NAME=MiniMax-M2.7
+MINIMAX_API_KEY=your-api-key-here
+MINIMAX_API_BASE=https://api.minimax.io/v1  # 可选，默认值
+```
+
+### 支持的模型
+
+| 模型名称 | 上下文长度 | 说明 |
+|---------|-----------|------|
+| MiniMax-M2.7 | 1M | 最新旗舰模型 |
+| MiniMax-M2.7-highspeed | 1M | 高速版本 |
+| MiniMax-M2.5 | 245K | 上一代模型 |
+| MiniMax-M2.5-highspeed | 204K | 高速版本 |
+
+### 启动方式
+
+```shell
+# 设置环境变量
+export ENGINE=minimax
+export MODEL_NAME=MiniMax-M2.7
+export MINIMAX_API_KEY=your-api-key-here
+
+# 启动服务
+python -m api.server
+```
+
+启动后使用方式与本地模型完全一致，客户端代码无需任何修改。
+
+> 注意：MiniMax API 的 temperature 参数范围为 [0, 1]，超出范围将自动截断。
 
 
 ## 📜 License
